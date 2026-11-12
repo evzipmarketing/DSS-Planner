@@ -6,17 +6,13 @@ import {
   DEEP_SKY_TYPES,
   TARGET_LIST_FILTERS,
   bandLabel,
-  brightnessHintLabel,
   catalogueLabel,
   formatArcmin,
   formatCatalogueId,
-  formatClock,
   formatDeclination,
   formatHours,
   formatRightAscension,
   formatSignedDegrees,
-  frameFitHint,
-  frameFitLabel,
   listFilterLabel,
   objectTitle,
   primaryDesignation,
@@ -40,7 +36,6 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
     extendedReady,
     listFilter,
     setListFilter,
-    site,
     query,
     setQuery,
     results,
@@ -48,7 +43,7 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
   const [shown, setShown] = useState(20);
   const visible = shortlist.slice(0, shown);
   return (
-    <Section index="06" title="Best targets tonight">
+    <Section index="06" title="Tonight's targets">
       <div className="target-tools">
         <div className="tabs" aria-label="Target filters">
           {TARGET_LIST_FILTERS.map((filter) => (
@@ -185,24 +180,18 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
             onClick={() => chooseTarget(item.object.id)}
           >
             <span className="target-top">
+              <TargetThumb raDeg={item.object.raDeg} decDeg={item.object.decDeg} majorArcmin={item.object.majorArcmin} />
               <strong>{objectTitle(item.object)}</strong>
               {objectTitle(item.object) === primaryDesignation(item.object) ? null : (
                 <span>{primaryDesignation(item.object)}</span>
               )}
               <span>{objectTypeLabel(item.object.type)}</span>
               <span className="tag">{bandLabel(item.band)}</span>
-              <span className={`brightness brightness-${item.brightness}`}>{brightnessHintLabel(item.brightness)}</span>
             </span>
             <span className="target-facts">
-              <span>Usable {formatHours(item.usableHours)}</span>
-              <span>Above horizon {formatHours(item.hoursAboveHorizon)}</span>
-              <span>
-                Frame {item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`} · {frameFitLabel(item.frameFit)}
-              </span>
-              <span>{riseSet(item, site.timezone)}</span>
+              <span>{item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`}</span>
+              <span>{`${item.usableHours.toFixed(1)} h`}</span>
             </span>
-            <span className="note">{frameFitHint(item.frameFit)}</span>
-            {item.moonHint ? <span className="hint">{item.moonHint}</span> : null}
           </button>
           {detail && selected?.id === item.object.id ? <div className="inline-detail">{detail}</div> : null}
           </div>
@@ -217,17 +206,12 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
   );
 }
 
-function riseSet(
-  item: { rise: Date | null; set: Date | null; upAtStart: boolean; alwaysUp: boolean; hoursAboveHorizon: number },
-  timeZone: string,
-): string {
-  if (item.alwaysUp) return "Circumpolar";
-  if (item.hoursAboveHorizon <= 0) return "Below the horizon";
-  const parts: string[] = [];
-  if (item.upAtStart) parts.push("Up at dusk");
-  if (item.rise) parts.push(`Rises ${formatClock(item.rise, timeZone)}`);
-  if (item.set) parts.push(`Sets ${formatClock(item.set, timeZone)}`);
-  return parts.join(" · ") || "Above the horizon";
+function TargetThumb({ raDeg, decDeg, majorArcmin }: { raDeg: number; decDeg: number; majorArcmin: number | null }) {
+  const [failed, setFailed] = useState(false);
+  const fov = Math.min(6, Math.max(0.15, ((majorArcmin ?? 15) / 60) * 1.8));
+  const src = `/api/sky?ra=${raDeg.toFixed(4)}&dec=${decDeg.toFixed(4)}&fov=${fov.toFixed(3)}&size=96`;
+  if (failed) return <span className="thumb thumb-empty" aria-hidden="true" />;
+  return <img className="thumb" alt="" width={40} height={40} loading="lazy" src={src} onError={() => setFailed(true)} />;
 }
 
 export function ObjectCard() {

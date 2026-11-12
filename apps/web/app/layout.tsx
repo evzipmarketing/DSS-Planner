@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html:
-              '(function(){try{var raw=localStorage.getItem("dss-planner.session.v1");if(!raw)return;var data=JSON.parse(raw);if(data&&data.vision==="red")document.documentElement.dataset.vision="red";}catch(e){}})();',
+              '(function(){try{var raw=localStorage.getItem("dss-planner.session.v1");if(!raw)return;var data=JSON.parse(raw);var theme=data&&data.theme;if(theme!=="light"&&theme!=="dark"&&theme!=="night")theme=data&&data.vision==="red"?"night":"dark";document.documentElement.dataset.theme=theme;}catch(e){}})();',
           }}
         />
       </head>

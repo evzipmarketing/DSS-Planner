@@ -37,13 +37,16 @@ const KINDS: FilterKind[] = [
   "blue",
 ];
 
-export function RigPanel() {
+export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camera" }) {
   const planner = usePlannerState();
   const { telescope, camera, optics } = planner;
+  const showScope = part !== "camera";
+  const showCamera = part !== "telescope";
+  const title = part === "telescope" ? "Telescope" : part === "camera" ? "Camera" : "Rig";
 
   return (
-    <Section index="05" title="Rig">
-      {optics && telescope && camera ? (
+    <Section index="05" title={title}>
+      {part === "all" && optics && telescope && camera ? (
         <>
           <div className="readout">
             <p className="stat">
@@ -77,113 +80,126 @@ export function RigPanel() {
       ) : null}
 
       <div className="fields">
-        <Combobox
-          label="Telescope"
-          value={telescope?.id ?? ""}
-          placeholder="Search scopes"
-          options={planner.telescopes.map((item) => ({
-            id: item.id,
-            label: item.name,
-            hint: `${item.apertureMm} mm · ${item.focalLengthMm} mm`,
-          }))}
-          onChange={planner.setTelescopeId}
-        />
-        {telescope ? (
-          <p className="note">
-            {telescope.apertureMm} mm aperture, {telescope.focalLengthMm} mm native focal length.
-          </p>
+        {showScope ? (
+          <>
+            <Combobox
+              label="Telescope"
+              value={telescope?.id ?? ""}
+              placeholder="Search scopes"
+              options={planner.telescopes.map((item) => ({
+                id: item.id,
+                label: item.name,
+                hint: `${item.apertureMm} mm · ${item.focalLengthMm} mm`,
+              }))}
+              onChange={planner.setTelescopeId}
+            />
+            {telescope ? (
+              <p className="note">
+                {telescope.apertureMm} mm aperture, {telescope.focalLengthMm} mm native focal length.
+              </p>
+            ) : null}
+            <label className="field">
+              Flattener, reducer, or Barlow
+              <select
+                value={REDUCERS.some((item) => item.value === planner.reducer) ? String(planner.reducer) : "custom"}
+                onChange={(event) => {
+                  if (event.target.value !== "custom") planner.setReducer(Number(event.target.value));
+                }}
+              >
+                {REDUCERS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+                <option value="custom">Custom factor</option>
+              </select>
+            </label>
+            <label className="field">
+              Factor
+              <input
+                type="number"
+                min={0.25}
+                max={5}
+                step={0.01}
+                value={planner.reducer}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (value >= 0.25 && value <= 5) planner.setReducer(value);
+                }}
+              />
+            </label>
+          </>
         ) : null}
-        <label className="field">
-          Flattener, reducer, or Barlow
-          <select
-            value={REDUCERS.some((item) => item.value === planner.reducer) ? String(planner.reducer) : "custom"}
-            onChange={(event) => {
-              if (event.target.value !== "custom") planner.setReducer(Number(event.target.value));
-              else planner.setReducer(planner.reducer);
-            }}
-          >
-            {REDUCERS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-            <option value="custom">Custom factor</option>
-          </select>
-        </label>
-        <label className="field">
-          Factor
-          <input
-            type="number"
-            min={0.25}
-            max={5}
-            step={0.01}
-            value={planner.reducer}
-            onChange={(event) => {
-              const value = Number(event.target.value);
-              if (value >= 0.25 && value <= 5) planner.setReducer(value);
-            }}
-          />
-        </label>
-        <Combobox
-          label="Camera"
-          value={camera?.id ?? ""}
-          placeholder="Search cameras"
-          options={planner.cameraList.map((item) => ({
-            id: item.id,
-            label: item.name,
-            hint: `${item.sensor} · ${item.widthPx}×${item.heightPx}`,
-          }))}
-          onChange={planner.setCameraId}
-        />
-        <Combobox
-          label="Add a filter"
-          value=""
-          placeholder="Search filters"
-          options={planner.filterList.map((item) => ({
-            id: item.id,
-            label: item.name,
-            hint: filterKindLabel(item.kind),
-          }))}
-          onChange={(id) => {
-            if (!planner.filterIds.includes(id)) planner.toggleFilter(id);
-          }}
-        />
-        <div className="chips">
-          {planner.filterList
-            .filter((item) => planner.filterIds.includes(item.id))
-            .map((item) => (
-              <button key={item.id} type="button" className="chip" onClick={() => planner.toggleFilter(item.id)}>
-                {item.name} · {filterKindLabel(item.kind)} ×
-              </button>
-            ))}
-        </div>
+        {showCamera ? (
+          <>
+            <Combobox
+              label="Camera"
+              value={camera?.id ?? ""}
+              placeholder="Search cameras"
+              options={planner.cameraList.map((item) => ({
+                id: item.id,
+                label: item.name,
+                hint: `${item.sensor} · ${item.widthPx}×${item.heightPx}`,
+              }))}
+              onChange={planner.setCameraId}
+            />
+            <Combobox
+              label="Add a filter"
+              value=""
+              placeholder="Search filters"
+              options={planner.filterList.map((item) => ({
+                id: item.id,
+                label: item.name,
+                hint: filterKindLabel(item.kind),
+              }))}
+              onChange={(id) => {
+                if (!planner.filterIds.includes(id)) planner.toggleFilter(id);
+              }}
+            />
+            <div className="chips">
+              {planner.filterList
+                .filter((item) => planner.filterIds.includes(item.id))
+                .map((item) => (
+                  <button key={item.id} type="button" className="chip" onClick={() => planner.toggleFilter(item.id)}>
+                    {item.name} · {filterKindLabel(item.kind)} ×
+                  </button>
+                ))}
+            </div>
+          </>
+        ) : null}
       </div>
 
-      <CustomGear />
+      <CustomGear part={part} />
     </Section>
   );
 }
 
-function CustomGear() {
+function CustomGear({ part }: { part: "all" | "telescope" | "camera" }) {
   const planner = usePlannerState();
   return (
     <>
-      <details className="drawer">
-        <summary>Custom telescope</summary>
-        <ScopeForm
-          onSave={(scope) => {
-            planner.addTelescope(scope);
-          }}
-        />
-      </details>
-      <details className="drawer">
-        <summary>Custom camera</summary>
-        <CameraForm onSave={(camera) => planner.addCamera(camera)} />
-      </details>
-      <details className="drawer">
-        <summary>Custom filter</summary>
-        <FilterForm onSave={(filter) => planner.addFilter(filter)} />
-      </details>
+      {part !== "camera" ? (
+        <details className="drawer">
+          <summary>Custom telescope</summary>
+          <ScopeForm
+            onSave={(scope) => {
+              planner.addTelescope(scope);
+            }}
+          />
+        </details>
+      ) : null}
+      {part !== "telescope" ? (
+        <>
+          <details className="drawer">
+            <summary>Custom camera</summary>
+            <CameraForm onSave={(camera) => planner.addCamera(camera)} />
+          </details>
+          <details className="drawer">
+            <summary>Custom filter</summary>
+            <FilterForm onSave={(filter) => planner.addFilter(filter)} />
+          </details>
+        </>
+      ) : null}
       <div className="custom-list">
         {planner.telescopes.filter((item) => item.custom).map((item) => (
           <button key={item.id} type="button" className="ghost" onClick={() => planner.removeCustom("telescope", item.id)}>

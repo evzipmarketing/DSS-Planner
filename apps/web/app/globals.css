@@ -20,7 +20,26 @@
   --radius: 12px;
 }
 
-[data-vision="red"] {
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f0e8;
+  --bg-raised: #fffcf7;
+  --bg-sunken: #e6e1d6;
+  --line: #d9d3c7;
+  --line-strong: #b9b2a6;
+  --text: #1a1e1d;
+  --muted: #4e5652;
+  --faint: #5f6762;
+  --saffron: #0f766e;
+  --saffron-ink: #f4fffc;
+  --sage: #9a5b16;
+  --clay: #9f3d32;
+  --moon: #4d5560;
+  --usable: rgba(15, 118, 110, 0.16);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="night"] {
   --bg: #120707;
   --bg-raised: #1a0c0c;
   --bg-sunken: #0e0505;
@@ -391,7 +410,7 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .plate { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
 
-[data-vision="red"] .plate {
+[data-theme="night"] .plate {
   filter: grayscale(1) sepia(1) hue-rotate(-18deg) saturate(7) brightness(0.42) contrast(1.2);
 }
 
@@ -949,6 +968,70 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   .layout-d { padding-inline: 18px; }
   .min-bar { align-items: flex-start; flex-wrap: wrap; }
   .layout-d .target strong { font-size: 1.3rem; }
+}
+
+.minimal.tonight .target-facts span:not(:first-child) { display: inline; }
+
+.tonight {
+  width: min(860px, 100%);
+  margin: 0 auto;
+  padding: 0 20px 64px;
+}
+
+.tonight .settings-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.tonight .settings-bar .pop { min-width: 0; }
+
+.tonight .settings-bar .chip-btn {
+  width: 100%;
+  max-width: 100%;
+  justify-content: space-between;
+}
+
+.tonight .settings-bar .chip-btn > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tonight .tabs { flex-wrap: wrap; overflow: visible; }
+
+.theme-toggle {
+  margin-left: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.theme-toggle svg { width: 20px; height: 20px; }
+
+.theme-toggle svg * { stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; }
+
+.theme-toggle .dot { fill: currentColor; stroke: none; }
+
+.thumb {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-sunken);
+}
+
+.thumb-empty { display: inline-block; }
+
+@media (min-width: 760px) {
+  .tonight .settings-bar { display: flex; }
+  .tonight .settings-bar .chip-btn { width: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

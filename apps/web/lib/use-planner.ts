@@ -10,12 +10,10 @@ import {
   samplingAdvice,
   searchCatalogue,
   sensorDisagreement,
-  suggestExposure,
   buildNightTrack,
   EMPTY_TARGET_QUERY,
   type Camera,
   type DeepSkyObject,
-  type ExposureSuggestion,
   type ImagingFilter,
   type NightTrack,
   type RankedTarget,
@@ -36,7 +34,7 @@ import {
   filters as seedFilters,
   telescopes as seedTelescopes,
 } from "@dss/data";
-import { loadSession, resolveSite, saveSession, type Vision } from "./storage";
+import { loadSession, resolveSite, saveSession, type ThemeName } from "./storage";
 
 export type Pointing = {
   raDeg: number;
@@ -64,7 +62,7 @@ export function usePlanner() {
   const [extendedCatalogue, setExtendedCatalogue] = useState<DeepSkyObject[] | null>(null);
   const [targetQuery, setTargetQuery] = useState<TargetQuery>(EMPTY_TARGET_QUERY);
   const [listFilter, setListFilter] = useState<TargetListFilter>("all");
-  const [vision, setVision] = useState<Vision>("ink");
+  const [theme, setTheme] = useState<ThemeName>("dark");
   const [site, setSite] = useState<Site>(defaultSite);
   const [placeStatus, setPlaceStatus] = useState<PlaceStatus>("detecting");
   const [date, setDate] = useState(() => {
@@ -104,7 +102,7 @@ export function usePlanner() {
     if (stored) {
       const restored = resolveSite(stored);
       hadStoredSite.current = true;
-      setVision(stored.vision);
+      setTheme(stored.theme);
       setSite(restored);
       setBortleMode(stored.bortleMode);
       setBortle(stored.bortleMode === "estimate" ? estimateBortle(restored.latitude, restored.longitude) : stored.bortle);
@@ -181,8 +179,8 @@ export function usePlanner() {
   useEffect(() => {
     if (!hydrated) return;
     saveSession({
-      version: 2,
-      vision,
+      version: 3,
+      theme,
       locationId: site.id,
       customSite: site.id === "custom" ? site : undefined,
       bortle,
@@ -197,7 +195,7 @@ export function usePlanner() {
     });
   }, [
     hydrated,
-    vision,
+    theme,
     site,
     bortle,
     bortleMode,
@@ -212,16 +210,16 @@ export function usePlanner() {
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    if (!hydrated && root.dataset.vision === "red" && vision === "ink") return;
-    root.dataset.vision = vision;
-  }, [vision, hydrated]);
+    if (!hydrated && root.dataset.theme && root.dataset.theme !== theme) return;
+    root.dataset.theme = theme;
+    delete root.dataset.vision;
+  }, [theme, hydrated]);
 
   const telescopes = useMemo(() => [...seedTelescopes, ...customTelescopes], [customTelescopes]);
   const cameraList = useMemo(() => [...seedCameras, ...customCameras], [customCameras]);
   const filterList = useMemo(() => [...seedFilters, ...customFilters], [customFilters]);
   const telescope = telescopes.find((item) => item.id === telescopeId) ?? telescopes[0] ?? null;
   const camera = cameraList.find((item) => item.id === cameraId) ?? cameraList[0] ?? null;
-  const activeFilters = filterList.filter((item) => filterIds.includes(item.id));
   const bortleEstimate = estimateBortle(site.latitude, site.longitude);
 
   const optics = useMemo<Optics | null>(() => {
@@ -293,44 +291,6 @@ export function usePlanner() {
       stepMinutes: 10,
     });
   }, [selected, site, date]);
-
-  const moon = useMemo(() => {
-    if (!track) return null;
-    let separation: number | null = null;
-    let altitude = -90;
-    for (const sample of track.samples) {
-      if (!sample.usable) continue;
-      if (sample.moonAltitude > altitude) altitude = sample.moonAltitude;
-      if (sample.moonAltitude >= 0) {
-        separation = separation == null ? sample.moonSeparationDeg : Math.min(separation, sample.moonSeparationDeg);
-      }
-    }
-    return {
-      illuminated: track.moonIlluminatedFraction,
-      altitude,
-      separation,
-      usableHours: track.usableHours,
-    };
-  }, [track]);
-
-  const exposures = useMemo<ExposureSuggestion[]>(() => {
-    if (!telescope || !camera || !optics) return [];
-    return activeFilters.map((filter) =>
-      suggestExposure({
-        filter,
-        bortle,
-        apertureMm: telescope.apertureMm,
-        focalLengthMm: optics.focalLengthMm,
-        pixelScaleArcsec: optics.pixelScale,
-        readNoiseE: camera.readNoiseE,
-        moonIlluminatedFraction: moon?.illuminated,
-        moonSeparationDeg: moon?.separation,
-        moonAltitudeDeg: moon?.altitude,
-        usableHours: moon?.usableHours,
-        magnitude: selected?.magnitude ?? null,
-      }),
-    );
-  }, [activeFilters, telescope, camera, optics, bortle, moon, selected]);
 
   const results = useMemo(() => {
     if (!catalogue || query.trim().length < 1) return [];
@@ -405,8 +365,8 @@ export function usePlanner() {
     setTargetQuery,
     listFilter,
     setListFilter,
-    vision,
-    setVision,
+    theme,
+    setTheme,
     site,
     chooseSite,
     placeStatus,
@@ -439,7 +399,6 @@ export function usePlanner() {
     filterIds,
     toggleFilter,
     optics,
-    exposures,
     addTelescope,
     addCamera,
     addFilter,

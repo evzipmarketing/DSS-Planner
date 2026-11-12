@@ -5,294 +5,73 @@ import { addDaysIso } from "@dss/core";
 import { AltitudeChart } from "./altitude-chart";
 import { BortlePanel } from "./bortle-panel";
 import { DatePanel } from "./date-panel";
-import { ExposurePlan } from "./exposure-plan";
 import { FramingPreview } from "./framing-preview";
 import { LocationPanel } from "./location-panel";
 import { ObjectCard, Shortlist } from "./target-panels";
 import { RigPanel } from "./rig-panel";
 import { WeatherPanel } from "./weather-panel";
 import { usePlannerState } from "./planner-context";
+import type { ThemeName } from "@/lib/storage";
 
-export type MinimalLayout = "a" | "b" | "c" | "d" | "d1" | "d2";
-
-export function MinimalShell({ layout }: { layout: MinimalLayout }) {
-  switch (layout) {
-    case "a":
-      return <LayoutFocused />;
-    case "b":
-      return <LayoutPanes />;
-    case "c":
-      return <LayoutStepper />;
-    case "d":
-      return <LayoutHero />;
-    case "d1":
-      return <LayoutSentence />;
-    case "d2":
-      return <LayoutSettings />;
-    default: {
-      const unexpected: never = layout;
-      return unexpected;
-    }
-  }
-}
-
-function LayoutFocused() {
+export function TonightPage() {
   const planner = usePlannerState();
-  const selectedId = planner.selected?.id ?? null;
-  const [closedFor, setClosedFor] = useState<string | null>(null);
-  const open = selectedId != null && closedFor !== selectedId;
+  const [more, setMore] = useState(false);
   return (
-    <div className="minimal layout-a">
-      <header className="min-bar">
-        <strong>DSS Planner</strong>
-        <div className="min-chips">
-          <details>
-            <summary>{planner.site.name}</summary>
+    <div className={`minimal tonight${more ? " show-all" : ""}`}>
+      <a className="skip" href="#targets">
+        Skip to the targets
+      </a>
+      <header className="app-head">
+        <div className="min-bar">
+          <strong>DSS Planner</strong>
+          <ThemeToggle />
+        </div>
+        <div className="settings-bar">
+          <Control label={`Location: ${planner.site.name} · Bortle ${planner.bortle}`}>
             <LocationPanel />
-          </details>
-          <details>
-            <summary>{planner.date}</summary>
-            <DatePanel />
-          </details>
-          <details>
-            <summary>Bortle {planner.bortle}</summary>
-            <BortlePanel />
-          </details>
-        </div>
-        <VisionButton />
-      </header>
-      <details className="one-line">
-        <summary>
-          <WeatherPanel plain />
-          <span> · {rigLine(planner.telescope?.name, planner.camera?.name)}</span>
-        </summary>
-        <div className="expand-grid">
-          <WeatherPanel />
-          <RigPanel />
-        </div>
-      </details>
-      <Shortlist />
-      {open ? (
-        <aside className="sheet" aria-label="Target details">
-          <button type="button" className="ghost" onClick={() => setClosedFor(selectedId)}>
-            Close
-          </button>
-          <DetailStack />
-        </aside>
-      ) : null}
-    </div>
-  );
-}
-
-function LayoutPanes() {
-  const planner = usePlannerState();
-  return (
-    <div className="minimal layout-b">
-      <aside className="pane setup">
-        <div className="min-bar">
-          <strong>DSS Planner</strong>
-          <VisionButton />
-        </div>
-        <details open>
-          <summary>Place and time</summary>
-          <LocationPanel />
-          <DatePanel />
-          <BortlePanel />
-        </details>
-        <details>
-          <summary>Sky</summary>
-          <WeatherPanel />
-        </details>
-        <details>
-          <summary>Rig</summary>
-          <RigPanel />
-        </details>
-      </aside>
-      <main className="pane list">
-        <Shortlist />
-      </main>
-      <aside className="pane detail" aria-label="Target details">
-        {planner.selected ? <DetailStack /> : <p className="quiet-line">Select a target.</p>}
-      </aside>
-    </div>
-  );
-}
-
-function LayoutStepper() {
-  const [step, setStep] = useState<"where" | "gear" | "results">("results");
-  return (
-    <div className="minimal layout-c">
-      <header className="min-bar">
-        <strong>DSS Planner</strong>
-        <div className="steps" role="tablist" aria-label="Setup">
-          <StepButton current={step} id="where" onSelect={setStep}>
-            Where and when
-          </StepButton>
-          <StepButton current={step} id="gear" onSelect={setStep}>
-            Gear
-          </StepButton>
-          <StepButton current={step} id="results" onSelect={setStep}>
-            Results
-          </StepButton>
-        </div>
-        <VisionButton />
-      </header>
-      {step === "where" ? (
-        <section className="step-card">
-          <LocationPanel />
-          <DatePanel />
-          <BortlePanel />
-          <WeatherPanel />
-          <button type="button" className="ghost" onClick={() => setStep("gear")}>
-            Next
-          </button>
-        </section>
-      ) : null}
-      {step === "gear" ? (
-        <section className="step-card">
-          <RigPanel />
-          <button type="button" className="ghost" onClick={() => setStep("results")}>
-            See targets
-          </button>
-        </section>
-      ) : null}
-      {step === "results" ? <Shortlist detail={<DetailStack />} /> : null}
-    </div>
-  );
-}
-
-function LayoutHero() {
-  const planner = usePlannerState();
-  const [adjust, setAdjust] = useState(false);
-  const [more, setMore] = useState(false);
-  return (
-    <div className={`minimal layout-d${more ? " show-all" : ""}`}>
-      <header className="hero">
-        <div className="min-bar">
-          <strong>DSS Planner</strong>
-          <VisionButton />
-        </div>
-        <h1>Tonight from {planner.site.name}</h1>
-        <p>
-          <WeatherPanel plain />
-          <span> · Bortle {planner.bortle} · {planner.date}</span>
-        </p>
-      </header>
-      <Shortlist />
-      <div className="hero-actions">
-        <button type="button" className="ghost" aria-pressed={adjust} onClick={() => setAdjust((value) => !value)}>
-          Adjust
-        </button>
-        <button type="button" className="ghost" aria-pressed={more} onClick={() => setMore((value) => !value)}>
-          More targets
-        </button>
-      </div>
-      {adjust ? (
-        <section className="step-card">
-          <LocationPanel />
-          <DatePanel />
-          <BortlePanel />
-          <RigPanel />
-        </section>
-      ) : null}
-      {planner.selected ? <DetailStack /> : null}
-    </div>
-  );
-}
-
-function LayoutSentence() {
-  const planner = usePlannerState();
-  const [more, setMore] = useState(false);
-  return (
-    <div className={`minimal layout-d layout-d1${more ? " show-all" : ""}`}>
-      <header className="hero">
-        <div className="min-bar">
-          <strong>DSS Planner</strong>
-          <VisionButton />
-        </div>
-        <h1 className="sentence">
-          <span className="phrase">
-            Tonight from{" "}
-            <Control label={planner.site.name}>
-              <LocationPanel />
-            </Control>
-          </span>
-          <span className="phrase">
-            on{" "}
-            <span className="date-chip">
-              <Control label={formatDay(planner.date, false)}>
-                <DatePanel />
-              </Control>
-              <button type="button" className="nudge" aria-label="Previous day" onClick={() => planner.setDate(addDaysIso(planner.date, -1))}>
-                ◀
-              </button>
-              <button type="button" className="nudge" aria-label="Next day" onClick={() => planner.setDate(addDaysIso(planner.date, 1))}>
-                ▶
-              </button>
-            </span>
-          </span>
-          <span className="phrase">
-            with{" "}
-            <Control label={`${trimGear(planner.telescope?.name) ?? "No telescope"} + ${trimGear(planner.camera?.name) ?? "No camera"}`}>
-              <RigPanel />
-            </Control>
-          </span>
-        </h1>
-        <p className="quiet-meta">
-          <Control label={`Bortle ${planner.bortle}`}>
             <BortlePanel />
           </Control>
-          <span aria-hidden="true"> · </span>
-          <WeatherPanel plain />
-          <LookUpNote />
-        </p>
+          <Control label={`Date: ${formatDay(planner.date)}`}>
+            <DatePanel />
+            <div className="day-row">
+              <button type="button" className="day" onClick={() => planner.setDate(addDaysIso(planner.date, -1))}>
+                Previous day
+              </button>
+              <button type="button" className="day" onClick={() => planner.setDate(addDaysIso(planner.date, 1))}>
+                Next day
+              </button>
+            </div>
+          </Control>
+          <Control label={`Telescope: ${trimGear(planner.telescope?.name) ?? "None"}`}>
+            <RigPanel part="telescope" />
+          </Control>
+          <Control label={`Camera: ${cameraLabel(planner.camera?.name, planner.filterIds.length)}`}>
+            <RigPanel part="camera" />
+          </Control>
+        </div>
       </header>
-      <Shortlist />
-      <div className="hero-actions">
-        <button type="button" className="ghost" aria-pressed={more} onClick={() => setMore((value) => !value)}>
-          More targets
-        </button>
-      </div>
-      {planner.selected ? <DetailStack /> : null}
-    </div>
-  );
-}
-
-function LayoutSettings() {
-  const planner = usePlannerState();
-  const [more, setMore] = useState(false);
-  return (
-    <div className={`minimal layout-d layout-d2${more ? " show-all" : ""}`}>
-      <div className="min-bar">
-        <strong>DSS Planner</strong>
-        <VisionButton />
-      </div>
-      <div className="settings-bar">
-        <Control label={`Location: ${planner.site.name} · Bortle ${planner.bortle}`}>
-          <LocationPanel />
-          <BortlePanel />
-        </Control>
-        <Control label={`Date: ${formatDay(planner.date, true)}`}>
-          <DatePanel />
-        </Control>
-        <Control label={`Gear: ${shortGear(planner.telescope?.name, planner.camera?.name)}`}>
-          <RigPanel />
-        </Control>
-      </div>
-      <header className="hero">
+      <section className="hero">
         <h1>Tonight from {planner.site.name}</h1>
         <p>
           <WeatherPanel plain />
           <LookUpNote />
         </p>
-      </header>
-      <Shortlist />
+      </section>
+      <div id="targets">
+        <Shortlist />
+      </div>
       <div className="hero-actions">
         <button type="button" className="ghost" aria-pressed={more} onClick={() => setMore((value) => !value)}>
           More targets
         </button>
       </div>
-      {planner.selected ? <DetailStack /> : null}
+      {planner.selected ? (
+        <div className="detail-stack">
+          <ObjectCard />
+          <AltitudeChart />
+          <FramingPreview />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -312,6 +91,81 @@ function Control({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function ThemeToggle() {
+  const planner = usePlannerState();
+  const next = nextTheme(planner.theme);
+  return (
+    <button
+      type="button"
+      className="theme-toggle"
+      aria-label={`Theme is ${themeLabel(planner.theme)}. Switch to ${themeLabel(next)}.`}
+      title={`${themeLabel(planner.theme)}. Switch to ${themeLabel(next)}`}
+      onClick={() => planner.setTheme(next)}
+    >
+      <ThemeIcon theme={planner.theme} />
+    </button>
+  );
+}
+
+function ThemeIcon({ theme }: { theme: ThemeName }) {
+  switch (theme) {
+    case "light":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </svg>
+      );
+    case "dark":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z" />
+        </svg>
+      );
+    case "night":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle className="dot" cx="12" cy="12" r="3.2" />
+          <circle cx="12" cy="12" r="8" />
+        </svg>
+      );
+    default: {
+      const unexpected: never = theme;
+      return unexpected;
+    }
+  }
+}
+
+function nextTheme(theme: ThemeName): ThemeName {
+  switch (theme) {
+    case "light":
+      return "dark";
+    case "dark":
+      return "night";
+    case "night":
+      return "light";
+    default: {
+      const unexpected: never = theme;
+      return unexpected;
+    }
+  }
+}
+
+function themeLabel(theme: ThemeName): string {
+  switch (theme) {
+    case "light":
+      return "Light";
+    case "dark":
+      return "Dark";
+    case "night":
+      return "Night";
+    default: {
+      const unexpected: never = theme;
+      return unexpected;
+    }
+  }
+}
+
 function LookUpNote() {
   return (
     <span className="tip">
@@ -325,17 +179,12 @@ function LookUpNote() {
   );
 }
 
-function formatDay(iso: string, withYear: boolean): string {
+function formatDay(iso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!match?.[1] || !match[2] || !match[3]) return iso;
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const month = months[Number(match[2]) - 1] ?? match[2];
-  const day = Number(match[3]);
-  return withYear ? `${day} ${month} ${match[1]}` : `${day} ${month}`;
-}
-
-function shortGear(scope: string | undefined, camera: string | undefined): string {
-  return `${trimGear(scope) ?? "No telescope"} · ${trimGear(camera) ?? "No camera"}`;
+  return `${Number(match[3])} ${month} ${match[1]}`;
 }
 
 function trimGear(name: string | undefined): string | undefined {
@@ -343,49 +192,8 @@ function trimGear(name: string | undefined): string | undefined {
   return name.replace(/^Sky-Watcher\s+/, "").replace(/^ZWO\s+/, "").replace(/\s+Pro$/, "");
 }
 
-function DetailStack() {
-  return (
-    <div className="detail-stack">
-      <ObjectCard />
-      <AltitudeChart />
-      <FramingPreview />
-      <ExposurePlan />
-    </div>
-  );
-}
-
-function VisionButton() {
-  const planner = usePlannerState();
-  return (
-    <button
-      type="button"
-      className="vision"
-      aria-pressed={planner.vision === "red"}
-      onClick={() => planner.setVision(planner.vision === "red" ? "ink" : "red")}
-    >
-      {planner.vision === "red" ? "Desk light" : "Night vision"}
-    </button>
-  );
-}
-
-function StepButton({
-  current,
-  id,
-  onSelect,
-  children,
-}: {
-  current: "where" | "gear" | "results";
-  id: "where" | "gear" | "results";
-  onSelect: (step: "where" | "gear" | "results") => void;
-  children: string;
-}) {
-  return (
-    <button type="button" className="step" aria-pressed={current === id} onClick={() => onSelect(id)}>
-      {children}
-    </button>
-  );
-}
-
-function rigLine(scope: string | undefined, camera: string | undefined): string {
-  return `${scope ?? "No telescope"} · ${camera ?? "No camera"}`;
+function cameraLabel(name: string | undefined, filters: number): string {
+  const camera = trimGear(name) ?? "None";
+  if (filters <= 1) return camera;
+  return `${camera} · ${filters} filters`;
 }
