@@ -16,6 +16,8 @@ function parseLayout(value: string | undefined): MinimalLayout | null {
     case "b":
     case "c":
     case "d":
+    case "d1":
+    case "d2":
       return value;
     default:
       return null;
