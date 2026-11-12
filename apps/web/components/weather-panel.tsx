@@ -18,7 +18,7 @@ type Remote =
 
 const memory = new Map<string, { at: number; hours: ForecastHour[] }>();
 
-export function WeatherPanel() {
+export function WeatherPanel({ plain = false }: { plain?: boolean }) {
   const { site, date } = usePlannerState();
   const [remote, setRemote] = useState<Remote | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -55,6 +55,9 @@ export function WeatherPanel() {
   const summary = hours ? nightSummary(hours, date) : null;
   const chosen = summary?.hours.find((hour) => hour.time === picked);
   const active = chosen ?? summary?.best ?? null;
+
+  const line = error ?? (summary?.best ? `${skyCoverLabel(summary.cover)}, mean cloud ${Math.round(summary.meanCloud)}%` : "Sky cover loading");
+  if (plain) return <span className="sky-line">{line}</span>;
 
   return (
     <Section index="04" title="Sky cover">

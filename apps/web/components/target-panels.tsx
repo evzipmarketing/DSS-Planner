@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   CATALOGUE_IDS,
   DEEP_SKY_TYPES,
@@ -28,7 +28,7 @@ import { constellationName } from "@dss/data";
 import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
-export function Shortlist() {
+export function Shortlist({ detail }: { detail?: ReactNode }) {
   const {
     shortlist,
     scoring,
@@ -177,8 +177,8 @@ export function Shortlist() {
       ) : null}
       <div className="rows">
         {visible.map((item) => (
+          <div key={item.object.id} className="target-slot">
           <button
-            key={item.object.id}
             type="button"
             className="target"
             aria-pressed={selected?.id === item.object.id}
@@ -204,6 +204,8 @@ export function Shortlist() {
             <span className="note">{frameFitHint(item.frameFit)}</span>
             {item.moonHint ? <span className="hint">{item.moonHint}</span> : null}
           </button>
+          {detail && selected?.id === item.object.id ? <div className="inline-detail">{detail}</div> : null}
+          </div>
         ))}
       </div>
       {shortlist.length > shown ? (

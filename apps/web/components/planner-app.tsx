@@ -8,14 +8,19 @@ import { FramingPreview } from "./framing-preview";
 import { LocationPanel } from "./location-panel";
 import { PlannerProvider } from "./planner-context";
 import { RigPanel } from "./rig-panel";
+import { MinimalShell, type MinimalLayout } from "./minimal-layouts";
 import { ObjectCard, Shortlist } from "./target-panels";
 import { WeatherPanel } from "./weather-panel";
 import { usePlanner } from "@/lib/use-planner";
 
-export function PlannerApp() {
+export function PlannerApp({ layout = null }: { layout?: MinimalLayout | null }) {
   const planner = usePlanner();
   return (
     <PlannerProvider value={planner}>
+      {layout ? (
+        <MinimalShell layout={layout} />
+      ) : (
+      <>
       <a className="skip" href="#night">
         Skip to the night
       </a>
@@ -61,6 +66,8 @@ export function PlannerApp() {
           Gear figures are nominal manufacturer specifications. The Bortle figure is an estimate from NASA Black Marble 2016.
         </footer>
       </div>
+      </>
+      )}
     </PlannerProvider>
   );
 }

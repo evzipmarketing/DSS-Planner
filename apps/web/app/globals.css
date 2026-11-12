@@ -614,6 +614,212 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   }
 }
 
+.minimal {
+  color: var(--text);
+}
+
+.layout-a,
+.layout-c,
+.layout-d {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 8px 28px 72px;
+}
+
+.min-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 0 8px;
+}
+
+.min-bar strong {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 520;
+  letter-spacing: -0.03em;
+}
+
+.min-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  flex: 1;
+}
+
+.min-chips summary,
+.one-line > summary,
+.layout-b summary {
+  cursor: pointer;
+  color: var(--muted);
+  list-style: none;
+}
+
+.min-chips summary::-webkit-details-marker,
+.one-line > summary::-webkit-details-marker,
+.layout-b summary::-webkit-details-marker { display: none; }
+
+.min-chips details { position: relative; }
+
+.min-chips details[open] > summary,
+.one-line[open] > summary,
+.step[aria-pressed="true"] { color: var(--text); }
+
+.min-chips details > :not(summary) {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(380px, 86vw);
+  padding: 8px 16px 16px;
+  background: var(--bg-raised);
+  border-radius: 16px;
+}
+
+.one-line { margin: 18px 0 8px; }
+
+.one-line > summary { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.expand-grid {
+  display: grid;
+  gap: 20px;
+  padding-top: 16px;
+}
+
+.minimal .rows { gap: 0; }
+
+.minimal .target {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 13px 0;
+}
+
+.minimal .target-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.minimal .target .note,
+.minimal .target .hint,
+.minimal .target-facts span:not(:first-child),
+.minimal .block-head span,
+.minimal .note { display: none; }
+
+.minimal .target-facts {
+  margin-left: auto;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.minimal .target[aria-pressed="true"] strong { color: var(--saffron); }
+
+.minimal .block {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 4px 0 12px;
+}
+
+.minimal .block-head { margin-bottom: 6px; }
+
+.minimal .block-head h2 { font-size: 1rem; }
+
+.minimal .tab {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 8;
+  width: min(460px, 100%);
+  height: 100vh;
+  overflow: auto;
+  padding: 18px 24px 48px;
+  background: var(--bg);
+  box-shadow: -20px 0 40px rgba(0, 0, 0, 0.28);
+}
+
+.layout-b { min-height: 100vh; }
+
+.layout-b .pane { min-width: 0; padding: 8px 22px 32px; }
+
+.layout-b .quiet-line { color: var(--muted); padding-top: 28px; }
+
+.steps { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+
+.step {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  min-height: 40px;
+  padding: 0;
+}
+
+.step-card { display: grid; gap: 8px; padding-top: 12px; }
+
+.inline-detail { padding: 4px 0 18px 12px; }
+
+.hero h1 {
+  margin: 12px 0 6px;
+  font-family: var(--font-display);
+  font-weight: 520;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.hero p { margin: 0 0 28px; color: var(--muted); }
+
+.layout-d .target strong {
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 520;
+}
+
+.layout-d:not(.show-all) .target-slot:nth-child(n + 6) { display: none; }
+
+.hero-actions { display: flex; gap: 12px; margin: 8px 0 20px; }
+
+.layout-d .target-tools,
+.layout-d details.drawer,
+.layout-d .show-more { display: none; }
+
+.detail-stack { display: grid; gap: 8px; }
+
+@media (min-width: 1100px) {
+  .layout-b {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr) minmax(300px, 400px);
+    height: 100vh;
+  }
+
+  .layout-b .pane { overflow: auto; height: 100vh; }
+  .layout-b .setup { border-right: 1px solid var(--line); }
+  .layout-b .detail { border-left: 1px solid var(--line); }
+}
+
+@media (max-width: 700px) {
+  .layout-a,
+  .layout-c,
+  .layout-d { padding-inline: 18px; }
+  .min-bar { align-items: flex-start; flex-wrap: wrap; }
+  .layout-d .target strong { font-size: 1.3rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto; }
 }
