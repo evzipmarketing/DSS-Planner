@@ -66,7 +66,7 @@ export function FramingPreview() {
 
   if (!selected || !pointing || !optics) {
     return (
-      <Section index="08" title="Frame">
+      <Section index="09" title="Frame">
         <p className="note">Choose a target and a rig to preview the sensor on the sky.</p>
       </Section>
     );
@@ -107,7 +107,7 @@ export function FramingPreview() {
   }
 
   return (
-    <Section index="08" title="Frame">
+    <Section index="09" title="Frame">
       <div
         ref={stageRef}
         className="stage"

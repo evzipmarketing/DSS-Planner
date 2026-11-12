@@ -10,10 +10,18 @@ import {
   type SensorKind,
   type Telescope,
 } from "@dss/core";
+import { Combobox } from "./combobox";
 import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
-const MULTIPLIERS = [0.63, 0.8, 1, 2];
+const REDUCERS = [
+  { value: 1, label: "1.0× flattener or none" },
+  { value: 0.8, label: "0.8× reducer" },
+  { value: 0.75, label: "0.75× reducer" },
+  { value: 0.63, label: "0.63× reducer" },
+  { value: 2, label: "2× Barlow" },
+];
+
 const KINDS: FilterKind[] = [
   "broadband",
   "uv_ir_cut",
@@ -34,7 +42,7 @@ export function RigPanel() {
   const { telescope, camera, optics } = planner;
 
   return (
-    <Section index="07" title="Rig">
+    <Section index="05" title="Rig">
       {optics && telescope && camera ? (
         <>
           <div className="readout">
@@ -69,77 +77,85 @@ export function RigPanel() {
       ) : null}
 
       <div className="fields">
-        <label className="field">
-          Telescope
-          <select value={telescope?.id ?? ""} onChange={(event) => planner.setTelescopeId(event.target.value)}>
-            {planner.telescopes.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-                {item.custom ? " (custom)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Combobox
+          label="Telescope"
+          value={telescope?.id ?? ""}
+          placeholder="Search scopes"
+          options={planner.telescopes.map((item) => ({
+            id: item.id,
+            label: item.name,
+            hint: `${item.apertureMm} mm · ${item.focalLengthMm} mm`,
+          }))}
+          onChange={planner.setTelescopeId}
+        />
         {telescope ? (
           <p className="note">
             {telescope.apertureMm} mm aperture, {telescope.focalLengthMm} mm native focal length.
           </p>
         ) : null}
-        <div className="field">
-          Focal multiplier
-          <div className="chips">
-            {MULTIPLIERS.map((value) => (
-              <button
-                key={value}
-                type="button"
-                className="chip"
-                aria-pressed={planner.reducer === value}
-                onClick={() => planner.setReducer(value)}
-              >
-                {value === 1 ? "None" : `${value}×`}
-              </button>
+        <label className="field">
+          Flattener, reducer, or Barlow
+          <select
+            value={REDUCERS.some((item) => item.value === planner.reducer) ? String(planner.reducer) : "custom"}
+            onChange={(event) => {
+              if (event.target.value !== "custom") planner.setReducer(Number(event.target.value));
+              else planner.setReducer(planner.reducer);
+            }}
+          >
+            {REDUCERS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
             ))}
-          </div>
+            <option value="custom">Custom factor</option>
+          </select>
+        </label>
+        <label className="field">
+          Factor
           <input
             type="number"
             min={0.25}
             max={5}
-            step={0.05}
+            step={0.01}
             value={planner.reducer}
             onChange={(event) => {
               const value = Number(event.target.value);
               if (value >= 0.25 && value <= 5) planner.setReducer(value);
             }}
           />
-        </div>
-        <label className="field">
-          Camera
-          <select value={camera?.id ?? ""} onChange={(event) => planner.setCameraId(event.target.value)}>
-            {planner.cameraList.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-                {item.custom ? " (custom)" : ""}
-              </option>
-            ))}
-          </select>
         </label>
-        <div className="field">
-          Filters in the plan
-          <div className="checks">
-            {planner.filterList.map((filter) => (
-              <label key={filter.id} className="check">
-                <input
-                  type="checkbox"
-                  checked={planner.filterIds.includes(filter.id)}
-                  onChange={() => planner.toggleFilter(filter.id)}
-                />
-                <span>
-                  {filter.name}
-                  <small style={{ color: "var(--faint)" }}> · {filterKindLabel(filter.kind)}</small>
-                </span>
-              </label>
+        <Combobox
+          label="Camera"
+          value={camera?.id ?? ""}
+          placeholder="Search cameras"
+          options={planner.cameraList.map((item) => ({
+            id: item.id,
+            label: item.name,
+            hint: `${item.sensor} · ${item.widthPx}×${item.heightPx}`,
+          }))}
+          onChange={planner.setCameraId}
+        />
+        <Combobox
+          label="Add a filter"
+          value=""
+          placeholder="Search filters"
+          options={planner.filterList.map((item) => ({
+            id: item.id,
+            label: item.name,
+            hint: filterKindLabel(item.kind),
+          }))}
+          onChange={(id) => {
+            if (!planner.filterIds.includes(id)) planner.toggleFilter(id);
+          }}
+        />
+        <div className="chips">
+          {planner.filterList
+            .filter((item) => planner.filterIds.includes(item.id))
+            .map((item) => (
+              <button key={item.id} type="button" className="chip" onClick={() => planner.toggleFilter(item.id)}>
+                {item.name} · {filterKindLabel(item.kind)} ×
+              </button>
             ))}
-          </div>
         </div>
       </div>
 
@@ -234,14 +250,27 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
       className="fields"
       onSubmit={(event) => {
         event.preventDefault();
+        const widthPx = Number(cols);
+        const heightPx = Number(rows);
+        let sensorWidthMm = Number(width);
+        let sensorHeightMm = Number(height);
+        let pixelSizeUm = Number(pixel);
+        if (!(pixelSizeUm > 0) && sensorWidthMm > 0 && widthPx > 0) {
+          pixelSizeUm = (sensorWidthMm / widthPx) * 1000;
+          if (!(sensorHeightMm > 0) && heightPx > 0) sensorHeightMm = (heightPx * pixelSizeUm) / 1000;
+        }
+        if (!(sensorWidthMm > 0) && pixelSizeUm > 0 && widthPx > 0 && heightPx > 0) {
+          sensorWidthMm = (widthPx * pixelSizeUm) / 1000;
+          sensorHeightMm = (heightPx * pixelSizeUm) / 1000;
+        }
         const camera = {
           id: `custom-${crypto.randomUUID()}`,
           name: name.trim(),
-          sensorWidthMm: Number(width),
-          sensorHeightMm: Number(height),
-          pixelSizeUm: Number(pixel),
-          widthPx: Number(cols),
-          heightPx: Number(rows),
+          sensorWidthMm,
+          sensorHeightMm,
+          pixelSizeUm,
+          widthPx,
+          heightPx,
           sensor,
           readNoiseE: Number(noise),
           custom: true as const,
@@ -266,7 +295,7 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
       <label className="field">Name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
       <label className="field">Sensor width (mm)<input value={width} onChange={(event) => setWidth(event.target.value)} inputMode="decimal" /></label>
       <label className="field">Sensor height (mm)<input value={height} onChange={(event) => setHeight(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Pixel size (µm)<input value={pixel} onChange={(event) => setPixel(event.target.value)} inputMode="decimal" /></label>
+      <label className="field">Pixel size (µm, optional if resolution is set)<input value={pixel} onChange={(event) => setPixel(event.target.value)} inputMode="decimal" /></label>
       <label className="field">Width (px)<input value={cols} onChange={(event) => setCols(event.target.value)} inputMode="numeric" /></label>
       <label className="field">Height (px)<input value={rows} onChange={(event) => setRows(event.target.value)} inputMode="numeric" /></label>
       <label className="field">

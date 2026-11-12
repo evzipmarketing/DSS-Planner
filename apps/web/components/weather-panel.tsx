@@ -57,7 +57,7 @@ export function WeatherPanel() {
   const active = chosen ?? summary?.best ?? null;
 
   return (
-    <Section index="02" title="Sky cover">
+    <Section index="04" title="Sky cover">
       {!summary && !error ? <p className="note">Fetching the night’s cloud cover…</p> : null}
       {error ? <p className="warn">{error}</p> : null}
       {summary && summary.hours.length === 0 ? (
@@ -96,6 +96,7 @@ export function WeatherPanel() {
         </>
       ) : null}
       <p className="note">Hourly cloud, wind, and temperature from Open-Meteo. Responses are cached for ten minutes.</p>
+      <p className="note">Forecasts can be inaccurate — step outside and look up before you decide.</p>
     </Section>
   );
 }

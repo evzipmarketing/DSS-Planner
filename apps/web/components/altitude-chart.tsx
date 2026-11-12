@@ -33,7 +33,7 @@ export function AltitudeChart() {
         } Moon is ${track.moonPhaseName.toLowerCase()}, ${Math.round(track.moonIlluminatedFraction * 100)}% lit.`;
 
   return (
-    <Section index="06" title="Altitude">
+    <Section index="08" title="Altitude">
       <p>{summary}</p>
       {track && samples.length > 0 ? (
         <div className="chart-wrap">

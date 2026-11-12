@@ -3,13 +3,19 @@
 import {
   CATALOGUE_IDS,
   DEEP_SKY_TYPES,
+  TARGET_LIST_FILTERS,
+  bandLabel,
   catalogueLabel,
   formatArcmin,
   formatCatalogueId,
+  formatClock,
   formatDeclination,
   formatHours,
   formatRightAscension,
   formatSignedDegrees,
+  frameFitHint,
+  frameFitLabel,
+  listFilterLabel,
   objectTitle,
   objectTypeLabel,
   type CatalogueId,
@@ -20,9 +26,37 @@ import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
 export function Shortlist() {
-  const { shortlist, scoring, catalogue, selected, chooseTarget, targetQuery, setTargetQuery, extendedReady } = usePlannerState();
+  const {
+    shortlist,
+    scoring,
+    catalogue,
+    selected,
+    chooseTarget,
+    targetQuery,
+    setTargetQuery,
+    extendedReady,
+    listFilter,
+    setListFilter,
+    site,
+    query,
+    setQuery,
+    results,
+  } = usePlannerState();
   return (
-    <Section index="03" title="Best targets tonight">
+    <Section index="06" title="Best targets tonight">
+      <div className="tabs" aria-label="Target filters">
+        {TARGET_LIST_FILTERS.map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            className="tab"
+            aria-pressed={listFilter === filter}
+            onClick={() => setListFilter(filter)}
+          >
+            {listFilterLabel(filter)}
+          </button>
+        ))}
+      </div>
       <details className="drawer">
         <summary>Type, catalogue, magnitude, size</summary>
         <div className="fields">
@@ -98,42 +132,37 @@ export function Shortlist() {
           {!extendedReady ? " The extended catalogues are still loading." : ""}
         </p>
       </details>
-      {!catalogue || scoring ? <p className="note">Scoring objects that clear 30° in astronomical darkness…</p> : null}
+      {!catalogue || scoring ? <p className="note">Scoring objects for this site, date, and rig…</p> : null}
       {catalogue && !scoring && shortlist.length === 0 ? (
-        <p className="note">Nothing in the shortlist stays up. Try another night or a different site.</p>
+        <p className="note">Nothing in this view clears the horizon. Try another night, site, or filter.</p>
       ) : null}
       <div className="rows">
-        {shortlist.map((item, index) => (
+        {shortlist.map((item) => (
           <button
             key={item.object.id}
             type="button"
-            className="row"
+            className="target"
             aria-pressed={selected?.id === item.object.id}
             onClick={() => chooseTarget(item.object.id)}
           >
-            <span className="row-index">{String(index + 1).padStart(2, "0")}</span>
-            <span>
+            <span className="target-top">
               <strong>{objectTitle(item.object)}</strong>
-              <small>
-                {formatCatalogueId(item.object.id)} · {objectTypeLabel(item.object.type)}
-              </small>
+              <span>{objectTypeLabel(item.object.type)}</span>
+              <span className="tag">{bandLabel(item.band)}</span>
             </span>
-            <span className="meta">
-              {Math.round(item.maxAltitudeDeg)}°
-              <br />
-              {formatHours(item.usableHours)}
+            <span className="target-facts">
+              <span>Above horizon {formatHours(item.hoursAboveHorizon)}</span>
+              <span>Usable {formatHours(item.usableHours)}</span>
+              <span>
+                Frame {item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`} · {frameFitLabel(item.frameFit)}
+              </span>
+              <span>{riseSet(item.rise, item.set, item.alwaysUp, item.hoursAboveHorizon, site.timezone)}</span>
             </span>
+            <span className="note">{frameFitHint(item.frameFit)}</span>
+            {item.moonHint ? <span className="hint">{item.moonHint}</span> : null}
           </button>
         ))}
       </div>
-    </Section>
-  );
-}
-
-export function CatalogueSearch() {
-  const { query, setQuery, results, chooseTarget, catalogue, extendedReady } = usePlannerState();
-  return (
-    <Section index="04" title="Catalogue">
       <label className="field">
         Name or catalogue id
         <input
@@ -159,16 +188,32 @@ export function CatalogueSearch() {
         ))}
       </div>
       {catalogue && query.trim() && results.length === 0 ? (
-        <p className="note">{extendedReady ? "No match in the loaded catalogues." : "No match in the core list yet. The extended catalogues are still loading."}</p>
+        <p className="note">
+          {extendedReady ? "No match in the loaded catalogues." : "No match in the core list yet. The extended catalogues are still loading."}
+        </p>
       ) : null}
     </Section>
   );
 }
 
+function riseSet(
+  rise: Date | null,
+  set: Date | null,
+  alwaysUp: boolean,
+  hoursAbove: number,
+  timeZone: string,
+): string {
+  if (alwaysUp) return "Up all night";
+  if (hoursAbove <= 0) return "Below the horizon";
+  const riseText = rise ? `Rises ${formatClock(rise, timeZone)}` : null;
+  const setText = set ? `Sets ${formatClock(set, timeZone)}` : null;
+  return [riseText, setText].filter(Boolean).join(" · ") || "Above the horizon";
+}
+
 export function ObjectCard() {
   const { selected, track } = usePlannerState();
   return (
-    <Section index="05" title="Object">
+    <Section index="07" title="Object">
       {!selected ? (
         <p className="note">Search a catalogue id or a common name, or take one from the shortlist.</p>
       ) : (

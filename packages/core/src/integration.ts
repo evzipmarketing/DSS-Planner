@@ -20,7 +20,9 @@ export type ExposureSuggestion = {
   skyElectronsPerSecond: number;
   subExposureSeconds: number;
   totalHours: number;
+  tonightHours: number;
   subCount: number;
+  explanation: string;
 };
 
 export function skyMagnitude(bortle: number): number {
@@ -107,26 +109,111 @@ export function suggestExposure(input: {
   focalLengthMm: number;
   pixelScaleArcsec: number;
   readNoiseE: number;
+  moonIlluminatedFraction?: number;
+  moonSeparationDeg?: number | null;
+  moonAltitudeDeg?: number;
+  usableHours?: number | null;
 }): ExposureSuggestion {
-  const skyRate = skyElectronsPerSecond({
-    bortle: input.bortle,
-    apertureMm: input.apertureMm,
-    pixelScaleArcsec: input.pixelScaleArcsec,
-    bandpassNm: input.filter.bandpassNm,
-    transmission: input.filter.transmission,
+  const moon = moonExposureFactor(input.filter.kind, {
+    illuminatedFraction: input.moonIlluminatedFraction ?? 0,
+    separationDeg: input.moonSeparationDeg ?? null,
+    moonAltitudeDeg: input.moonAltitudeDeg ?? -90,
   });
+  const skyRate =
+    skyElectronsPerSecond({
+      bortle: input.bortle,
+      apertureMm: input.apertureMm,
+      pixelScaleArcsec: input.pixelScaleArcsec,
+      bandpassNm: input.filter.bandpassNm,
+      transmission: input.filter.transmission,
+    }) * moon.skyMultiplier;
   const subExposureSeconds = suggestedSubExposureSeconds(skyRate, input.readNoiseE);
   const ratio = input.focalLengthMm / input.apertureMm;
-  const totalHours = suggestedTotalHours(input.filter.kind, input.bortle, ratio);
-  const subCount = Math.max(1, Math.round((totalHours * 3600) / subExposureSeconds));
+  const totalHours = suggestedTotalHours(input.filter.kind, input.bortle, ratio) * moon.hoursMultiplier;
+  const tonightHours =
+    input.usableHours == null ? totalHours : Math.min(totalHours, Math.max(0, input.usableHours));
+  const subCount = Math.max(1, Math.round((tonightHours * 3600) / subExposureSeconds));
   return {
     filter: input.filter,
     skyMagPerArcsec2: skyMagnitude(input.bortle),
     skyElectronsPerSecond: skyRate,
     subExposureSeconds,
     totalHours,
+    tonightHours,
     subCount,
+    explanation: integrationExplanation({
+      kind: input.filter.kind,
+      bortle: input.bortle,
+      focalRatio: ratio,
+      totalHours,
+      tonightHours,
+      usableHours: input.usableHours ?? null,
+      moonNote: moon.note,
+    }),
   };
+}
+
+function moonExposureFactor(
+  kind: FilterKind,
+  moon: { illuminatedFraction: number; separationDeg: number | null; moonAltitudeDeg: number },
+): { skyMultiplier: number; hoursMultiplier: number; note: string } {
+  const bright = moon.illuminatedFraction >= 0.35 && moon.moonAltitudeDeg >= 0;
+  const near = bright && moon.separationDeg != null && moon.separationDeg < 35;
+  const narrow = isNarrowband(kind);
+  if (!bright) {
+    return {
+      skyMultiplier: 1,
+      hoursMultiplier: 1,
+      note: "The Moon is down or only a thin crescent, so it barely changes the plan.",
+    };
+  }
+  if (near && !narrow) {
+    return {
+      skyMultiplier: 3,
+      hoursMultiplier: 1.8,
+      note: "The Moon is bright and close. Broadband skyglow will dominate; a different night is a better use of the time.",
+    };
+  }
+  if (near && narrow) {
+    return {
+      skyMultiplier: 1.3,
+      hoursMultiplier: 1.2,
+      note: "The Moon is close, but a narrow band rejects most of its light. Keep the target well clear of the glare.",
+    };
+  }
+  if (!narrow) {
+    return {
+      skyMultiplier: 1.8,
+      hoursMultiplier: 1.5,
+      note: "The Moon is up and bright. It is far from the target, but broadband still loses contrast.",
+    };
+  }
+  return {
+    skyMultiplier: 1.1,
+    hoursMultiplier: 1.1,
+    note: "The Moon is up, but a narrow filter and a wide separation keep most of the moonlight out.",
+  };
+}
+
+function integrationExplanation(input: {
+  kind: FilterKind;
+  bortle: number;
+  focalRatio: number;
+  totalHours: number;
+  tonightHours: number;
+  usableHours: number | null;
+  moonNote: string;
+}): string {
+  const stack = input.totalHours.toFixed(1);
+  const tonight = input.tonightHours.toFixed(1);
+  const ratio = input.focalRatio.toFixed(1);
+  const night =
+    input.usableHours == null
+      ? `A full stack is about ${stack} h.`
+      : input.totalHours - input.tonightHours > 0.15
+        ? `A full stack is about ${stack} h. This night has about ${input.usableHours.toFixed(1)} h of usable time, so plan on ${tonight} h tonight and finish on another night.`
+        : `About ${tonight} h fits in this night’s usable window.`;
+  return `${night} The length is scaled for a Bortle ${input.bortle} sky at f/${ratio}: brighter skies and slower optics need more time, and the sub length is set so sky noise reaches about five times the read noise. ${input.moonNote}`;
 }
 
 export function isNarrowband(kind: FilterKind): boolean {

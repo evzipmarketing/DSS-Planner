@@ -1,16 +1,20 @@
-import { assertNever } from "./never";
 import {
-  equatorialUnit,
-  geometricAltitude,
-  nightHorizonGrid,
-  type HorizonRotation,
-} from "./altitude";
+  bandAdvice,
+  compareTargetPriority,
+  frameFillPercent,
+  frameFit,
+  moonPlan,
+  passesListFilter,
+  type BandAdvice,
+  type FrameFit,
+  type TargetListFilter,
+} from "./planning";
+import { angularSeparationDeg, equatorialUnit, geometricAltitude, nightHorizonGrid, type HorizonRotation } from "./altitude";
 import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
   EMPTY_TARGET_QUERY,
   USABLE_MIN_ALTITUDE_DEG,
   type DeepSkyObject,
-  type DeepSkyType,
   type Site,
   type TargetQuery,
 } from "./types";
@@ -19,6 +23,16 @@ export type RankedTarget = {
   object: DeepSkyObject;
   maxAltitudeDeg: number;
   usableHours: number;
+  hoursAboveHorizon: number;
+  rise: Date | null;
+  set: Date | null;
+  alwaysUp: boolean;
+  frameFillPercent: number | null;
+  frameFit: FrameFit;
+  band: BandAdvice;
+  moonScore: number;
+  moonHint: string | null;
+  minMoonSeparationDeg: number | null;
 };
 
 export function isShortlistCandidate(object: DeepSkyObject): boolean {
@@ -64,107 +78,82 @@ export function passesTargetQuery(object: DeepSkyObject, query: TargetQuery): bo
   return true;
 }
 
-function typeWeight(type: DeepSkyType): number {
-  switch (type) {
-    case "Neb":
-    case "EmN":
-    case "RfN":
-    case "HII":
-    case "Cl+N":
-    case "PN":
-    case "SNR":
-      return 1.25;
-    case "OCl":
-    case "GCl":
-      return 1.12;
-    case "G":
-    case "GPair":
-    case "GTrpl":
-    case "GGroup":
-    case "ClG":
-      return 1;
-    case "DrkN":
-      return 0.85;
-    case "Ast":
-    case "StCl":
-    case "*Ass":
-    case "**":
-      return 0.9;
-    case "*":
-    case "NonEx":
-    case "Nova":
-    case "Other":
-    case "Dup":
-      return 0.4;
-    default:
-      return assertNever(type, "object type");
-  }
-}
-
-type Scored = RankedTarget & { score: number };
+type Scored = RankedTarget;
 
 function scoreObject(
   object: DeepSkyObject,
   vector: { x: number; y: number; z: number },
   grid: HorizonRotation[],
   stepHours: number,
+  field: { widthArcmin: number; heightArcmin: number } | null,
 ): Scored {
   let maxAltitude = -90;
   let usableHours = 0;
+  let aboveSteps = 0;
+  let rise: Date | null = null;
+  let set: Date | null = null;
+  let previous = -90;
+  let minSeparation: number | null = null;
+  let moonUp = false;
+  const band = bandAdvice(object.type);
   for (const cell of grid) {
     const altitude = geometricAltitude(vector, cell.matrix);
     if (altitude > maxAltitude) maxAltitude = altitude;
-    if (cell.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG && altitude >= USABLE_MIN_ALTITUDE_DEG) {
-      usableHours += stepHours;
+    const usable = cell.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG && altitude >= USABLE_MIN_ALTITUDE_DEG;
+    if (usable) usableHours += stepHours;
+    if (altitude >= 0) {
+      aboveSteps += 1;
+      if (cell.moonAltitude >= 0) {
+        moonUp = true;
+        const separation = angularSeparationDeg(vector, cell.moonVector);
+        if (minSeparation == null || separation < minSeparation) minSeparation = separation;
+      }
     }
+    if (previous < 0 && altitude >= 0 && rise == null) rise = cell.time;
+    if (previous >= 0 && altitude < 0) set = cell.time;
+    previous = altitude;
   }
-  const brightness =
-    object.magnitude == null ? 0.65 : clamp((12.5 - object.magnitude) / 10, 0.25, 1.35);
-  let score = usableHours * brightness * typeWeight(object.type) * clamp(maxAltitude / 75, 0.35, 1.25);
-  if (object.messier != null) score *= 1.12;
-  if (object.names.length > 0) score *= 1.08;
-  return { object, maxAltitudeDeg: maxAltitude, usableHours, score };
+  const illuminated = grid[0]?.moonIlluminatedFraction ?? 0;
+  const moon = moonPlan({ band, illuminatedFraction: illuminated, moonUp, minSeparationDeg: minSeparation });
+  const fill = frameFillPercent(object.majorArcmin, field);
+  return {
+    object,
+    maxAltitudeDeg: maxAltitude,
+    usableHours,
+    hoursAboveHorizon: aboveSteps * stepHours,
+    rise,
+    set,
+    alwaysUp: grid.length > 0 && aboveSteps === grid.length,
+    frameFillPercent: fill,
+    frameFit: frameFit(fill),
+    band,
+    moonScore: moon.score,
+    moonHint: moon.hint,
+    minMoonSeparationDeg: minSeparation,
+  };
 }
 
 export function rankTargets(
   objects: DeepSkyObject[],
   site: Site,
   dateIso: string,
-  limit = 12,
+  limit = 24,
   query: TargetQuery = EMPTY_TARGET_QUERY,
+  field: { widthArcmin: number; heightArcmin: number } | null = null,
+  listFilter: TargetListFilter = "all",
 ): RankedTarget[] {
   const grid = nightHorizonGrid(site, dateIso, 15);
   const stepHours = 0.25;
   const scored = objects
     .filter((object) => passesTargetQuery(object, query))
-    .map((object) => scoreObject(object, equatorialUnit(object.raDeg, object.decDeg), grid, stepHours));
-
-  const primary = scored
-    .filter((item) => item.usableHours >= 0.5 && item.maxAltitudeDeg >= USABLE_MIN_ALTITUDE_DEG)
-    .sort((a, b) => b.score - a.score);
-
-  const picked = primary.slice(0, limit);
-  if (picked.length >= 8) return picked.map(strip);
-
-  const seen = new Set(picked.map((item) => item.object.id));
-  const fillers = scored
-    .filter((item) => !seen.has(item.object.id) && item.maxAltitudeDeg >= 20)
-    .sort((a, b) => b.maxAltitudeDeg - a.maxAltitudeDeg);
-  for (const item of fillers) {
-    if (picked.length >= limit) break;
-    picked.push(item);
-  }
-  return picked.map(strip);
-}
-
-function strip(item: Scored): RankedTarget {
-  return {
-    object: item.object,
-    maxAltitudeDeg: item.maxAltitudeDeg,
-    usableHours: item.usableHours,
-  };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
+    .map((object) => scoreObject(object, equatorialUnit(object.raDeg, object.decDeg), grid, stepHours, field))
+    .filter((item) => item.hoursAboveHorizon >= 0.25 && item.maxAltitudeDeg >= 0)
+    .filter((item) =>
+      passesListFilter(
+        { band: item.band, frameFit: item.frameFit, moonHint: item.moonHint, moonScore: item.moonScore, objectType: item.object.type },
+        listFilter,
+      ),
+    )
+    .sort(compareTargetPriority);
+  return scored.slice(0, limit);
 }

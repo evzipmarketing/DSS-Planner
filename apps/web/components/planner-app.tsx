@@ -1,12 +1,14 @@
 "use client";
 
 import { AltitudeChart } from "./altitude-chart";
+import { BortlePanel } from "./bortle-panel";
+import { DatePanel } from "./date-panel";
 import { ExposurePlan } from "./exposure-plan";
 import { FramingPreview } from "./framing-preview";
+import { LocationPanel } from "./location-panel";
 import { PlannerProvider } from "./planner-context";
 import { RigPanel } from "./rig-panel";
-import { SitePanel } from "./site-panel";
-import { CatalogueSearch, ObjectCard, Shortlist } from "./target-panels";
+import { ObjectCard, Shortlist } from "./target-panels";
 import { WeatherPanel } from "./weather-panel";
 import { usePlanner } from "@/lib/use-planner";
 
@@ -32,24 +34,31 @@ export function PlannerApp() {
             {planner.vision === "red" ? "Desk light" : "Night vision"}
           </button>
         </header>
-        <main id="night" className="layout">
-          <div className="stack">
-            <SitePanel />
-            <WeatherPanel />
-            <Shortlist />
-            <CatalogueSearch />
-            <ObjectCard />
+        <main id="night" className="planner">
+          <div className="band cols-3">
+            <LocationPanel />
+            <BortlePanel />
+            <DatePanel />
           </div>
-          <div className="stack">
-            <AltitudeChart />
+          <div className="band cols-2">
+            <WeatherPanel />
             <RigPanel />
+          </div>
+          <div className="band">
+            <Shortlist />
+          </div>
+          <div className="band cols-2">
+            <ObjectCard />
+            <AltitudeChart />
+          </div>
+          <div className="band cols-2">
             <FramingPreview />
             <ExposurePlan />
           </div>
         </main>
         <footer className="footer">
           NGC and IC data are from OpenNGC (CC BY-SA 4.0, Mattia Verga). Other catalogues are cited in the README.
-          Gear figures are nominal manufacturer specifications.
+          Gear figures are nominal manufacturer specifications. The Bortle figure is an estimate from NASA Black Marble 2016.
         </footer>
       </div>
     </PlannerProvider>
