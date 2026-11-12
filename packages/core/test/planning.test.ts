@@ -8,6 +8,7 @@ import {
   horizonStory,
   moonPlan,
   passesListFilter,
+  visibilityScore,
 } from "../src/planning";
 import { exposureClass, suggestExposure } from "../src/integration";
 import { primaryDesignation } from "../src/catalogue";
@@ -66,13 +67,15 @@ describe("moon separation and priority", () => {
     expect(farNarrow.hint).toBeNull();
   });
 
-  it("sorts a good frame first, then usable dark hours, and demotes a window under an hour", () => {
-    const goodNone = { frameFit: "good" as const, usableHours: 0, moonScore: 1 };
-    const smallLong = { frameFit: "small" as const, usableHours: 5, moonScore: 0.2 };
-    const goodLongDim = { frameFit: "good" as const, usableHours: 4, moonScore: 0.3 };
-    const goodLongBright = { frameFit: "good" as const, usableHours: 4, moonScore: 0.9 };
-    const ordered = [goodNone, smallLong, goodLongDim, goodLongBright].sort(compareTargetPriority);
-    expect(ordered.map((item) => item.moonScore)).toEqual([0.9, 0.3, 0.2, 1]);
+  it("sorts by fit and brightness, and demotes a window under an hour", () => {
+    const goodNone = { frameFit: "good" as const, usableHours: 0, moonScore: 1, visibility: 0.9 };
+    const faintGood = { frameFit: "good" as const, usableHours: 6, moonScore: 0.9, visibility: 0.15 };
+    const brightGood = { frameFit: "good" as const, usableHours: 4, moonScore: 0.3, visibility: 0.9 };
+    const brightSmall = { frameFit: "small" as const, usableHours: 6, moonScore: 1, visibility: 0.9 };
+    const ordered = [goodNone, faintGood, brightSmall, brightGood].sort(compareTargetPriority);
+    expect(ordered.map((item) => item.visibility)).toEqual([0.9, 0.15, 0.9, 0.9]);
+    expect(ordered[0]?.usableHours).toBe(4);
+    expect(ordered[3]?.usableHours).toBe(0);
     expect(passesListFilter(
       { band: "narrowband", frameFit: "good", moonHint: null, moonScore: 0.9, objectType: "HII" },
       "moon-safe",
@@ -183,5 +186,25 @@ describe("moon separation and priority", () => {
     expect(plan.subExposureSeconds).toBeGreaterThanOrEqual(30);
     expect(plan.subExposureSeconds).toBeLessThanOrEqual(180);
     expect(plan.explanation).toMatch(/bright target/i);
+  });
+
+  it("hides a dark nebula under a bright sky and keeps a bright emission nebula visible", () => {
+    const shape = {
+      majorArcmin: 30,
+      minorArcmin: 20,
+      messier: null,
+      aliases: [] as string[],
+    };
+    const orion = visibilityScore(
+      { ...shape, type: "Cl+N", id: "NGC1976", magnitude: 4, messier: 42, aliases: ["M42"] },
+      9,
+    );
+    const dark = visibilityScore(
+      { ...shape, type: "DrkN", id: "LDN123", magnitude: null, aliases: ["LDN123"] },
+      9,
+    );
+    const faint = visibilityScore({ ...shape, type: "Neb", id: "LBN546", magnitude: null, aliases: ["LBN546"] }, 9);
+    expect(orion).toBeGreaterThan(faint);
+    expect(orion).toBeGreaterThan(dark * 3);
   });
 });

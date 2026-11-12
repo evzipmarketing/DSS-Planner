@@ -6,6 +6,7 @@ import {
   DEEP_SKY_TYPES,
   TARGET_LIST_FILTERS,
   bandLabel,
+  brightnessHintLabel,
   catalogueLabel,
   formatArcmin,
   formatCatalogueId,
@@ -190,6 +191,7 @@ export function Shortlist() {
               )}
               <span>{objectTypeLabel(item.object.type)}</span>
               <span className="tag">{bandLabel(item.band)}</span>
+              <span className={`brightness brightness-${item.brightness}`}>{brightnessHintLabel(item.brightness)}</span>
             </span>
             <span className="target-facts">
               <span>Usable {formatHours(item.usableHours)}</span>

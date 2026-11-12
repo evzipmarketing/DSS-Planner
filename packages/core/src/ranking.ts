@@ -2,11 +2,14 @@ import {
   bandAdvice,
   compareTargetPriority,
   frameFillPercent,
+  brightnessHint,
   frameFit,
   horizonStory,
   moonPlan,
   passesListFilter,
+  visibilityScore,
   type BandAdvice,
+  type BrightnessHint,
   type FrameFit,
   type TargetListFilter,
 } from "./planning";
@@ -35,6 +38,8 @@ export type RankedTarget = {
   moonScore: number;
   moonHint: string | null;
   minMoonSeparationDeg: number | null;
+  visibility: number;
+  brightness: BrightnessHint;
 };
 
 export function isShortlistCandidate(object: DeepSkyObject): boolean {
@@ -88,6 +93,7 @@ function scoreObject(
   grid: HorizonRotation[],
   stepHours: number,
   field: { widthArcmin: number; heightArcmin: number } | null,
+  bortle: number,
 ): Scored {
   let maxAltitude = -90;
   let usableHours = 0;
@@ -115,6 +121,7 @@ function scoreObject(
   const illuminated = grid[0]?.moonIlluminatedFraction ?? 0;
   const moon = moonPlan({ band, illuminatedFraction: illuminated, moonUp, minSeparationDeg: minSeparation });
   const fill = frameFillPercent(object.majorArcmin, field);
+  const visibility = visibilityScore(object, bortle);
   return {
     object,
     maxAltitudeDeg: maxAltitude,
@@ -130,6 +137,8 @@ function scoreObject(
     moonScore: moon.score,
     moonHint: moon.hint,
     minMoonSeparationDeg: minSeparation,
+    visibility,
+    brightness: brightnessHint(visibility),
   };
 }
 
@@ -141,12 +150,13 @@ export function rankTargets(
   query: TargetQuery = EMPTY_TARGET_QUERY,
   field: { widthArcmin: number; heightArcmin: number } | null = null,
   listFilter: TargetListFilter = "all",
+  bortle = 5,
 ): RankedTarget[] {
   const grid = nightHorizonGrid(site, dateIso, 15);
   const stepHours = 0.25;
   const scored = objects
     .filter((object) => passesTargetQuery(object, query))
-    .map((object) => scoreObject(object, equatorialUnit(object.raDeg, object.decDeg), grid, stepHours, field))
+    .map((object) => scoreObject(object, equatorialUnit(object.raDeg, object.decDeg), grid, stepHours, field, bortle))
     .filter((item) => item.hoursAboveHorizon >= 0.25 && item.maxAltitudeDeg >= 0)
     .filter((item) =>
       passesListFilter(

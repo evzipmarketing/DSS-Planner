@@ -162,20 +162,119 @@ export function moonPlan(input: {
 
 export const MIN_USABLE_HOURS = 1;
 
+export type BrightnessHint = "bright" | "moderate" | "faint";
+
 export type PriorityFields = {
   frameFit: FrameFit;
   usableHours: number;
   moonScore: number;
+  visibility: number;
 };
+
+/** Mag per square arcsecond. Missing surface brightness is estimated from magnitude and size. */
+export function surfaceBrightness(object: {
+  magnitude: number | null;
+  majorArcmin: number | null;
+  minorArcmin: number | null;
+}): number | null {
+  if (object.magnitude == null || object.majorArcmin == null || object.majorArcmin <= 0) return null;
+  const minor = object.minorArcmin != null && object.minorArcmin > 0 ? object.minorArcmin : object.majorArcmin * 0.6;
+  const area = (Math.PI / 4) * object.majorArcmin * 60 * minor * 60;
+  return object.magnitude + 2.5 * Math.log10(Math.max(area, 1));
+}
+
+function isDarkObject(object: { type: DeepSkyType; id: string; aliases: string[]; magnitude: number | null; messier: number | null }): boolean {
+  if (object.messier != null) return false;
+  if (object.magnitude != null && object.magnitude <= 6) return false;
+  if (object.type === "DrkN") return true;
+  const ids = [object.id, ...object.aliases];
+  if (ids.some((id) => /^LDN\d/.test(id) || /^B\d/.test(id))) return true;
+  return ids.some((id) => /^Ced/i.test(id)) && (object.type === "RfN" || object.magnitude == null);
+}
+
+/**
+ * 0–1 visibility. Faint and low-surface-brightness objects fall faster as Bortle rises.
+ * Narrowband emission nebulae keep some of that back under a bright sky. Dark nebulae
+ * and objects with no magnitude are pushed down, hard from Bortle 6 upward.
+ */
+export function visibilityScore(
+  object: {
+    type: DeepSkyType;
+    id: string;
+    aliases: string[];
+    magnitude: number | null;
+    majorArcmin: number | null;
+    minorArcmin: number | null;
+    messier: number | null;
+  },
+  bortle: number,
+): number {
+  const sky = clamp((bortle - 3) / 6, 0, 1);
+  const integrated = object.magnitude == null ? 0.15 : clamp((13.5 - object.magnitude) / 11, 0, 1);
+  const surface = surfaceBrightness(object);
+  const surfaceScore = surface == null ? 0.35 : clamp((25.5 - surface) / 8, 0, 1);
+  let score = 0.7 * integrated + 0.3 * surfaceScore;
+  score *= 1 - 0.62 * sky * (1 - integrated);
+  const emission = bandAdvice(object.type) === "narrowband" || bandAdvice(object.type) === "both";
+  if (emission && !isDarkObject(object)) score += 0.22 * sky;
+  if (object.magnitude == null) score *= bortle >= 6 ? 0.22 : 0.45;
+  if (isDarkObject(object)) score *= bortle >= 6 ? 0.12 : 0.35;
+  return clamp(score, 0, 1.25);
+}
+
+export function brightnessHint(visibility: number): BrightnessHint {
+  if (visibility >= 0.62) return "bright";
+  if (visibility >= 0.36) return "moderate";
+  return "faint";
+}
+
+export function brightnessHintLabel(hint: BrightnessHint): string {
+  switch (hint) {
+    case "bright":
+      return "Bright";
+    case "moderate":
+      return "Moderate";
+    case "faint":
+      return "Faint";
+    default:
+      return assertNever(hint, "brightness");
+  }
+}
+
+function frameFitWeight(fit: FrameFit): number {
+  switch (fit) {
+    case "good":
+      return 1;
+    case "tight":
+      return 0.9;
+    case "large":
+      return 0.96;
+    case "small":
+      return 0.4;
+    case "unknown":
+      return 0.32;
+    default:
+      return assertNever(fit, "frame fit");
+  }
+}
+
+/** Frame fit gates the score. Usable hours and visibility share the rest. */
+export function observationScore(item: PriorityFields): number {
+  const hours = Math.min(item.usableHours, 8) / 5;
+  return frameFitWeight(item.frameFit) * (0.42 * hours + item.visibility);
+}
 
 /** Objects with under an hour of usable darkness sort after everything that has a real window. */
 export function compareTargetPriority(a: PriorityFields, b: PriorityFields): number {
   const demoted = Number(a.usableHours < MIN_USABLE_HOURS) - Number(b.usableHours < MIN_USABLE_HOURS);
   if (demoted !== 0) return demoted;
-  const fit = frameFitRank(a.frameFit) - frameFitRank(b.frameFit);
-  if (fit !== 0) return fit;
-  if (a.usableHours !== b.usableHours) return b.usableHours - a.usableHours;
+  const score = observationScore(b) - observationScore(a);
+  if (Math.abs(score) > 1e-9) return score;
   return b.moonScore - a.moonScore;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 export type HorizonSample = { time: Date; altitude: number };

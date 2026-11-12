@@ -250,7 +250,7 @@ export function usePlanner() {
     () => (optics ? { widthArcmin: optics.field.widthArcmin, heightArcmin: optics.field.heightArcmin } : null),
     [optics],
   );
-  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${field ? `${field.widthArcmin.toFixed(2)}x${field.heightArcmin.toFixed(2)}` : "none"}|${listFilter}|${extendedCatalogue ? "extended" : "core"}`;
+  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${field ? `${field.widthArcmin.toFixed(2)}x${field.heightArcmin.toFixed(2)}` : "none"}|${listFilter}|${bortle}|${extendedCatalogue ? "extended" : "core"}`;
   const shortlist = useMemo(
     () => (ranked?.key === shortlistKey ? ranked.items : []),
     [ranked, shortlistKey],
@@ -264,14 +264,14 @@ export function usePlanner() {
       if (cancelled) return;
       setRanked({
         key: shortlistKey,
-        items: rankTargets(catalogue, site, date, 100, targetQuery, field, listFilter),
+        items: rankTargets(catalogue, site, date, 100, targetQuery, field, listFilter, bortle),
       });
     }, 16);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [hydrated, catalogue, site, date, shortlistKey, targetQuery, field, listFilter]);
+  }, [hydrated, catalogue, site, date, shortlistKey, targetQuery, field, listFilter, bortle]);
 
   const selected = useMemo(() => {
     const chosen = catalogue?.find((object) => object.id === selectedId);

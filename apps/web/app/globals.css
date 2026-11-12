@@ -580,6 +580,15 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .target-facts { color: var(--muted); font-size: 0.82rem; }
 
+.brightness {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.brightness-bright { color: var(--sage); }
+.brightness-faint { color: var(--faint); }
+
 .tag {
   border: 1px solid var(--line-strong);
   border-radius: 999px;
