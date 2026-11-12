@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   CATALOGUE_IDS,
   DEEP_SKY_TYPES,
@@ -17,6 +18,7 @@ import {
   frameFitLabel,
   listFilterLabel,
   objectTitle,
+  primaryDesignation,
   objectTypeLabel,
   type CatalogueId,
   type DeepSkyType,
@@ -42,21 +44,57 @@ export function Shortlist() {
     setQuery,
     results,
   } = usePlannerState();
+  const [shown, setShown] = useState(20);
+  const visible = shortlist.slice(0, shown);
   return (
     <Section index="06" title="Best targets tonight">
-      <div className="tabs" aria-label="Target filters">
-        {TARGET_LIST_FILTERS.map((filter) => (
-          <button
-            key={filter}
-            type="button"
-            className="tab"
-            aria-pressed={listFilter === filter}
-            onClick={() => setListFilter(filter)}
-          >
-            {listFilterLabel(filter)}
+      <div className="target-tools">
+        <div className="tabs" aria-label="Target filters">
+          {TARGET_LIST_FILTERS.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              className="tab"
+              aria-pressed={listFilter === filter}
+              onClick={() => {
+                setListFilter(filter);
+                setShown(20);
+              }}
+            >
+              {listFilterLabel(filter)}
+            </button>
+          ))}
+        </div>
+        <label className="field">
+          Name or catalogue id
+          <input
+            value={query}
+            placeholder="M42, NGC 224, Horsehead"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+      </div>
+      {!catalogue ? <p className="note">Loading the deep-sky catalogue…</p> : null}
+      <div className="rows">
+        {results.map((object) => (
+          <button key={object.id} type="button" className="row" onClick={() => chooseTarget(object.id)}>
+            <span className="row-index">{primaryDesignation(object)}</span>
+            <span>
+              <strong>{objectTitle(object)}</strong>
+              <small>
+                {objectTypeLabel(object.type)}
+                {object.constellation ? ` · ${constellationName(object.constellation)}` : ""}
+              </small>
+            </span>
+            <span className="meta">{object.magnitude == null ? "—" : object.magnitude.toFixed(1)}</span>
           </button>
         ))}
       </div>
+      {catalogue && query.trim() && results.length === 0 ? (
+        <p className="note">
+          {extendedReady ? "No match in the loaded catalogues." : "No match in the core list yet. The extended catalogues are still loading."}
+        </p>
+      ) : null}
       <details className="drawer">
         <summary>Type, catalogue, magnitude, size</summary>
         <div className="fields">
@@ -137,7 +175,7 @@ export function Shortlist() {
         <p className="note">Nothing in this view clears the horizon. Try another night, site, or filter.</p>
       ) : null}
       <div className="rows">
-        {shortlist.map((item) => (
+        {visible.map((item) => (
           <button
             key={item.object.id}
             type="button"
@@ -147,67 +185,45 @@ export function Shortlist() {
           >
             <span className="target-top">
               <strong>{objectTitle(item.object)}</strong>
+              {objectTitle(item.object) === primaryDesignation(item.object) ? null : (
+                <span>{primaryDesignation(item.object)}</span>
+              )}
               <span>{objectTypeLabel(item.object.type)}</span>
               <span className="tag">{bandLabel(item.band)}</span>
             </span>
             <span className="target-facts">
-              <span>Above horizon {formatHours(item.hoursAboveHorizon)}</span>
               <span>Usable {formatHours(item.usableHours)}</span>
+              <span>Above horizon {formatHours(item.hoursAboveHorizon)}</span>
               <span>
                 Frame {item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`} · {frameFitLabel(item.frameFit)}
               </span>
-              <span>{riseSet(item.rise, item.set, item.alwaysUp, item.hoursAboveHorizon, site.timezone)}</span>
+              <span>{riseSet(item, site.timezone)}</span>
             </span>
             <span className="note">{frameFitHint(item.frameFit)}</span>
             {item.moonHint ? <span className="hint">{item.moonHint}</span> : null}
           </button>
         ))}
       </div>
-      <label className="field">
-        Name or catalogue id
-        <input
-          value={query}
-          placeholder="M42, NGC 224, Horsehead"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
-      {!catalogue ? <p className="note">Loading the deep-sky catalogue…</p> : null}
-      <div className="rows" style={{ marginTop: 10 }}>
-        {results.map((object) => (
-          <button key={object.id} type="button" className="row" onClick={() => chooseTarget(object.id)}>
-            <span className="row-index">{formatCatalogueId(object.id)}</span>
-            <span>
-              <strong>{objectTitle(object)}</strong>
-              <small>
-                {objectTypeLabel(object.type)}
-                {object.constellation ? ` · ${constellationName(object.constellation)}` : ""}
-              </small>
-            </span>
-            <span className="meta">{object.magnitude == null ? "—" : object.magnitude.toFixed(1)}</span>
-          </button>
-        ))}
-      </div>
-      {catalogue && query.trim() && results.length === 0 ? (
-        <p className="note">
-          {extendedReady ? "No match in the loaded catalogues." : "No match in the core list yet. The extended catalogues are still loading."}
-        </p>
+      {shortlist.length > shown ? (
+        <button type="button" className="ghost show-more" onClick={() => setShown((count) => count + 20)}>
+          Show more
+        </button>
       ) : null}
     </Section>
   );
 }
 
 function riseSet(
-  rise: Date | null,
-  set: Date | null,
-  alwaysUp: boolean,
-  hoursAbove: number,
+  item: { rise: Date | null; set: Date | null; upAtStart: boolean; alwaysUp: boolean; hoursAboveHorizon: number },
   timeZone: string,
 ): string {
-  if (alwaysUp) return "Up all night";
-  if (hoursAbove <= 0) return "Below the horizon";
-  const riseText = rise ? `Rises ${formatClock(rise, timeZone)}` : null;
-  const setText = set ? `Sets ${formatClock(set, timeZone)}` : null;
-  return [riseText, setText].filter(Boolean).join(" · ") || "Above the horizon";
+  if (item.alwaysUp) return "Circumpolar";
+  if (item.hoursAboveHorizon <= 0) return "Below the horizon";
+  const parts: string[] = [];
+  if (item.upAtStart) parts.push("Up at dusk");
+  if (item.rise) parts.push(`Rises ${formatClock(item.rise, timeZone)}`);
+  if (item.set) parts.push(`Sets ${formatClock(item.set, timeZone)}`);
+  return parts.join(" · ") || "Above the horizon";
 }
 
 export function ObjectCard() {
@@ -219,12 +235,12 @@ export function ObjectCard() {
       ) : (
         <>
           <h3 style={{ margin: "0 0 10px", fontFamily: "var(--font-display)", fontWeight: 520 }}>
-            {objectTitle(selected)}
+            {objectTitle(selected)} <span className="tag">{primaryDesignation(selected)}</span>
           </h3>
           <dl className="facts">
             <div>
               <dt>Catalogue</dt>
-              <dd>{formatCatalogueId(selected.id)}</dd>
+              <dd>{primaryDesignation(selected)}</dd>
             </div>
             <div>
               <dt>Type</dt>

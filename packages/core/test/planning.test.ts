@@ -5,10 +5,12 @@ import {
   compareTargetPriority,
   frameFillPercent,
   frameFit,
+  horizonStory,
   moonPlan,
   passesListFilter,
 } from "../src/planning";
-import { suggestExposure } from "../src/integration";
+import { exposureClass, suggestExposure } from "../src/integration";
+import { primaryDesignation } from "../src/catalogue";
 import type { ImagingFilter } from "../src/types";
 
 const luminance: ImagingFilter = {
@@ -64,12 +66,12 @@ describe("moon separation and priority", () => {
     expect(farNarrow.hint).toBeNull();
   });
 
-  it("sorts a good frame first, then time above the horizon, then the Moon score", () => {
-    const goodShort = { frameFit: "good" as const, hoursAboveHorizon: 2, moonScore: 0.2 };
-    const smallLong = { frameFit: "small" as const, hoursAboveHorizon: 10, moonScore: 1 };
-    const goodLongDim = { frameFit: "good" as const, hoursAboveHorizon: 6, moonScore: 0.3 };
-    const goodLongBright = { frameFit: "good" as const, hoursAboveHorizon: 6, moonScore: 0.9 };
-    const ordered = [smallLong, goodShort, goodLongDim, goodLongBright].sort(compareTargetPriority);
+  it("sorts a good frame first, then usable dark hours, and demotes a window under an hour", () => {
+    const goodNone = { frameFit: "good" as const, usableHours: 0, moonScore: 1 };
+    const smallLong = { frameFit: "small" as const, usableHours: 5, moonScore: 0.2 };
+    const goodLongDim = { frameFit: "good" as const, usableHours: 4, moonScore: 0.3 };
+    const goodLongBright = { frameFit: "good" as const, usableHours: 4, moonScore: 0.9 };
+    const ordered = [goodNone, smallLong, goodLongDim, goodLongBright].sort(compareTargetPriority);
     expect(ordered.map((item) => item.moonScore)).toEqual([0.9, 0.3, 0.2, 1]);
     expect(passesListFilter(
       { band: "narrowband", frameFit: "good", moonHint: null, moonScore: 0.9, objectType: "HII" },
@@ -112,5 +114,74 @@ describe("moon separation and priority", () => {
     expect(moonlit.totalHours).toBeGreaterThan(dark.totalHours);
     expect(moonlit.tonightHours).toBeLessThanOrEqual(2);
     expect(moonlit.explanation).toMatch(/usable time/i);
+  });
+
+  it("does not treat the start of the window as a rise", () => {
+    const noon = new Date("2026-11-12T06:30:00Z");
+    const later = new Date("2026-11-12T14:00:00Z");
+    const alreadyUp = horizonStory([
+      { time: noon, altitude: 40 },
+      { time: later, altitude: -5 },
+    ]);
+    expect(alreadyUp.upAtStart).toBe(true);
+    expect(alreadyUp.rise).toBeNull();
+    expect(alreadyUp.set).toEqual(later);
+    expect(alreadyUp.circumpolar).toBe(false);
+    const circumpolar = horizonStory([
+      { time: noon, altitude: 20 },
+      { time: later, altitude: 50 },
+    ]);
+    expect(circumpolar.circumpolar).toBe(true);
+    expect(circumpolar.rise).toBeNull();
+  });
+
+  it("prefers Messier over Sharpless for the displayed id", () => {
+    expect(
+      primaryDesignation({
+        id: "NGC1976",
+        type: "Cl+N",
+        raDeg: 83.8,
+        decDeg: -5.4,
+        constellation: "Ori",
+        majorArcmin: 90,
+        minorArcmin: 60,
+        positionAngleDeg: null,
+        magnitude: 4,
+        messier: 42,
+        names: ["Great Orion Nebula"],
+        opacity: null,
+        aliases: ["NGC1976", "Sh2-281", "LBN974", "M42"],
+        catalogues: ["messier", "ngc", "sharpless"],
+        note: null,
+      }),
+    ).toBe("M42");
+    expect(exposureClass(4)).toBe("bright");
+    expect(exposureClass(7)).toBe("medium");
+    expect(exposureClass(11)).toBe("faint");
+  });
+
+  it("keeps an M42 broadband plan inside community bounds at Bortle 9", () => {
+    const plan = suggestExposure({
+      filter: {
+        id: "l2",
+        name: "L-2 UV/IR cut",
+        kind: "uv_ir_cut",
+        bandpassNm: 320,
+        transmission: 0.97,
+      },
+      bortle: 9,
+      apertureMm: 72,
+      focalLengthMm: 420,
+      pixelScaleArcsec: 1.85,
+      readNoiseE: 1.2,
+      magnitude: 4,
+      moonIlluminatedFraction: 0.1,
+      moonAltitudeDeg: -30,
+    });
+    expect(plan.totalHours).toBeGreaterThanOrEqual(1.5);
+    expect(plan.totalHours).toBeLessThanOrEqual(6);
+    expect(plan.subExposureSeconds).toBeGreaterThanOrEqual(30);
+    expect(plan.subExposureSeconds).toBeLessThanOrEqual(180);
+    expect(plan.explanation).toMatch(/bright target/i);
   });
 });

@@ -3,6 +3,7 @@ import {
   compareTargetPriority,
   frameFillPercent,
   frameFit,
+  horizonStory,
   moonPlan,
   passesListFilter,
   type BandAdvice,
@@ -26,6 +27,7 @@ export type RankedTarget = {
   hoursAboveHorizon: number;
   rise: Date | null;
   set: Date | null;
+  upAtStart: boolean;
   alwaysUp: boolean;
   frameFillPercent: number | null;
   frameFit: FrameFit;
@@ -90,14 +92,13 @@ function scoreObject(
   let maxAltitude = -90;
   let usableHours = 0;
   let aboveSteps = 0;
-  let rise: Date | null = null;
-  let set: Date | null = null;
-  let previous = -90;
   let minSeparation: number | null = null;
   let moonUp = false;
   const band = bandAdvice(object.type);
+  const altitudes: { time: Date; altitude: number }[] = [];
   for (const cell of grid) {
     const altitude = geometricAltitude(vector, cell.matrix);
+    altitudes.push({ time: cell.time, altitude });
     if (altitude > maxAltitude) maxAltitude = altitude;
     const usable = cell.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG && altitude >= USABLE_MIN_ALTITUDE_DEG;
     if (usable) usableHours += stepHours;
@@ -109,10 +110,8 @@ function scoreObject(
         if (minSeparation == null || separation < minSeparation) minSeparation = separation;
       }
     }
-    if (previous < 0 && altitude >= 0 && rise == null) rise = cell.time;
-    if (previous >= 0 && altitude < 0) set = cell.time;
-    previous = altitude;
   }
+  const horizon = horizonStory(altitudes);
   const illuminated = grid[0]?.moonIlluminatedFraction ?? 0;
   const moon = moonPlan({ band, illuminatedFraction: illuminated, moonUp, minSeparationDeg: minSeparation });
   const fill = frameFillPercent(object.majorArcmin, field);
@@ -121,9 +120,10 @@ function scoreObject(
     maxAltitudeDeg: maxAltitude,
     usableHours,
     hoursAboveHorizon: aboveSteps * stepHours,
-    rise,
-    set,
-    alwaysUp: grid.length > 0 && aboveSteps === grid.length,
+    rise: horizon.rise,
+    set: horizon.set,
+    upAtStart: horizon.upAtStart,
+    alwaysUp: horizon.circumpolar,
     frameFillPercent: fill,
     frameFit: frameFit(fill),
     band,
@@ -137,7 +137,7 @@ export function rankTargets(
   objects: DeepSkyObject[],
   site: Site,
   dateIso: string,
-  limit = 24,
+  limit = 100,
   query: TargetQuery = EMPTY_TARGET_QUERY,
   field: { widthArcmin: number; heightArcmin: number } | null = null,
   listFilter: TargetListFilter = "all",

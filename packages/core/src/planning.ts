@@ -160,17 +160,53 @@ export function moonPlan(input: {
   return { score: 0.9, hint: null };
 }
 
+export const MIN_USABLE_HOURS = 1;
+
 export type PriorityFields = {
   frameFit: FrameFit;
-  hoursAboveHorizon: number;
+  usableHours: number;
   moonScore: number;
 };
 
+/** Objects with under an hour of usable darkness sort after everything that has a real window. */
 export function compareTargetPriority(a: PriorityFields, b: PriorityFields): number {
+  const demoted = Number(a.usableHours < MIN_USABLE_HOURS) - Number(b.usableHours < MIN_USABLE_HOURS);
+  if (demoted !== 0) return demoted;
   const fit = frameFitRank(a.frameFit) - frameFitRank(b.frameFit);
   if (fit !== 0) return fit;
-  if (a.hoursAboveHorizon !== b.hoursAboveHorizon) return b.hoursAboveHorizon - a.hoursAboveHorizon;
+  if (a.usableHours !== b.usableHours) return b.usableHours - a.usableHours;
   return b.moonScore - a.moonScore;
+}
+
+export type HorizonSample = { time: Date; altitude: number };
+
+export type HorizonStory = {
+  rise: Date | null;
+  set: Date | null;
+  upAtStart: boolean;
+  circumpolar: boolean;
+};
+
+/** Rise and set are real horizon crossings. The first sample is not treated as a rise. */
+export function horizonStory(samples: HorizonSample[]): HorizonStory {
+  let previous: number | null = null;
+  let upAtStart = false;
+  let wentBelow = false;
+  let rise: Date | null = null;
+  let set: Date | null = null;
+  for (const sample of samples) {
+    if (previous == null) upAtStart = sample.altitude >= 0;
+    else if (previous >= 0 && sample.altitude < 0) set = sample.time;
+    else if (previous < 0 && sample.altitude >= 0) rise = sample.time;
+    if (sample.altitude < 0) wentBelow = true;
+    previous = sample.altitude;
+  }
+  return {
+    rise,
+    set,
+    upAtStart,
+    circumpolar: samples.length > 0 && upAtStart && !wentBelow,
+  };
 }
 
 export function passesListFilter(

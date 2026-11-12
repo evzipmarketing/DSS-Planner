@@ -264,7 +264,7 @@ export function usePlanner() {
       if (cancelled) return;
       setRanked({
         key: shortlistKey,
-        items: rankTargets(catalogue, site, date, 24, targetQuery, field, listFilter),
+        items: rankTargets(catalogue, site, date, 100, targetQuery, field, listFilter),
       });
     }, 16);
     return () => {
@@ -327,9 +327,10 @@ export function usePlanner() {
         moonSeparationDeg: moon?.separation,
         moonAltitudeDeg: moon?.altitude,
         usableHours: moon?.usableHours,
+        magnitude: selected?.magnitude ?? null,
       }),
     );
-  }, [activeFilters, telescope, camera, optics, bortle, moon]);
+  }, [activeFilters, telescope, camera, optics, bortle, moon, selected]);
 
   const results = useMemo(() => {
     if (!catalogue || query.trim().length < 1) return [];

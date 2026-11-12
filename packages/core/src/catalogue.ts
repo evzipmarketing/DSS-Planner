@@ -1,3 +1,4 @@
+import { formatCatalogueId } from "./format";
 import { assertNever } from "./never";
 import {
   CATALOGUE_IDS,
@@ -116,7 +117,50 @@ export function catalogueLabel(catalogue: CatalogueId): string {
 }
 
 export function objectTitle(object: DeepSkyObject): string {
-  return object.names[0] ?? object.id;
+  return object.names[0] ?? primaryDesignation(object);
+}
+
+const DESIGNATION_ORDER: Array<[RegExp, number]> = [
+  [/^M\d+$/, 0],
+  [/^C\d+$/, 1],
+  [/^NGC\d/, 2],
+  [/^IC\d/, 3],
+  [/^Sh2-\d/, 4],
+  [/^B\d/, 5],
+  [/^LDN\d/, 6],
+  [/^LBN\d/, 7],
+  [/^vdB\d/, 8],
+  [/^Abell\d/, 9],
+  [/^ACO\d/, 9],
+  [/^Cr\d/, 10],
+  [/^Mel\d/, 11],
+  [/^Tr\d/, 12],
+  [/^St\d/, 13],
+  [/^Arp\d/, 14],
+  [/^RCW\d/, 15],
+  [/^Ced\d/, 16],
+  [/^UGC\d/, 17],
+  [/^PGC\d/, 18],
+];
+
+function designationRank(id: string): number | null {
+  for (const [pattern, rank] of DESIGNATION_ORDER) {
+    if (pattern.test(id)) return rank;
+  }
+  return null;
+}
+
+/** Messier, then Caldwell, NGC, IC, and the other catalogues in that order. */
+export function primaryDesignation(object: DeepSkyObject): string {
+  const ids = [object.id, ...object.aliases];
+  if (object.messier != null) ids.push(`M${object.messier}`);
+  let best: { id: string; rank: number } | null = null;
+  for (const id of ids) {
+    const rank = designationRank(id);
+    if (rank == null) continue;
+    if (!best || rank < best.rank) best = { id, rank };
+  }
+  return formatCatalogueId(best?.id ?? object.id);
 }
 
 export function normaliseQuery(query: string): string {

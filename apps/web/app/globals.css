@@ -477,6 +477,21 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .warn { color: var(--clay); }
 
+.target-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.target-tools .tabs { flex: 1 1 280px; margin-bottom: 0; }
+
+.target-tools .field { flex: 1 1 220px; max-width: 360px; }
+
+.show-more { margin-top: 10px; }
+
 .tabs {
   display: flex;
   gap: 6px;
