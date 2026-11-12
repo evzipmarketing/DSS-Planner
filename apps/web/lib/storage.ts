@@ -13,6 +13,7 @@ export type StoredSession = {
   bortleMode: "estimate" | "manual";
   telescopeId: string;
   reducer: number;
+  focalOverrideMm: number | null;
   cameraId: string;
   filterIds: string[];
   customTelescopes: Telescope[];
@@ -54,10 +55,13 @@ export function loadSession(): StoredSession | null {
       bortleMode: parsed.bortleMode === "estimate" ? "estimate" : "manual",
       telescopeId: typeof parsed.telescopeId === "string" ? parsed.telescopeId : "",
       reducer: clampNum(parsed.reducer, 0.25, 5, 1),
+      focalOverrideMm: parseFocal(parsed.focalOverrideMm),
       cameraId: typeof parsed.cameraId === "string" ? parsed.cameraId : "",
-      filterIds: Array.isArray(parsed.filterIds)
-        ? parsed.filterIds.filter((id): id is string => typeof id === "string")
-        : [],
+      filterIds: withoutLegacyDefaultFilter(
+        Array.isArray(parsed.filterIds)
+          ? parsed.filterIds.filter((id): id is string => typeof id === "string")
+          : [],
+      ),
       customTelescopes: arrayOf(parsed.customTelescopes, isTelescope),
       customCameras: arrayOf(parsed.customCameras, isCamera),
       customFilters: arrayOf(parsed.customFilters, isFilter),
@@ -76,6 +80,19 @@ export function resolveSite(session: Pick<StoredSession, "locationId" | "customS
   if (preset) return preset;
   if (session.customSite) return session.customSite;
   return defaultSite;
+}
+
+function parseFocal(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  if (rounded < 10 || rounded > 20_000) return null;
+  return rounded;
+}
+
+/** Sessions saved before "no filter" stored the old Astronomik default as the only chip. */
+function withoutLegacyDefaultFilter(ids: string[]): string[] {
+  if (ids.length === 1 && ids[0] === "astronomik-l2") return [];
+  return ids;
 }
 
 function parseTheme(theme: unknown, legacyVision: unknown): ThemeName {

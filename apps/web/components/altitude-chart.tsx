@@ -59,6 +59,7 @@ export function AltitudeChart() {
               </g>
             ))}
             <polyline fill="none" stroke="var(--moon)" strokeWidth="1.5" points={moon} />
+            <MoonMark samples={samples} start={start} end={end} />
             <polyline fill="none" stroke="var(--saffron)" strokeWidth="2.2" points={target} />
             {labels.map((sample) => (
               <text
@@ -75,13 +76,55 @@ export function AltitudeChart() {
           </svg>
           <div className="legend">
             <span className="swatch"><i style={{ background: "var(--saffron)" }} /> Target</span>
-            <span className="swatch"><i style={{ background: "var(--moon)" }} /> Moon</span>
+            <span className="swatch">
+              <MoonGlyph />
+              Moon
+            </span>
             <span className="swatch"><i style={{ background: "var(--sage)" }} /> Horizon</span>
             <span className="swatch"><i style={{ background: "var(--usable)", height: 10 }} /> Usable, above 30° and sun below −18°</span>
           </div>
         </div>
       ) : null}
     </Section>
+  );
+}
+
+function MoonMark({
+  samples,
+  start,
+  end,
+}: {
+  samples: { time: Date; moonAltitude: number }[];
+  start: number;
+  end: number;
+}) {
+  const first = samples[0];
+  if (!first) return null;
+  const peak = samples.reduce((best, sample) => (sample.moonAltitude > best.moonAltitude ? sample : best), first);
+  const x = xAt(peak.time.getTime(), start, end);
+  const y = Math.min(HEIGHT - PAD.bottom - 10, Math.max(PAD.top + 10, yAt(peak.moonAltitude)));
+  return (
+    <g className="moon-mark" transform={`translate(${x} ${y})`}>
+      <circle r="9" fill="var(--bg)" />
+      <MoonPath />
+    </g>
+  );
+}
+
+function MoonGlyph() {
+  return (
+    <svg className="moon-glyph" viewBox="-8 -8 16 16" width="14" height="14" aria-hidden="true">
+      <MoonPath />
+    </svg>
+  );
+}
+
+function MoonPath() {
+  return (
+    <g>
+      <circle r="6.4" fill="var(--moon)" />
+      <circle cx="3.1" r="5.2" fill="var(--bg)" />
+    </g>
   );
 }
 

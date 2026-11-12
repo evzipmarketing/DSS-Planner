@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  effectiveFocalLengthMm,
   filterKindLabel,
   samplingSummary,
   type Camera,
@@ -101,33 +102,20 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
             <label className="field">
               Flattener, reducer, or Barlow
               <select
-                value={REDUCERS.some((item) => item.value === planner.reducer) ? String(planner.reducer) : "custom"}
-                onChange={(event) => {
-                  if (event.target.value !== "custom") planner.setReducer(Number(event.target.value));
-                }}
+                value={String(planner.reducer)}
+                onChange={(event) => planner.setReducer(Number(event.target.value))}
               >
                 {REDUCERS.map((item) => (
                   <option key={item.value} value={item.value}>
                     {item.label}
                   </option>
                 ))}
-                <option value="custom">Custom factor</option>
+                {REDUCERS.some((item) => item.value === planner.reducer) ? null : (
+                  <option value={String(planner.reducer)}>{planner.reducer}×</option>
+                )}
               </select>
             </label>
-            <label className="field">
-              Factor
-              <input
-                type="number"
-                min={0.25}
-                max={5}
-                step={0.01}
-                value={planner.reducer}
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (value >= 0.25 && value <= 5) planner.setReducer(value);
-                }}
-              />
-            </label>
+            {telescope ? <FocalLength telescope={telescope} /> : null}
           </>
         ) : null}
         {showCamera ? (
@@ -157,6 +145,7 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
               }}
             />
             <div className="chips">
+              {planner.filterIds.length === 0 ? <p className="focal-hint">No filter.</p> : null}
               {planner.filterList
                 .filter((item) => planner.filterIds.includes(item.id))
                 .map((item) => (
@@ -171,6 +160,36 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
 
       <CustomGear part={part} />
     </Section>
+  );
+}
+
+function FocalLength({ telescope }: { telescope: Telescope }) {
+  const planner = usePlannerState();
+  const computed = Math.round(effectiveFocalLengthMm(telescope, planner.reducer));
+  const active = planner.focalOverrideMm ?? computed;
+  return (
+    <>
+      <p className="focal-readout">Focal length {active} mm</p>
+      {planner.focalOverrideMm != null ? (
+        <p className="focal-hint">Using the number you enter. The scope and corrector give {computed} mm.</p>
+      ) : null}
+      <label className="field">
+        Enter a focal length (mm)
+        <input
+          type="number"
+          min={10}
+          max={20000}
+          step={1}
+          inputMode="numeric"
+          placeholder="Optional"
+          value={planner.focalOverrideMm ?? ""}
+          onChange={(event) => {
+            const text = event.target.value.trim();
+            planner.setFocalOverrideMm(text === "" ? null : Number(text));
+          }}
+        />
+      </label>
+    </>
   );
 }
 

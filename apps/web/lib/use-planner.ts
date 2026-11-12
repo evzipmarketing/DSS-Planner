@@ -27,7 +27,6 @@ import {
 import {
   cameras as seedCameras,
   defaultCameraId,
-  defaultFilterId,
   defaultSite,
   defaultTelescopeId,
   estimateBortle,
@@ -80,8 +79,9 @@ export function usePlanner() {
   const [pointing, setPointing] = useState<Pointing | null>(null);
   const [telescopeId, setTelescopeId] = useState(defaultTelescopeId);
   const [reducer, setReducer] = useState(1);
+  const [focalOverrideMm, setFocalOverrideMmState] = useState<number | null>(null);
   const [cameraId, setCameraId] = useState(defaultCameraId);
-  const [filterIds, setFilterIds] = useState<string[]>([defaultFilterId]);
+  const [filterIds, setFilterIds] = useState<string[]>([]);
   const [customTelescopes, setCustomTelescopes] = useState<Telescope[]>([]);
   const [customCameras, setCustomCameras] = useState<Camera[]>([]);
   const [customFilters, setCustomFilters] = useState<ImagingFilter[]>([]);
@@ -109,8 +109,9 @@ export function usePlanner() {
       setPlaceStatus("saved");
       if (stored.telescopeId) setTelescopeId(stored.telescopeId);
       setReducer(stored.reducer);
+      setFocalOverrideMmState(stored.focalOverrideMm);
       if (stored.cameraId) setCameraId(stored.cameraId);
-      if (stored.filterIds.length > 0) setFilterIds(stored.filterIds);
+      setFilterIds(stored.filterIds);
       setCustomTelescopes(stored.customTelescopes);
       setCustomCameras(stored.customCameras);
       setCustomFilters(stored.customFilters);
@@ -187,6 +188,7 @@ export function usePlanner() {
       bortleMode,
       telescopeId,
       reducer,
+      focalOverrideMm,
       cameraId,
       filterIds,
       customTelescopes,
@@ -201,6 +203,7 @@ export function usePlanner() {
     bortleMode,
     telescopeId,
     reducer,
+    focalOverrideMm,
     cameraId,
     filterIds,
     customTelescopes,
@@ -224,7 +227,7 @@ export function usePlanner() {
 
   const optics = useMemo<Optics | null>(() => {
     if (!telescope || !camera) return null;
-    const focalLengthMm = effectiveFocalLengthMm(telescope, reducer);
+    const focalLengthMm = focalOverrideMm ?? effectiveFocalLengthMm(telescope, reducer);
     const field = fieldOfView(camera, focalLengthMm);
     const longest = Math.max(field.widthDeg, field.heightDeg);
     const scale = pixelScaleArcsec(camera.pixelSizeUm, focalLengthMm);
@@ -237,7 +240,7 @@ export function usePlanner() {
       imageFovDeg: Math.min(20, Math.max(0.08, longest * 1.45)),
       disagreement: sensorDisagreement(camera),
     };
-  }, [telescope, camera, reducer, bortle]);
+  }, [telescope, camera, reducer, focalOverrideMm, bortle]);
 
   const catalogue = useMemo(() => {
     if (!coreCatalogue) return null;
@@ -271,10 +274,10 @@ export function usePlanner() {
     };
   }, [hydrated, catalogue, site, date, shortlistKey, targetQuery, field, listFilter, bortle]);
 
-  const selected = useMemo(() => {
-    const chosen = catalogue?.find((object) => object.id === selectedId);
-    return chosen ?? shortlist[0]?.object ?? null;
-  }, [catalogue, selectedId, shortlist]);
+  const selected = useMemo(
+    () => catalogue?.find((object) => object.id === selectedId) ?? null,
+    [catalogue, selectedId],
+  );
 
   if (selected && pointingFor !== selected.id) {
     setPointingFor(selected.id);
@@ -298,17 +301,21 @@ export function usePlanner() {
   }, [catalogue, query]);
 
   function chooseTarget(id: string) {
-    setSelectedId(id);
+    setSelectedId((current) => (current === id ? null : id));
+  }
+
+  function setFocalOverrideMm(value: number | null) {
+    if (value == null || !Number.isFinite(value)) {
+      setFocalOverrideMmState(null);
+      return;
+    }
+    const rounded = Math.round(value);
+    if (rounded < 10 || rounded > 20_000) return;
+    setFocalOverrideMmState(rounded);
   }
 
   function toggleFilter(id: string) {
-    setFilterIds((current) => {
-      if (current.includes(id)) {
-        if (current.length === 1) return current;
-        return current.filter((item) => item !== id);
-      }
-      return [...current, id];
-    });
+    setFilterIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
   function chooseSite(next: Site) {
@@ -351,10 +358,7 @@ export function usePlanner() {
       if (cameraId === id) setCameraId(defaultCameraId);
     } else {
       setCustomFilters((current) => current.filter((item) => item.id !== id));
-      setFilterIds((current) => {
-        const next = current.filter((item) => item !== id);
-        return next.length > 0 ? next : [defaultFilterId];
-      });
+      setFilterIds((current) => current.filter((item) => item !== id));
     }
   }
 
@@ -395,6 +399,8 @@ export function usePlanner() {
     setTelescopeId,
     reducer,
     setReducer,
+    focalOverrideMm,
+    setFocalOverrideMm,
     setCameraId,
     filterIds,
     toggleFilter,

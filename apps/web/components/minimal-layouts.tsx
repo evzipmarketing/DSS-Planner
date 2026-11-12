@@ -15,23 +15,26 @@ import type { ThemeName } from "@/lib/storage";
 
 export function TonightPage() {
   const planner = usePlannerState();
-  const [more, setMore] = useState(false);
+  const place = planner.site.name;
+  const day = formatDay(planner.date);
+  const scope = trimGear(planner.telescope?.name) ?? "None";
+  const camera = cameraLabel(planner.camera?.name, planner.filterIds.length);
   return (
-    <div className={`minimal tonight${more ? " show-all" : ""}`}>
+    <div className="minimal tonight">
       <a className="skip" href="#targets">
         Skip to the targets
       </a>
       <header className="app-head">
         <div className="min-bar">
-          <strong>DSS Planner</strong>
+          <strong>DSS Astro Planner</strong>
           <ThemeToggle />
         </div>
         <div className="settings-bar">
-          <Control label={`Location: ${planner.site.name} · Bortle ${planner.bortle}`}>
+          <Control icon={<PinIcon />} prefix="Location" value={place} extra={` · Bortle ${planner.bortle}`} label={`Location, ${place}, Bortle ${planner.bortle}`}>
             <LocationPanel />
             <BortlePanel />
           </Control>
-          <Control label={`Date: ${formatDay(planner.date)}`}>
+          <Control icon={<CalendarIcon />} prefix="Date" value={day} label={`Date, ${day}`}>
             <DatePanel />
             <div className="day-row">
               <button type="button" className="day" onClick={() => planner.setDate(addDaysIso(planner.date, -1))}>
@@ -42,10 +45,10 @@ export function TonightPage() {
               </button>
             </div>
           </Control>
-          <Control label={`Telescope: ${trimGear(planner.telescope?.name) ?? "None"}`}>
+          <Control icon={<TelescopeIcon />} prefix="Telescope" value={scope} label={`Telescope, ${scope}`}>
             <RigPanel part="telescope" />
           </Control>
-          <Control label={`Camera: ${cameraLabel(planner.camera?.name, planner.filterIds.length)}`}>
+          <Control icon={<CameraIcon />} prefix="Camera" value={camera} label={`Camera, ${camera}`}>
             <RigPanel part="camera" />
           </Control>
         </div>
@@ -58,36 +61,99 @@ export function TonightPage() {
         </p>
       </section>
       <div id="targets">
-        <Shortlist />
+        <Shortlist
+          detail={
+            <>
+              <ObjectCard />
+              <AltitudeChart />
+              <FramingPreview />
+            </>
+          }
+        />
       </div>
-      <div className="hero-actions">
-        <button type="button" className="ghost" aria-pressed={more} onClick={() => setMore((value) => !value)}>
-          More targets
-        </button>
-      </div>
-      {planner.selected ? (
-        <div className="detail-stack">
-          <ObjectCard />
-          <AltitudeChart />
-          <FramingPreview />
-        </div>
-      ) : null}
     </div>
   );
 }
 
-function Control({ label, children }: { label: string; children: ReactNode }) {
+function Control({
+  icon,
+  prefix,
+  value,
+  extra,
+  label,
+  children,
+}: {
+  icon: ReactNode;
+  prefix: string;
+  value: string;
+  extra?: string;
+  label: string;
+  children: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <span className="pop">
-      <button type="button" className="chip-btn" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((value) => !value)}>
-        <span>{label}</span>
+      <button
+        type="button"
+        className="chip-btn"
+        aria-label={label}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="setting-icon">{icon}</span>
+        <span className="setting-text">
+          <span className="setting-prefix">{prefix}</span>
+          <span className="setting-value">
+            {value}
+            {extra ? <span className="setting-extra">{extra}</span> : null}
+          </span>
+        </span>
         <span className="chevron" aria-hidden="true">
-          ▾
+          <svg viewBox="0 0 24 24">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </span>
       </button>
       {open ? <div className="pop-panel">{children}</div> : null}
     </span>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" />
+      <circle cx="12" cy="10" r="2.2" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M8 3.5v4M16 3.5v4M4 10h16" />
+    </svg>
+  );
+}
+
+function TelescopeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 15.5l8.2-4.2 1.6 3.1L4.6 18.6z" />
+      <circle cx="15.2" cy="9" r="3.1" />
+      <path d="M17.6 11.4L21 15" />
+    </svg>
+  );
+}
+
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 8h3.2L8.8 6h6.4l1.6 2H20v11H4z" />
+      <circle cx="12" cy="13" r="3" />
+    </svg>
   );
 }
 
@@ -189,7 +255,7 @@ function formatDay(iso: string): string {
 
 function trimGear(name: string | undefined): string | undefined {
   if (!name) return undefined;
-  return name.replace(/^Sky-Watcher\s+/, "").replace(/^ZWO\s+/, "").replace(/\s+Pro$/, "");
+  return name.replace(/^(Sky-Watcher|ZWO)\s+/, "");
 }
 
 function cameraLabel(name: string | undefined, filters: number): string {

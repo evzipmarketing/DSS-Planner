@@ -972,6 +972,13 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .minimal.tonight .target-facts span:not(:first-child) { display: inline; }
 
+.tonight .min-bar { flex-wrap: nowrap; }
+
+.tonight .min-bar strong {
+  font-size: clamp(1.12rem, 4.4vw, 1.35rem);
+  white-space: nowrap;
+}
+
 .tonight {
   width: min(860px, 100%);
   margin: 0 auto;
@@ -986,19 +993,147 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 .tonight .settings-bar .pop { min-width: 0; }
 
 .tonight .settings-bar .chip-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   max-width: 100%;
-  justify-content: space-between;
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  text-align: left;
 }
 
-.tonight .settings-bar .chip-btn > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
+.tonight .settings-bar .chip-btn:hover,
+.tonight .settings-bar .chip-btn[aria-expanded="true"] {
+  border-color: var(--saffron);
+  background: color-mix(in srgb, var(--saffron) 16%, var(--bg-raised));
 }
+
+.setting-icon,
+.tonight .settings-bar .chevron {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--saffron);
+}
+
+.setting-icon svg,
+.tonight .settings-bar .chevron svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.setting-icon svg *,
+.tonight .settings-bar .chevron svg * {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.setting-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.setting-prefix { color: var(--muted); font-weight: 450; }
+
+.setting-value { font-weight: 560; overflow-wrap: anywhere; }
+
+.tonight .settings-bar .chevron { margin-left: auto; }
 
 .tonight .tabs { flex-wrap: wrap; overflow: visible; }
+
+.tonight .tab {
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.tonight .tab:hover {
+  border-color: var(--saffron);
+  background: color-mix(in srgb, var(--saffron) 14%, var(--bg-raised));
+}
+
+.tonight .tab[aria-pressed="true"] {
+  background: var(--saffron);
+  color: var(--saffron-ink);
+  border-color: transparent;
+}
+
+.focal-readout {
+  margin: 4px 0 8px;
+  font-weight: 560;
+}
+
+.focal-hint {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.inline-detail {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.inline-detail .note { display: block; }
+
+.moon-glyph { display: block; flex: 0 0 auto; }
+
+.thumb-slot {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.thumb-empty {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--saffron) 30%, transparent), transparent 58%),
+    var(--bg-sunken);
+}
+
+.thumb-empty::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.thumb-wait { opacity: 0.72; }
+
+@media (max-width: 759px) {
+  .setting-prefix,
+  .setting-extra { display: none; }
+
+  .tonight .settings-bar .chip-btn {
+    padding: 7px 8px;
+    font-size: 0.82rem;
+    gap: 5px;
+  }
+
+  .tonight .settings-bar .setting-icon svg,
+  .tonight .settings-bar .chevron svg {
+    width: 16px;
+    height: 16px;
+  }
+}
 
 .theme-toggle {
   margin-left: auto;
@@ -1026,8 +1161,6 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   object-fit: cover;
   background: var(--bg-sunken);
 }
-
-.thumb-empty { display: inline-block; }
 
 @media (min-width: 760px) {
   .tonight .settings-bar { display: flex; }

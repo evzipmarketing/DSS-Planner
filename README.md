@@ -1,4 +1,4 @@
-# DSS Planner
+# DSS Astro Planner
 
 A session planner for deep-sky imaging. Pick a site and a night, see which catalogue objects are actually up, check cloud cover, and preview how the target sits on the sensor of the rig you are using.
 

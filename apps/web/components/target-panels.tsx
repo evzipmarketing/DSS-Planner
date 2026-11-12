@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   CATALOGUE_IDS,
   DEEP_SKY_TYPES,
@@ -176,7 +176,7 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
           <button
             type="button"
             className="target"
-            aria-pressed={selected?.id === item.object.id}
+            aria-expanded={selected?.id === item.object.id}
             onClick={() => chooseTarget(item.object.id)}
           >
             <span className="target-top">
@@ -206,12 +206,98 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
   );
 }
 
+const THUMB_SLOTS = 4;
+let thumbActive = 0;
+const thumbWaiters: Array<() => void> = [];
+
+function acquireThumb(): Promise<void> {
+  if (thumbActive < THUMB_SLOTS) {
+    thumbActive += 1;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    thumbWaiters.push(() => {
+      thumbActive += 1;
+      resolve();
+    });
+  });
+}
+
+function releaseThumb(): void {
+  thumbActive = Math.max(0, thumbActive - 1);
+  thumbWaiters.shift()?.();
+}
+
 function TargetThumb({ raDeg, decDeg, majorArcmin }: { raDeg: number; decDeg: number; majorArcmin: number | null }) {
-  const [failed, setFailed] = useState(false);
+  const host = useRef<HTMLSpanElement>(null);
+  const [phase, setPhase] = useState<"wait" | "show" | "empty">("wait");
   const fov = Math.min(6, Math.max(0.15, ((majorArcmin ?? 15) / 60) * 1.8));
   const src = `/api/sky?ra=${raDeg.toFixed(4)}&dec=${decDeg.toFixed(4)}&fov=${fov.toFixed(3)}&size=96`;
-  if (failed) return <span className="thumb thumb-empty" aria-hidden="true" />;
-  return <img className="thumb" alt="" width={40} height={40} loading="lazy" src={src} onError={() => setFailed(true)} />;
+
+  useEffect(() => {
+    const node = host.current;
+    if (!node) return;
+    let cancelled = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        void loadThumb();
+      },
+      { rootMargin: "280px" },
+    );
+    observer.observe(node);
+
+    async function loadThumb(): Promise<void> {
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt += 1) {
+        await acquireThumb();
+        if (cancelled) {
+          releaseThumb();
+          return;
+        }
+        const ok = await probeImage(src);
+        releaseThumb();
+        if (cancelled) return;
+        if (ok) {
+          setPhase("show");
+          return;
+        }
+        await delay(400 * (attempt + 1));
+      }
+      if (!cancelled) setPhase("empty");
+    }
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [src]);
+
+  return (
+    <span className="thumb-slot" ref={host}>
+      {phase === "show" ? (
+        <img className="thumb" alt="" width={40} height={40} src={src} />
+      ) : (
+        <span className={`thumb thumb-empty${phase === "wait" ? " thumb-wait" : ""}`} aria-hidden="true" />
+      )}
+    </span>
+  );
+}
+
+function probeImage(src: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    const finish = (ok: boolean) => resolve(ok);
+    image.onload = () => finish(image.naturalWidth > 0);
+    image.onerror = () => finish(false);
+    image.src = src;
+  });
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 export function ObjectCard() {
@@ -270,7 +356,7 @@ export function ObjectCard() {
             ) : null}
             {track ? (
               <div>
-                <dt>Usable tonight</dt>
+                <dt>Imageable tonight</dt>
                 <dd>{track.usableHours > 0 ? formatHours(track.usableHours) : "None"}</dd>
               </div>
             ) : null}
