@@ -189,8 +189,16 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
               <span className="tag">{bandLabel(item.band)}</span>
             </span>
             <span className="target-facts">
-              <span>{item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`}</span>
-              <span>{`${item.usableHours.toFixed(1)} h`}</span>
+              <Fact
+                label="Frame"
+                value={item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`}
+                tip="How much of the sensor the object fills, from its catalogued size and the current telescope, corrector, and camera."
+              />
+              <Fact
+                label="Imageable"
+                value={`${item.usableHours.toFixed(1)} h`}
+                tip="Hours tonight when the object is at least 30° up and the sun is below −18°."
+              />
             </span>
           </button>
           {detail && selected?.id === item.object.id ? <div className="inline-detail">{detail}</div> : null}
@@ -203,6 +211,18 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
         </button>
       ) : null}
     </Section>
+  );
+}
+
+function Fact({ label, value, tip }: { label: string; value: string; tip: string }) {
+  return (
+    <span className="fact">
+      <span className="fact-label">{label}</span>
+      <span className="fact-value">{value}</span>
+      <span className="fact-tip" role="tooltip">
+        {tip}
+      </span>
+    </span>
   );
 }
 

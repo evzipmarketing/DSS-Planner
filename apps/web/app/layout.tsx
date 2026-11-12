@@ -5,8 +5,8 @@ import "./globals.css";
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
 const sans = Outfit({ subsets: ["latin"], variable: "--font-ui" });
 
-const title = "DSS Astro Planner";
-const description = "Plan a deep-sky night: targets, altitude, framing, gear, and cloud cover.";
+const title = "astrocue";
+const description = "An astrophotography session planner by DarkSkyscapes.";
 
 export const metadata: Metadata = {
   title,

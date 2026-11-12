@@ -972,22 +972,100 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .minimal.tonight .target-facts span:not(:first-child) { display: inline; }
 
-.tonight .min-bar { flex-wrap: nowrap; }
+.tonight .min-bar {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  padding-top: 16px;
+}
 
-.tonight .min-bar strong {
-  font-size: clamp(1.12rem, 4.4vw, 1.35rem);
+.tonight .brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-copy { min-width: 0; }
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: block;
+}
+
+.brand-mark .planet,
+.brand-mark .orbit {
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.brand-mark .planet { stroke: var(--saffron); }
+
+.brand-mark .orbit { stroke: var(--sage); }
+
+.tonight .wordmark {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 520;
+  letter-spacing: -0.04em;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  line-height: 1;
   white-space: nowrap;
 }
 
+.wordmark-astro { color: var(--text); }
+
+.wordmark-cue { color: var(--saffron); }
+
+.tonight .tagline {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
 .tonight {
-  width: min(860px, 100%);
+  width: min(1120px, 100%);
   margin: 0 auto;
   padding: 0 20px 64px;
 }
 
+.sky-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0 0 28px;
+  color: var(--muted);
+}
+
+.bortle-line { color: var(--muted); }
+
 .tonight .settings-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tonight .settings-bar.settings-open { position: static; }
+
+.tonight .settings-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.tonight .settings-panel {
+  width: 100%;
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  padding: 4px 16px 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
 }
 
 .tonight .settings-bar .pop { min-width: 0; }
@@ -995,11 +1073,11 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 .tonight .settings-bar .chip-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   max-width: 100%;
-  min-height: 46px;
-  padding: 8px 12px;
+  min-height: 40px;
+  padding: 6px 10px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: var(--bg-raised);
@@ -1040,15 +1118,22 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .setting-text {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.35em;
   min-width: 0;
   line-height: 1.2;
+  overflow: hidden;
 }
 
-.setting-prefix { color: var(--muted); font-weight: 450; }
+.setting-prefix { color: var(--muted); font-weight: 450; white-space: nowrap; }
 
-.setting-value { font-weight: 560; overflow-wrap: anywhere; }
+.setting-value {
+  font-weight: 560;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .tonight .settings-bar .chevron { margin-left: auto; }
 
@@ -1118,7 +1203,46 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .thumb-wait { opacity: 0.72; }
 
-@media (max-width: 759px) {
+.minimal.tonight .target-facts span.fact-tip { display: none; }
+
+.tonight .fact {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28em;
+  white-space: nowrap;
+}
+
+.tonight .fact-label {
+  color: var(--faint);
+  font-weight: 450;
+  font-size: 0.78rem;
+}
+
+.minimal.tonight .target-facts .fact:hover span.fact-tip,
+.minimal.tonight .target-facts .fact:focus-within span.fact-tip {
+  display: block;
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 6px);
+  width: min(220px, 70vw);
+  padding: 8px 10px;
+  background: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 450;
+  line-height: 1.35;
+  white-space: normal;
+  text-align: left;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.tonight .fact:first-child .fact-tip { left: 0; }
+.tonight .fact:last-child .fact-tip { right: 0; }
+
+@media (max-width: 1023px) {
   .setting-prefix,
   .setting-extra { display: none; }
 
@@ -1162,9 +1286,20 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   background: var(--bg-sunken);
 }
 
-@media (min-width: 760px) {
-  .tonight .settings-bar { display: flex; }
-  .tonight .settings-bar .chip-btn { width: auto; }
+@media (min-width: 1024px) {
+  .tonight .settings-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .tonight .settings-row .pop {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .tonight .settings-row .setting-prefix,
+  .tonight .settings-row .setting-extra { display: inline; }
 }
 
 @media (prefers-reduced-motion: reduce) {

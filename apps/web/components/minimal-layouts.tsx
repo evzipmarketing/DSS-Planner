@@ -10,15 +10,22 @@ import { LocationPanel } from "./location-panel";
 import { ObjectCard, Shortlist } from "./target-panels";
 import { RigPanel } from "./rig-panel";
 import { WeatherPanel } from "./weather-panel";
+import { OrbitMark } from "./brand-mark";
 import { usePlannerState } from "./planner-context";
 import type { ThemeName } from "@/lib/storage";
 
+type SettingsPanel = "location" | "date" | "telescope" | "camera";
+
 export function TonightPage() {
   const planner = usePlannerState();
+  const [panel, setPanel] = useState<SettingsPanel | null>(null);
   const place = planner.site.name;
   const day = formatDay(planner.date);
   const scope = trimGear(planner.telescope?.name) ?? "None";
   const camera = cameraLabel(planner.camera?.name, planner.filterIds.length);
+  function toggle(next: SettingsPanel) {
+    setPanel((current) => (current === next ? null : next));
+  }
   return (
     <div className="minimal tonight">
       <a className="skip" href="#targets">
@@ -26,39 +33,69 @@ export function TonightPage() {
       </a>
       <header className="app-head">
         <div className="min-bar">
-          <strong>DSS Astro Planner</strong>
+          <div className="brand">
+            <OrbitMark />
+            <div className="brand-copy">
+              <p className="wordmark">
+                <span className="wordmark-astro">astro</span>
+                <span className="wordmark-cue">cue</span>
+              </p>
+              <p className="tagline">An astrophotography session planner by DarkSkyscapes</p>
+            </div>
+          </div>
           <ThemeToggle />
         </div>
-        <div className="settings-bar">
-          <Control icon={<PinIcon />} prefix="Location" value={place} extra={` · Bortle ${planner.bortle}`} label={`Location, ${place}, Bortle ${planner.bortle}`}>
-            <LocationPanel />
-            <BortlePanel />
-          </Control>
-          <Control icon={<CalendarIcon />} prefix="Date" value={day} label={`Date, ${day}`}>
-            <DatePanel />
-            <div className="day-row">
-              <button type="button" className="day" onClick={() => planner.setDate(addDaysIso(planner.date, -1))}>
-                Previous day
-              </button>
-              <button type="button" className="day" onClick={() => planner.setDate(addDaysIso(planner.date, 1))}>
-                Next day
-              </button>
+        <div className={`settings-bar${panel ? " settings-open" : ""}`}>
+          <div className="settings-row">
+            <Control
+              icon={<PinIcon />}
+              prefix="Location"
+              value={place}
+              label={`Location, ${place}, Bortle ${planner.bortle}`}
+              open={panel === "location"}
+              onToggle={() => toggle("location")}
+            />
+            <Control
+              icon={<CalendarIcon />}
+              prefix="Date"
+              value={day}
+              label={`Date, ${day}`}
+              open={panel === "date"}
+              onToggle={() => toggle("date")}
+            />
+            <Control
+              icon={<TelescopeIcon />}
+              prefix="Telescope"
+              value={scope}
+              label={`Telescope, ${scope}`}
+              open={panel === "telescope"}
+              onToggle={() => toggle("telescope")}
+            />
+            <Control
+              icon={<CameraIcon />}
+              prefix="Camera"
+              value={camera}
+              label={`Camera, ${camera}`}
+              open={panel === "camera"}
+              onToggle={() => toggle("camera")}
+            />
+          </div>
+          {panel ? (
+            <div className="settings-panel" id="settings-panel" role="region" aria-label={panelLabel(panel)}>
+              <PanelBody panel={panel} />
             </div>
-          </Control>
-          <Control icon={<TelescopeIcon />} prefix="Telescope" value={scope} label={`Telescope, ${scope}`}>
-            <RigPanel part="telescope" />
-          </Control>
-          <Control icon={<CameraIcon />} prefix="Camera" value={camera} label={`Camera, ${camera}`}>
-            <RigPanel part="camera" />
-          </Control>
+          ) : null}
         </div>
       </header>
       <section className="hero">
         <h1>Tonight from {planner.site.name}</h1>
-        <p>
+        <div className="sky-meta">
           <WeatherPanel plain />
+          <span className="bortle-line" title="Sky brightness class for this site. Change it from Location.">
+            Bortle {planner.bortle}
+          </span>
           <LookUpNote />
-        </p>
+        </div>
       </section>
       <div id="targets">
         <Shortlist
@@ -79,35 +116,32 @@ function Control({
   icon,
   prefix,
   value,
-  extra,
   label,
-  children,
+  open,
+  onToggle,
 }: {
   icon: ReactNode;
   prefix: string;
   value: string;
-  extra?: string;
   label: string;
-  children: ReactNode;
+  open: boolean;
+  onToggle: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
     <span className="pop">
       <button
         type="button"
         className="chip-btn"
         aria-label={label}
+        title={label}
         aria-expanded={open}
-        aria-haspopup="dialog"
-        onClick={() => setOpen((current) => !current)}
+        aria-controls={open ? "settings-panel" : undefined}
+        onClick={onToggle}
       >
         <span className="setting-icon">{icon}</span>
         <span className="setting-text">
           <span className="setting-prefix">{prefix}</span>
-          <span className="setting-value">
-            {value}
-            {extra ? <span className="setting-extra">{extra}</span> : null}
-          </span>
+          <span className="setting-value">{value}</span>
         </span>
         <span className="chevron" aria-hidden="true">
           <svg viewBox="0 0 24 24">
@@ -115,9 +149,60 @@ function Control({
           </svg>
         </span>
       </button>
-      {open ? <div className="pop-panel">{children}</div> : null}
     </span>
   );
+}
+
+function PanelBody({ panel }: { panel: SettingsPanel }) {
+  const planner = usePlannerState();
+  switch (panel) {
+    case "location":
+      return (
+        <>
+          <LocationPanel />
+          <BortlePanel />
+        </>
+      );
+    case "date":
+      return (
+        <>
+          <DatePanel />
+          <div className="day-row">
+            <button type="button" className="day" onClick={() => planner.setDate(addDaysIso(planner.date, -1))}>
+              Previous day
+            </button>
+            <button type="button" className="day" onClick={() => planner.setDate(addDaysIso(planner.date, 1))}>
+              Next day
+            </button>
+          </div>
+        </>
+      );
+    case "telescope":
+      return <RigPanel part="telescope" />;
+    case "camera":
+      return <RigPanel part="camera" />;
+    default: {
+      const unexpected: never = panel;
+      return unexpected;
+    }
+  }
+}
+
+function panelLabel(panel: SettingsPanel): string {
+  switch (panel) {
+    case "location":
+      return "Location";
+    case "date":
+      return "Date";
+    case "telescope":
+      return "Telescope";
+    case "camera":
+      return "Camera";
+    default: {
+      const unexpected: never = panel;
+      return unexpected;
+    }
+  }
 }
 
 function PinIcon() {
