@@ -29,6 +29,20 @@ J2000 columns computed by VizieR are not part of the original papers.
 
 `scripts/herschel400.txt` is the 400 NGC numbers of the Astronomical League Herschel list. `scripts/gum-crosswalk.tsv` is 17 Gum-number to NGC/IC/Sh2/RCW links. Neither file is a copy of a descriptive catalogue.
 
+## Bortle estimate
+
+`src/black-marble.ts` is a 1° grid of the 90th-percentile brightness in each cell of the NASA Visible Earth image “Earth at Night / Black Marble 2016” grayscale, 0.1° JPEG (`BlackMarble_2016_01deg_gray.jpg`). That image is a US government work derived from VIIRS Day/Night Band composites and is in the public domain. NASA does not endorse this project.
+
+The JPEG is a stretched visualisation, not a calibrated radiance or SQM map. Bright cities are clipped, and a black cell cannot separate a class 1 site from empty ocean, so a black cell is reported as Bortle 2. The class boundaries are a simple threshold on that relative brightness. The number in the app is labelled an estimate. World Atlas 2015 was not bundled: its supplement is CC BY-NC 4.0.
+
+## Gear
+
+`src/gear.ts` is a curated list of nominal manufacturer specifications (aperture, focal length, sensor size, pixel count). Pixel size is derived from sensor size and resolution. Read noise is a planning default, not a lab measurement. The list was not scraped from AstroBin or from any site behind a login.
+
+## Place names
+
+Forward search uses the Open-Meteo Geocoding API (CC BY 4.0). Reverse names for a browser location use OpenStreetMap Nominatim. Time zones come from Open-Meteo.
+
 ## Not included
 
 - The full HyperLEDA/PGC galaxy database.

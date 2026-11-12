@@ -5,11 +5,12 @@ import { defaultSite, locations } from "@dss/data";
 export type Vision = "ink" | "red";
 
 export type StoredSession = {
-  version: 1;
+  version: 2;
   vision: Vision;
   locationId: string;
   customSite?: Site;
   bortle: number;
+  bortleMode: "estimate" | "manual";
   telescopeId: string;
   reducer: number;
   cameraId: string;
@@ -41,14 +42,15 @@ export function loadSession(): StoredSession | null {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<StoredSession>;
-    if (parsed.version !== 1) return null;
+    const parsed = JSON.parse(raw) as Omit<Partial<StoredSession>, "version"> & { version?: number };
+    if (parsed.version !== 1 && parsed.version !== 2) return null;
     return {
-      version: 1,
+      version: 2,
       vision: parsed.vision === "red" ? "red" : "ink",
       locationId: typeof parsed.locationId === "string" ? parsed.locationId : defaultSite.id,
       customSite: parseSite(parsed.customSite),
       bortle: clampInt(parsed.bortle, 1, 9, 7),
+      bortleMode: parsed.version === 2 && parsed.bortleMode === "estimate" ? "estimate" : "manual",
       telescopeId: typeof parsed.telescopeId === "string" ? parsed.telescopeId : "",
       reducer: clampNum(parsed.reducer, 0.25, 5, 1),
       cameraId: typeof parsed.cameraId === "string" ? parsed.cameraId : "",

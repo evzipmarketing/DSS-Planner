@@ -7,6 +7,7 @@ export * from "./optics";
 export * from "./integration";
 export * from "./altitude";
 export * from "./ranking";
+export * from "./planning";
 export * from "./catalogue";
 export * from "./weather";
 export * from "./panchang";

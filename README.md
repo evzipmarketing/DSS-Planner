@@ -78,13 +78,16 @@ Objects that share a designation are one record. M42 carries NGC 1976, LBN 974, 
 | VizieR VII/26D UGC Nilson 1973 | Galaxies already tied to an NGC/IC object, plus otherwise new UGC galaxies with photographic magnitude 15 or brighter, or a major axis of at least 2′. | Via CDS. |
 | PGC | Alias only, and only the PGC numbers OpenNGC already publishes. | The full HyperLEDA/PGC database is not redistributed here: it is enormous, and its terms are for research use rather than a clear open bulk licence. |
 | DSS2 colour | Framing plate | Digitized Sky Survey, STScI/NASA, coloured by CDS. |
-| [Open-Meteo](https://open-meteo.com/) | Cloud, wind, temperature | [CC BY 4.0](https://open-meteo.com/en/license). |
+| [Open-Meteo](https://open-meteo.com/) | Cloud, wind, temperature, and time zone | [CC BY 4.0](https://open-meteo.com/en/license). |
+| [NASA Black Marble 2016](https://visibleearth.nasa.gov/images/144898/earth-at-night-black-marble-2016-color-maps) | Coarse Bortle estimate | US government work, public domain. The class is an estimate from a stretched night-lights image, not a sky-quality meter. See `packages/data/NOTICE.md`. |
+| [Open-Meteo Geocoding](https://open-meteo.com/en/docs/geocoding-api) | Place search | [CC BY 4.0](https://open-meteo.com/en/license). |
+| [Nominatim](https://nominatim.org/) | Reverse place name for the browser location | [ODbL](https://www.openstreetmap.org/copyright). |
 
 VizieR positions tagged `_RAJ2000` / `_DEJ2000` are computed by CDS and are not part of the original papers. Rebuild with `packages/data/scripts/build_catalogue.py` after refreshing the source files. Counts from the committed extract are in `packages/data/NOTICE.md`.
 
 ## Panchang
 
-`packages/core/src/panchang.ts` exports `PanchangClient` and `UnconfiguredPanchangClient`. The UI does not invent tithi or nakshatra. Wire `getDay` to the owner’s engine in a later phase; the request already carries the planner’s date, coordinates, and timezone.
+`packages/core/src/panchang.ts` exports `PanchangClient` and `UnconfiguredPanchangClient`. The UI does not call the Panchang client. Tithi and nakshatra are not shown.
 
 ## Phase 2 — accounts
 

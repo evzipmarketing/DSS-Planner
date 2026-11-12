@@ -5,10 +5,10 @@ import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
 export function ExposurePlan() {
-  const { exposures, camera, bortle, optics } = usePlannerState();
+  const { exposures, camera } = usePlannerState();
   const narrowOnColour = camera?.sensor === "colour" && exposures.some((item) => isNarrowband(item.filter.kind));
   return (
-    <Section index="09" title="Exposure">
+    <Section index="10" title="Integration">
       {exposures.length === 0 ? <p className="note">Choose at least one filter.</p> : null}
       <ul className="exposures">
         {exposures.map((item) => (
@@ -18,8 +18,9 @@ export function ExposurePlan() {
               {filterKindLabel(item.filter.kind)} · {item.filter.bandpassNm} nm
             </span>
             <span>Sub {formatSub(item.subExposureSeconds)}</span>
+            <span>Tonight {formatHours(item.tonightHours)}</span>
             <span>
-              Stack {formatHours(item.totalHours)} · {item.subCount} frames
+              Full stack {formatHours(item.totalHours)} · {item.subCount} frames
             </span>
           </li>
         ))}
@@ -29,12 +30,11 @@ export function ExposurePlan() {
           This camera is a colour sensor. A narrowband filter still works, but only the matching pixels collect that line.
         </p>
       ) : null}
-      <p className="note">
-        Subs are long enough for sky noise to reach about five times the nominal read noise, under a Bortle {bortle} sky
-        {optics ? ` at f/${optics.focalRatio.toFixed(1)}` : ""}. The stack length is anchored at Bortle 4 and f/5, then
-        stretched for a brighter sky and a slower focal ratio. It is a planning guess, not a signal-to-noise model of one
-        object.
-      </p>
+      {exposures.map((item) => (
+        <p key={`${item.filter.id}-why`} className="note">
+          <strong>{item.filter.name}.</strong> {item.explanation}
+        </p>
+      ))}
     </Section>
   );
 }

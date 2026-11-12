@@ -1,16 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import {
   CATALOGUE_IDS,
   DEEP_SKY_TYPES,
+  TARGET_LIST_FILTERS,
+  bandLabel,
+  brightnessHintLabel,
   catalogueLabel,
   formatArcmin,
   formatCatalogueId,
+  formatClock,
   formatDeclination,
   formatHours,
   formatRightAscension,
   formatSignedDegrees,
+  frameFitHint,
+  frameFitLabel,
+  listFilterLabel,
   objectTitle,
+  primaryDesignation,
   objectTypeLabel,
   type CatalogueId,
   type DeepSkyType,
@@ -20,9 +29,73 @@ import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
 export function Shortlist() {
-  const { shortlist, scoring, catalogue, selected, chooseTarget, targetQuery, setTargetQuery, extendedReady } = usePlannerState();
+  const {
+    shortlist,
+    scoring,
+    catalogue,
+    selected,
+    chooseTarget,
+    targetQuery,
+    setTargetQuery,
+    extendedReady,
+    listFilter,
+    setListFilter,
+    site,
+    query,
+    setQuery,
+    results,
+  } = usePlannerState();
+  const [shown, setShown] = useState(20);
+  const visible = shortlist.slice(0, shown);
   return (
-    <Section index="03" title="Best targets tonight">
+    <Section index="06" title="Best targets tonight">
+      <div className="target-tools">
+        <div className="tabs" aria-label="Target filters">
+          {TARGET_LIST_FILTERS.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              className="tab"
+              aria-pressed={listFilter === filter}
+              onClick={() => {
+                setListFilter(filter);
+                setShown(20);
+              }}
+            >
+              {listFilterLabel(filter)}
+            </button>
+          ))}
+        </div>
+        <label className="field">
+          Name or catalogue id
+          <input
+            value={query}
+            placeholder="M42, NGC 224, Horsehead"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+      </div>
+      {!catalogue ? <p className="note">Loading the deep-sky catalogue…</p> : null}
+      <div className="rows">
+        {results.map((object) => (
+          <button key={object.id} type="button" className="row" onClick={() => chooseTarget(object.id)}>
+            <span className="row-index">{primaryDesignation(object)}</span>
+            <span>
+              <strong>{objectTitle(object)}</strong>
+              <small>
+                {objectTypeLabel(object.type)}
+                {object.constellation ? ` · ${constellationName(object.constellation)}` : ""}
+              </small>
+            </span>
+            <span className="meta">{object.magnitude == null ? "—" : object.magnitude.toFixed(1)}</span>
+          </button>
+        ))}
+      </div>
+      {catalogue && query.trim() && results.length === 0 ? (
+        <p className="note">
+          {extendedReady ? "No match in the loaded catalogues." : "No match in the core list yet. The extended catalogues are still loading."}
+        </p>
+      ) : null}
       <details className="drawer">
         <summary>Type, catalogue, magnitude, size</summary>
         <div className="fields">
@@ -98,88 +171,78 @@ export function Shortlist() {
           {!extendedReady ? " The extended catalogues are still loading." : ""}
         </p>
       </details>
-      {!catalogue || scoring ? <p className="note">Scoring objects that clear 30° in astronomical darkness…</p> : null}
+      {!catalogue || scoring ? <p className="note">Scoring objects for this site, date, and rig…</p> : null}
       {catalogue && !scoring && shortlist.length === 0 ? (
-        <p className="note">Nothing in the shortlist stays up. Try another night or a different site.</p>
+        <p className="note">Nothing in this view clears the horizon. Try another night, site, or filter.</p>
       ) : null}
       <div className="rows">
-        {shortlist.map((item, index) => (
+        {visible.map((item) => (
           <button
             key={item.object.id}
             type="button"
-            className="row"
+            className="target"
             aria-pressed={selected?.id === item.object.id}
             onClick={() => chooseTarget(item.object.id)}
           >
-            <span className="row-index">{String(index + 1).padStart(2, "0")}</span>
-            <span>
+            <span className="target-top">
               <strong>{objectTitle(item.object)}</strong>
-              <small>
-                {formatCatalogueId(item.object.id)} · {objectTypeLabel(item.object.type)}
-              </small>
+              {objectTitle(item.object) === primaryDesignation(item.object) ? null : (
+                <span>{primaryDesignation(item.object)}</span>
+              )}
+              <span>{objectTypeLabel(item.object.type)}</span>
+              <span className="tag">{bandLabel(item.band)}</span>
+              <span className={`brightness brightness-${item.brightness}`}>{brightnessHintLabel(item.brightness)}</span>
             </span>
-            <span className="meta">
-              {Math.round(item.maxAltitudeDeg)}°
-              <br />
-              {formatHours(item.usableHours)}
+            <span className="target-facts">
+              <span>Usable {formatHours(item.usableHours)}</span>
+              <span>Above horizon {formatHours(item.hoursAboveHorizon)}</span>
+              <span>
+                Frame {item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`} · {frameFitLabel(item.frameFit)}
+              </span>
+              <span>{riseSet(item, site.timezone)}</span>
             </span>
+            <span className="note">{frameFitHint(item.frameFit)}</span>
+            {item.moonHint ? <span className="hint">{item.moonHint}</span> : null}
           </button>
         ))}
       </div>
+      {shortlist.length > shown ? (
+        <button type="button" className="ghost show-more" onClick={() => setShown((count) => count + 20)}>
+          Show more
+        </button>
+      ) : null}
     </Section>
   );
 }
 
-export function CatalogueSearch() {
-  const { query, setQuery, results, chooseTarget, catalogue, extendedReady } = usePlannerState();
-  return (
-    <Section index="04" title="Catalogue">
-      <label className="field">
-        Name or catalogue id
-        <input
-          value={query}
-          placeholder="M42, NGC 224, Horsehead"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
-      {!catalogue ? <p className="note">Loading the deep-sky catalogue…</p> : null}
-      <div className="rows" style={{ marginTop: 10 }}>
-        {results.map((object) => (
-          <button key={object.id} type="button" className="row" onClick={() => chooseTarget(object.id)}>
-            <span className="row-index">{formatCatalogueId(object.id)}</span>
-            <span>
-              <strong>{objectTitle(object)}</strong>
-              <small>
-                {objectTypeLabel(object.type)}
-                {object.constellation ? ` · ${constellationName(object.constellation)}` : ""}
-              </small>
-            </span>
-            <span className="meta">{object.magnitude == null ? "—" : object.magnitude.toFixed(1)}</span>
-          </button>
-        ))}
-      </div>
-      {catalogue && query.trim() && results.length === 0 ? (
-        <p className="note">{extendedReady ? "No match in the loaded catalogues." : "No match in the core list yet. The extended catalogues are still loading."}</p>
-      ) : null}
-    </Section>
-  );
+function riseSet(
+  item: { rise: Date | null; set: Date | null; upAtStart: boolean; alwaysUp: boolean; hoursAboveHorizon: number },
+  timeZone: string,
+): string {
+  if (item.alwaysUp) return "Circumpolar";
+  if (item.hoursAboveHorizon <= 0) return "Below the horizon";
+  const parts: string[] = [];
+  if (item.upAtStart) parts.push("Up at dusk");
+  if (item.rise) parts.push(`Rises ${formatClock(item.rise, timeZone)}`);
+  if (item.set) parts.push(`Sets ${formatClock(item.set, timeZone)}`);
+  return parts.join(" · ") || "Above the horizon";
 }
 
 export function ObjectCard() {
   const { selected, track } = usePlannerState();
   return (
-    <Section index="05" title="Object">
+    <Section index="07" title="Object">
       {!selected ? (
         <p className="note">Search a catalogue id or a common name, or take one from the shortlist.</p>
       ) : (
         <>
           <h3 style={{ margin: "0 0 10px", fontFamily: "var(--font-display)", fontWeight: 520 }}>
-            {objectTitle(selected)}
+            {objectTitle(selected)} <span className="tag">{primaryDesignation(selected)}</span>
           </h3>
           <dl className="facts">
             <div>
               <dt>Catalogue</dt>
-              <dd>{formatCatalogueId(selected.id)}</dd>
+              <dd>{primaryDesignation(selected)}</dd>
             </div>
             <div>
               <dt>Type</dt>

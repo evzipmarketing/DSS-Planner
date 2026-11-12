@@ -11,6 +11,7 @@ export type TrackSample = {
   targetAltitude: number;
   moonAltitude: number;
   sunAltitude: number;
+  moonSeparationDeg: number;
   usable: boolean;
 };
 
@@ -94,13 +95,18 @@ export function buildNightTrack(input: {
   let maxTargetAltitude = -90;
   let maxTargetTime: Date | null = null;
 
+  const targetVector = equatorialUnit(input.raDeg, input.decDeg);
   for (const time of instants) {
+    const astroTime = Astronomy.MakeTime(time);
     const targetAltitude = apparentAltitude(input.raDeg, input.decDeg, time, observer);
+    const moonEq = Astronomy.Equator(Astronomy.Body.Moon, astroTime, observer, false, true);
+    const moonVector = equatorialUnit(moonEq.ra * 15, moonEq.dec);
     const moonAltitude = bodyAltitude(Astronomy.Body.Moon, time, observer);
     const sunAltitude = bodyAltitude(Astronomy.Body.Sun, time, observer);
+    const moonSeparationDeg = angularSeparationDeg(targetVector, moonVector);
     const usable =
       targetAltitude >= USABLE_MIN_ALTITUDE_DEG && sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG;
-    samples.push({ time, targetAltitude, moonAltitude, sunAltitude, usable });
+    samples.push({ time, targetAltitude, moonAltitude, sunAltitude, moonSeparationDeg, usable });
     if (targetAltitude > maxTargetAltitude) {
       maxTargetAltitude = targetAltitude;
       maxTargetTime = time;
@@ -150,22 +156,42 @@ function mergeUsable(samples: TrackSample[], stepMinutes: number): TimeInterval[
 export type HorizonRotation = {
   time: Date;
   sunAltitude: number;
+  moonAltitude: number;
+  moonIlluminatedFraction: number;
+  moonVector: { x: number; y: number; z: number };
   matrix: number[][];
 };
 
 /** Shared sun altitudes and EQJ→horizon matrices for scoring many targets. */
 export function nightHorizonGrid(site: Site, dateIso: string, stepMinutes: number): HorizonRotation[] {
   const observer = observerFor(site);
-  return nightInstants(dateIso, site.timezone, stepMinutes).map((time) => {
+  const instants = nightInstants(dateIso, site.timezone, stepMinutes);
+  const mid = instants[Math.floor(instants.length / 2)] ?? new Date();
+  const moonIlluminatedFraction = Astronomy.Illumination(Astronomy.Body.Moon, Astronomy.MakeTime(mid)).phase_fraction;
+  return instants.map((time) => {
     const astroTime = Astronomy.MakeTime(time);
     const sun = Astronomy.Equator(Astronomy.Body.Sun, astroTime, observer, true, true);
     const sunAltitude = Astronomy.Horizon(astroTime, observer, sun.ra, sun.dec, "normal").altitude;
+    const matrix = Astronomy.Rotation_EQJ_HOR(astroTime, observer).rot.map((row) => [...row]);
+    const moonEq = Astronomy.Equator(Astronomy.Body.Moon, astroTime, observer, false, true);
+    const moonVector = equatorialUnit(moonEq.ra * 15, moonEq.dec);
     return {
       time,
       sunAltitude,
-      matrix: Astronomy.Rotation_EQJ_HOR(astroTime, observer).rot.map((row) => [...row]),
+      moonAltitude: geometricAltitude(moonVector, matrix),
+      moonIlluminatedFraction,
+      moonVector,
+      matrix,
     };
   });
+}
+
+export function angularSeparationDeg(
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number },
+): number {
+  const dot = a.x * b.x + a.y * b.y + a.z * b.z;
+  return Math.acos(Math.min(1, Math.max(-1, dot))) * DEG;
 }
 
 export function geometricAltitude(vector: { x: number; y: number; z: number }, matrix: number[][]): number {
