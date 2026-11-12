@@ -972,6 +972,11 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .minimal.tonight .target-facts span:not(:first-child) { display: inline; }
 
+.minimal.tonight .target-facts span.fact {
+  display: inline-flex;
+  gap: 0.4em;
+}
+
 .tonight .min-bar {
   flex-wrap: nowrap;
   align-items: flex-start;
