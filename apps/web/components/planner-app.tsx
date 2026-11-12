@@ -48,8 +48,8 @@ export function PlannerApp() {
           </div>
         </main>
         <footer className="footer">
-          Positions and names for NGC, IC, and Messier objects are reduced from OpenNGC (CC BY-SA 4.0, Mattia Verga). Dark
-          nebulae are from Lynds 1962 via VizieR. Gear figures are nominal manufacturer specifications.
+          NGC and IC data are from OpenNGC (CC BY-SA 4.0, Mattia Verga). Other catalogues are cited in the README.
+          Gear figures are nominal manufacturer specifications.
         </footer>
       </div>
     </PlannerProvider>

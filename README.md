@@ -53,15 +53,34 @@ Sampling compares arcseconds per pixel with an assumed seeing that only tracks B
 
 ## Data and licences
 
-| Data | Use in the app | Licence / credit |
-| --- | --- | --- |
-| [OpenNGC](https://github.com/mattiaverga/OpenNGC) NGC, IC, addendum | Positions, sizes, magnitudes, common names, Messier numbers | CC BY-SA 4.0, Mattia Verga. The JSON extract stays under CC BY-SA 4.0. See `packages/data/NOTICE.md`. |
-| VizieR VII/7A, Lynds 1962 | Dark nebulae, J2000 positions computed by VizieR, opacity, equivalent diameter from area | Cite Lynds, ApJS 7, 1, and CDS VizieR (DOI 10.26093/cds/vizier). |
-| DSS2 colour | Framing plate via hips2fits or HiPS tiles | Digitized Sky Survey, STScI/NASA, coloured and healpix-indexed by CDS. |
-| [Open-Meteo](https://open-meteo.com/) | Hourly cloud, precipitation probability, wind, temperature | [CC BY 4.0](https://open-meteo.com/en/license). No API key. |
-| Seed telescopes, cameras, filters | Nominal published specifications | Figures are planning values, not lab measurements. Read noise is a high-gain placeholder. |
+The catalogue is two JSON files so the app can paint from the core list and load the rest in the background. `core.json` is the objects an imager usually searches first (Messier, Caldwell, named nebulae and clusters, Sharpless, Barnard, Lynds bright, van den Bergh, Abell planetaries, Arp, RCW, Cederblad, the Herschel 400, and the brighter NGC/IC). `extended.json` is the remaining NGC/IC, Lynds dark nebulae, Abell galaxy clusters, and UGC galaxies that pass the cut. Both are static imports behind separate package entry points (`@dss/data/catalogue` and `@dss/data/catalogue-extended`), so a future Expo app can load them the same way.
 
-Messier 24, 40, 73, and 102 are absent: OpenNGC types them outside the deep-sky classes kept in the extract. Rebuild with `packages/data/scripts/build_catalogue.py` if you refresh the upstream files.
+Objects that share a designation are one record. M42 carries NGC 1976, LBN 974, Sh2-281, and Ced 55d. Search matches any alias or common name. The shortlist filters by object type, catalogue, faintest magnitude, and minimum size; with the filters left empty it still prefers named and bright targets that actually clear 30°.
+
+| Data | What landed in the files | Licence / credit |
+| --- | --- | --- |
+| [OpenNGC](https://github.com/mattiaverga/OpenNGC) | Every NGC and IC row, every type, plus the addendum. PGC and UGC numbers already printed there are kept as aliases. | CC BY-SA 4.0, Mattia Verga. The JSON extract stays under the same terms. |
+| Messier | All 110. M24 is the Sagittarius star cloud (NGC 6603 stays separate). M40 is Winnecke 4. M73 / NGC 6994 is an asterism. M102 is NGC 5866, the Spindle, not a second copy of M101. | Historical catalogue. Cross-ids from OpenNGC except the M102 convention, which is applied here. |
+| Caldwell | All 109, from OpenNGC `C` identifiers and the addendum. | Numbers as published; positions from OpenNGC (CC BY-SA 4.0). |
+| VizieR VII/20 Sharpless 1959 | H II regions. A Sharpless number is attached to a nebula already in the catalogue when the centre is clearly nearest that nebula. | Sharpless, ApJS 4, 257. CDS VizieR (DOI 10.26093/cds/vizier). |
+| VizieR VII/220A Barnard 1927 | 349 dark nebulae. | Barnard 1927, via CDS. |
+| VizieR VII/7A Lynds 1962 | Dark nebulae (LDN), in the extended file. | Lynds, ApJS 7, 1, via CDS. |
+| VizieR VII/9 Lynds 1965 | Bright nebulae (LBN). | Lynds, ApJS 12, 163, via CDS. |
+| VizieR VII/21B van den Bergh 1966 | Reflection nebulae (vdB). | van den Bergh, AJ 71, 990, via CDS. |
+| VizieR V/84 Strasbourg-ESO PN | Abell planetary nebulae whose SEC name is `A n` and whose discoverer line cites Abell. | Acker et al. 1992, via CDS. Not the unpublished remainder of Abell's list. |
+| VizieR VII/110A Abell+ 1989 | Abell galaxy clusters (ACO), extended file. | Abell, Corwin, Olowin 1989, via CDS. |
+| VizieR B/ocl Dias+ 2002–2015 | Collinder, Melotte, Trumpler, and Stock clusters **when Dias names the cluster that way**. A cluster Dias lists only as NGC or IC keeps that name and does not grow a second number. | Dias et al., via CDS. |
+| VizieR VII/192 Arp / Webb 1996 | Arp peculiar galaxies, merged onto NGC or UGC when the name says so. | Arp 1966; positions from Webb 1996, via CDS. |
+| Herschel 400 | The 400 NGC numbers of the Astronomical League list, stored as a shared tag on those NGC objects. | List of NGC numbers, not a separate coordinate catalogue. |
+| VizieR VII/216 RCW | Rodgers, Campbell, Whiteoak 1960. | Via CDS. |
+| VizieR VII/231 Cederblad 1946 | Bright diffuse nebulae, including lettered parts. | Via CDS. |
+| Gum | Only 17 published cross-ids (Gum number to NGC, IC, Sh2, or RCW). | The 1955 Gum coordinate catalogue is not a standalone VizieR table we could download. Gum 12, the Gum Nebula itself, has no NGC/RCW hook in that short crosswalk, so it is not a separate record. |
+| VizieR VII/26D UGC Nilson 1973 | Galaxies already tied to an NGC/IC object, plus otherwise new UGC galaxies with photographic magnitude 15 or brighter, or a major axis of at least 2′. | Via CDS. |
+| PGC | Alias only, and only the PGC numbers OpenNGC already publishes. | The full HyperLEDA/PGC database is not redistributed here: it is enormous, and its terms are for research use rather than a clear open bulk licence. |
+| DSS2 colour | Framing plate | Digitized Sky Survey, STScI/NASA, coloured by CDS. |
+| [Open-Meteo](https://open-meteo.com/) | Cloud, wind, temperature | [CC BY 4.0](https://open-meteo.com/en/license). |
+
+VizieR positions tagged `_RAJ2000` / `_DEJ2000` are computed by CDS and are not part of the original papers. Rebuild with `packages/data/scripts/build_catalogue.py` after refreshing the source files. Counts from the committed extract are in `packages/data/NOTICE.md`.
 
 ## Panchang
 

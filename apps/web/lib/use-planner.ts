@@ -12,6 +12,7 @@ import {
   sensorDisagreement,
   suggestExposure,
   buildNightTrack,
+  EMPTY_TARGET_QUERY,
   type Camera,
   type DeepSkyObject,
   type ExposureSuggestion,
@@ -20,6 +21,7 @@ import {
   type RankedTarget,
   type SamplingAdvice,
   type Site,
+  type TargetQuery,
   type Telescope,
   type FieldOfView,
 } from "@dss/core";
@@ -51,7 +53,9 @@ export type Optics = {
 };
 
 export function usePlanner() {
-  const [catalogue, setCatalogue] = useState<DeepSkyObject[] | null>(null);
+  const [coreCatalogue, setCoreCatalogue] = useState<DeepSkyObject[] | null>(null);
+  const [extendedCatalogue, setExtendedCatalogue] = useState<DeepSkyObject[] | null>(null);
+  const [targetQuery, setTargetQuery] = useState<TargetQuery>(EMPTY_TARGET_QUERY);
   const [vision, setVision] = useState<Vision>("ink");
   const [site, setSite] = useState<Site>(defaultSite);
   const [date, setDate] = useState(() => {
@@ -100,7 +104,10 @@ export function usePlanner() {
   useEffect(() => {
     let cancelled = false;
     void import("@dss/data/catalogue").then((module) => {
-      if (!cancelled) setCatalogue(module.deepSkyCatalogue);
+      if (!cancelled) setCoreCatalogue(module.deepSkyCore);
+    });
+    void import("@dss/data/catalogue-extended").then((module) => {
+      if (!cancelled) setExtendedCatalogue(module.deepSkyExtended);
     });
     return () => {
       cancelled = true;
@@ -180,7 +187,11 @@ export function usePlanner() {
     );
   }, [activeFilters, telescope, camera, optics, bortle]);
 
-  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}`;
+  const catalogue = useMemo(() => {
+    if (!coreCatalogue) return null;
+    return extendedCatalogue ? [...coreCatalogue, ...extendedCatalogue] : coreCatalogue;
+  }, [coreCatalogue, extendedCatalogue]);
+  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${extendedCatalogue ? "extended" : "core"}`;
   const shortlist = useMemo(
     () => (ranked?.key === shortlistKey ? ranked.items : []),
     [ranked, shortlistKey],
@@ -192,13 +203,13 @@ export function usePlanner() {
     let cancelled = false;
     const timer = window.setTimeout(() => {
       if (cancelled) return;
-      setRanked({ key: shortlistKey, items: rankTargets(catalogue, site, date) });
+      setRanked({ key: shortlistKey, items: rankTargets(catalogue, site, date, 12, targetQuery) });
     }, 16);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [hydrated, catalogue, site, date, shortlistKey]);
+  }, [hydrated, catalogue, site, date, shortlistKey, targetQuery]);
 
   const selected = useMemo(() => {
     const chosen = catalogue?.find((object) => object.id === selectedId);
@@ -273,6 +284,9 @@ export function usePlanner() {
 
   return {
     catalogue,
+    extendedReady: extendedCatalogue != null,
+    targetQuery,
+    setTargetQuery,
     vision,
     setVision,
     site,

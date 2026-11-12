@@ -21,21 +21,40 @@ export function formatDeclination(degrees: number): string {
   return `${sign}${pad(deg)}° ${pad(minutes)}′ ${pad(seconds)}″`;
 }
 
+function designationNumber(match: RegExpMatchArray): string {
+  return (match[1] ?? "").replace(/^0+(?=\d)/, "");
+}
+
 export function formatCatalogueId(id: string): string {
-  const match = /^([A-Za-z]+)0*(\d.*)$/.exec(id);
-  if (!match?.[1] || !match[2]) return id;
-  const prefixes: Record<string, string> = {
-    ngc: "NGC",
-    ic: "IC",
-    ldn: "LDN",
-    mel: "Mel",
-    b: "B",
-    c: "C",
-    cr: "Cr",
-    sh: "Sh",
-  };
-  const prefix = prefixes[match[1].toLowerCase()] ?? match[1];
-  return `${prefix} ${match[2]}`;
+  const rules: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
+    [/^NGC(\d+[A-Z]?)$/, (match) => `NGC ${designationNumber(match)}`],
+    [/^IC(\d+[A-Z]?)$/, (match) => `IC ${designationNumber(match)}`],
+    [/^M(\d+)$/, (match) => `M${designationNumber(match)}`],
+    [/^C(\d+)$/, (match) => `C${designationNumber(match)}`],
+    [/^Sh2-(\d+)$/, (match) => `Sh2-${designationNumber(match)}`],
+    [/^LBN(\d+)$/, (match) => `LBN ${designationNumber(match)}`],
+    [/^LDN(\d+)$/, (match) => `LDN ${designationNumber(match)}`],
+    [/^vdB(\d+)$/, (match) => `vdB ${designationNumber(match)}`],
+    [/^B(\d+[a-z]?)$/, (match) => `B${designationNumber(match)}`],
+    [/^Cr(\d+[A-Za-z]?)$/, (match) => `Cr ${designationNumber(match)}`],
+    [/^Mel(\d+[A-Za-z]?)$/, (match) => `Mel ${designationNumber(match)}`],
+    [/^Tr(\d+[A-Za-z]?)$/, (match) => `Tr ${designationNumber(match)}`],
+    [/^St(\d+[A-Za-z]?)$/, (match) => `St ${designationNumber(match)}`],
+    [/^Arp(\d+)$/, (match) => `Arp ${designationNumber(match)}`],
+    [/^RCW(\d+)$/, (match) => `RCW ${designationNumber(match)}`],
+    [/^Ced(\d+[a-z]?)$/, (match) => `Ced ${designationNumber(match)}`],
+    [/^Gum(\d+)$/, (match) => `Gum ${designationNumber(match)}`],
+    [/^Abell(\d+)$/, (match) => `Abell ${designationNumber(match)}`],
+    [/^ACO(\d+)$/, (match) => `ACO ${designationNumber(match)}`],
+    [/^UGC(\d+)$/, (match) => `UGC ${designationNumber(match)}`],
+    [/^PGC(\d+)$/, (match) => `PGC ${designationNumber(match)}`],
+    [/^H400$/, () => "Herschel 400"],
+  ];
+  for (const [pattern, format] of rules) {
+    const match = pattern.exec(id);
+    if (match) return format(match);
+  }
+  return id;
 }
 
 export function formatArcmin(value: number): string {

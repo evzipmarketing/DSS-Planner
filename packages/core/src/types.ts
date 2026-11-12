@@ -3,6 +3,7 @@ export const DEEP_SKY_TYPES = [
   "GPair",
   "GTrpl",
   "GGroup",
+  "ClG",
   "OCl",
   "GCl",
   "Cl+N",
@@ -13,11 +14,45 @@ export const DEEP_SKY_TYPES = [
   "RfN",
   "SNR",
   "DrkN",
+  "Ast",
+  "StCl",
+  "*Ass",
+  "**",
+  "*",
+  "NonEx",
+  "Nova",
+  "Other",
+  "Dup",
 ] as const;
 
 export type DeepSkyType = (typeof DEEP_SKY_TYPES)[number];
 
-export type CatalogueSource = "openngc" | "lynds";
+export const CATALOGUE_IDS = [
+  "messier",
+  "ngc",
+  "ic",
+  "caldwell",
+  "sharpless",
+  "barnard",
+  "ldn",
+  "lbn",
+  "vdb",
+  "abell-pn",
+  "abell-gc",
+  "collinder",
+  "melotte",
+  "trumpler",
+  "stock",
+  "arp",
+  "herschel",
+  "rcw",
+  "cederblad",
+  "gum",
+  "ugc",
+  "pgc",
+] as const;
+
+export type CatalogueId = (typeof CATALOGUE_IDS)[number];
 
 export type DeepSkyObject = {
   id: string;
@@ -32,7 +67,23 @@ export type DeepSkyObject = {
   messier: number | null;
   names: string[];
   opacity: number | null;
-  source: CatalogueSource;
+  aliases: string[];
+  catalogues: CatalogueId[];
+  note: string | null;
+};
+
+export type TargetQuery = {
+  types: DeepSkyType[];
+  catalogues: CatalogueId[];
+  maxMagnitude: number | null;
+  minSizeArcmin: number | null;
+};
+
+export const EMPTY_TARGET_QUERY: TargetQuery = {
+  types: [],
+  catalogues: [],
+  maxMagnitude: null,
+  minSizeArcmin: null,
 };
 
 export type SensorKind = "mono" | "colour";

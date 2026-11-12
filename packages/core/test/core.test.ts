@@ -57,12 +57,14 @@ const M42: DeepSkyObject = {
   messier: 42,
   names: ["Great Orion Nebula", "Orion Nebula"],
   opacity: null,
-  source: "openngc",
+  aliases: ["NGC1976", "M42", "LBN974", "Sh2-281"],
+  catalogues: ["ngc", "messier", "lbn", "sharpless"],
+  note: null,
 };
 
 const ANDROMEDA: DeepSkyObject = {
   ...M42,
-  id: "NGC0224",
+  id: "NGC224",
   type: "G",
   raDeg: 10.68479,
   decDeg: 41.26906,
@@ -73,6 +75,8 @@ const ANDROMEDA: DeepSkyObject = {
   magnitude: 3.44,
   messier: 31,
   names: ["Andromeda Galaxy"],
+  aliases: ["NGC224", "M31"],
+  catalogues: ["ngc", "messier"],
 };
 
 const camera: Camera = {
@@ -110,6 +114,7 @@ describe("coordinates and time", () => {
     expect(formatCatalogueId("NGC0224")).toBe("NGC 224");
     expect(formatCatalogueId("LDN0001")).toBe("LDN 1");
     expect(formatCatalogueId("Mel022")).toBe("Mel 22");
+    expect(formatCatalogueId("Sh2-281")).toBe("Sh2-281");
   });
 
   it("converts Asia/Kolkata and a daylight-time zone", () => {
@@ -262,29 +267,34 @@ describe("healpix", () => {
 describe("catalogue search", () => {
   const cloud: DeepSkyObject = {
     ...M42,
-    id: "LDN0001",
+    id: "LDN1",
     type: "DrkN",
     names: [],
     messier: null,
     magnitude: null,
-    source: "lynds",
+    aliases: ["LDN1"],
+    catalogues: ["ldn"],
     opacity: 3,
   };
   const objects = [M42, ANDROMEDA, cloud];
 
-  it("finds Messier numbers, NGC ids, and common names", () => {
+  it("finds Messier numbers, NGC ids, cross-ids, and common names", () => {
     expect(searchCatalogue(objects, "m42")[0]?.id).toBe("NGC1976");
-    expect(searchCatalogue(objects, "Messier 31")[0]?.id).toBe("NGC0224");
-    expect(searchCatalogue(objects, "ngc 224")[0]?.id).toBe("NGC0224");
+    expect(searchCatalogue(objects, "Messier 31")[0]?.id).toBe("NGC224");
+    expect(searchCatalogue(objects, "ngc 224")[0]?.id).toBe("NGC224");
     expect(searchCatalogue(objects, "orion nebula")[0]?.id).toBe("NGC1976");
-    expect(searchCatalogue(objects, "ldn 1")[0]?.id).toBe("LDN0001");
+    expect(searchCatalogue(objects, "sh2-281")[0]?.id).toBe("NGC1976");
+    expect(searchCatalogue(objects, "lbn 974")[0]?.id).toBe("NGC1976");
+    expect(searchCatalogue(objects, "ldn 1")[0]?.id).toBe("LDN1");
   });
 
   it("parses a compact row and keeps anonymous Lynds clouds off the shortlist", () => {
     const parsed = parseCatalogue([
-      ["NGC1976", "Cl+N", 83.82, -5.39, "Ori", 90, 60, null, 4, 42, "Orion Nebula", null, 0],
+      ["NGC1976", "Cl+N", 83.82, -5.39, "Ori", 90, 60, null, 4, "Orion Nebula", null, "NGC1976|M42|Sh2-281", null],
     ]);
     expect(parsed[0]?.names).toEqual(["Orion Nebula"]);
+    expect(parsed[0]?.messier).toBe(42);
+    expect(parsed[0]?.catalogues).toContain("sharpless");
     expect(isShortlistCandidate(M42)).toBe(true);
     expect(isShortlistCandidate(cloud)).toBe(false);
   });
@@ -316,6 +326,8 @@ describe("night track and shortlist", () => {
       names: ["Far south"],
       messier: null,
       magnitude: 4,
+      aliases: ["SOUTH"],
+      catalogues: [],
     };
     const ranked = rankTargets([M42, sunk], HYDERABAD, "2026-01-15", 5);
     expect(ranked.some((item) => item.object.id === "SOUTH")).toBe(false);

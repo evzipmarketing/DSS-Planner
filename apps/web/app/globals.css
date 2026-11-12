@@ -177,6 +177,8 @@ input, select {
   padding: 0 12px;
 }
 
+select[multiple] { min-height: 8.5rem; padding: 8px; }
+
 input[type="range"] { padding: 0; min-height: 32px; accent-color: var(--saffron); }
 
 .inline {

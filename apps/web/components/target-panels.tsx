@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  CATALOGUE_IDS,
+  DEEP_SKY_TYPES,
+  catalogueLabel,
   formatArcmin,
   formatCatalogueId,
   formatDeclination,
@@ -9,15 +12,92 @@ import {
   formatSignedDegrees,
   objectTitle,
   objectTypeLabel,
+  type CatalogueId,
+  type DeepSkyType,
 } from "@dss/core";
 import { constellationName } from "@dss/data";
 import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
 export function Shortlist() {
-  const { shortlist, scoring, catalogue, selected, chooseTarget } = usePlannerState();
+  const { shortlist, scoring, catalogue, selected, chooseTarget, targetQuery, setTargetQuery, extendedReady } = usePlannerState();
   return (
     <Section index="03" title="Best targets tonight">
+      <details className="drawer">
+        <summary>Type, catalogue, magnitude, size</summary>
+        <div className="fields">
+          <label className="field">
+            Object types
+            <select
+              multiple
+              value={targetQuery.types}
+              onChange={(event) => {
+                const types = Array.from(event.target.selectedOptions, (option) => option.value as DeepSkyType);
+                setTargetQuery({ ...targetQuery, types });
+              }}
+            >
+              {DEEP_SKY_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {objectTypeLabel(type)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Catalogues
+            <select
+              multiple
+              value={targetQuery.catalogues}
+              onChange={(event) => {
+                const catalogues = Array.from(event.target.selectedOptions, (option) => option.value as CatalogueId);
+                setTargetQuery({ ...targetQuery, catalogues });
+              }}
+            >
+              {CATALOGUE_IDS.map((catalogueId) => (
+                <option key={catalogueId} value={catalogueId}>
+                  {catalogueLabel(catalogueId)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Fainter than this magnitude is hidden
+            <input
+              inputMode="decimal"
+              placeholder="Any"
+              value={targetQuery.maxMagnitude ?? ""}
+              onChange={(event) => {
+                const value = event.target.value.trim();
+                const maxMagnitude = value === "" ? null : Number(value);
+                setTargetQuery({
+                  ...targetQuery,
+                  maxMagnitude: maxMagnitude != null && Number.isFinite(maxMagnitude) ? maxMagnitude : null,
+                });
+              }}
+            />
+          </label>
+          <label className="field">
+            Minimum size (arcmin)
+            <input
+              inputMode="decimal"
+              placeholder="Any"
+              value={targetQuery.minSizeArcmin ?? ""}
+              onChange={(event) => {
+                const value = event.target.value.trim();
+                const minSizeArcmin = value === "" ? null : Number(value);
+                setTargetQuery({
+                  ...targetQuery,
+                  minSizeArcmin: minSizeArcmin != null && Number.isFinite(minSizeArcmin) ? minSizeArcmin : null,
+                });
+              }}
+            />
+          </label>
+        </div>
+        <p className="note">
+          Leave the lists empty for the usual shortlist. Hold Ctrl or Command to pick more than one type or catalogue.
+          {!extendedReady ? " The extended catalogues are still loading." : ""}
+        </p>
+      </details>
       {!catalogue || scoring ? <p className="note">Scoring objects that clear 30° in astronomical darkness…</p> : null}
       {catalogue && !scoring && shortlist.length === 0 ? (
         <p className="note">Nothing in the shortlist stays up. Try another night or a different site.</p>
@@ -51,7 +131,7 @@ export function Shortlist() {
 }
 
 export function CatalogueSearch() {
-  const { query, setQuery, results, chooseTarget, catalogue } = usePlannerState();
+  const { query, setQuery, results, chooseTarget, catalogue, extendedReady } = usePlannerState();
   return (
     <Section index="04" title="Catalogue">
       <label className="field">
@@ -78,7 +158,9 @@ export function CatalogueSearch() {
           </button>
         ))}
       </div>
-      {catalogue && query.trim() && results.length === 0 ? <p className="note">No match in the loaded catalogues.</p> : null}
+      {catalogue && query.trim() && results.length === 0 ? (
+        <p className="note">{extendedReady ? "No match in the loaded catalogues." : "No match in the core list yet. The extended catalogues are still loading."}</p>
+      ) : null}
     </Section>
   );
 }
@@ -124,8 +206,12 @@ export function ObjectCard() {
               <dd>{selected.magnitude == null ? "Not listed" : selected.magnitude.toFixed(2)}</dd>
             </div>
             <div>
-              <dt>Source</dt>
-              <dd>{selected.source === "lynds" ? "Lynds 1962" : "OpenNGC"}</dd>
+              <dt>Also known as</dt>
+              <dd>{selected.aliases.map((alias) => formatCatalogueId(alias)).join(" · ")}</dd>
+            </div>
+            <div>
+              <dt>Catalogues</dt>
+              <dd>{selected.catalogues.map((catalogue) => catalogueLabel(catalogue)).join(", ")}</dd>
             </div>
             {selected.opacity != null ? (
               <div>
@@ -141,6 +227,7 @@ export function ObjectCard() {
             ) : null}
           </dl>
           {selected.names.length > 1 ? <p className="note">Also called {selected.names.slice(1).join(", ")}.</p> : null}
+          {selected.note ? <p className="note">{selected.note}</p> : null}
         </>
       )}
     </Section>
