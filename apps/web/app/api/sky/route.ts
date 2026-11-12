@@ -8,7 +8,7 @@ export async function GET(request: Request): Promise<Response> {
   const raDeg = readNumber(url, "ra", 0, 360);
   const decDeg = readNumber(url, "dec", -90, 90);
   const fovDeg = readNumber(url, "fov", 0.05, 20);
-  const sizeRaw = readNumber(url, "size", 256, 640);
+  const sizeRaw = readNumber(url, "size", 64, 640);
   if (raDeg == null || decDeg == null || fovDeg == null || sizeRaw == null) {
     return Response.json({ error: "Invalid plate request." }, { status: 400 });
   }

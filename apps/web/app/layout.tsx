@@ -5,9 +5,27 @@ import "./globals.css";
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
 const sans = Outfit({ subsets: ["latin"], variable: "--font-ui" });
 
+const title = "astrocue";
+const description = "An astrophotography session planner by DarkSkyscapes.";
+
 export const metadata: Metadata = {
-  title: "DSS Planner",
-  description: "Plan a deep-sky night: targets, altitude, framing, gear, and cloud cover.",
+  title,
+  applicationName: title,
+  description,
+  openGraph: {
+    title,
+    description,
+    siteName: title,
+    type: "website",
+  },
+  twitter: {
+    title,
+    description,
+  },
+  appleWebApp: {
+    title,
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html:
-              '(function(){try{var raw=localStorage.getItem("dss-planner.session.v1");if(!raw)return;var data=JSON.parse(raw);if(data&&data.vision==="red")document.documentElement.dataset.vision="red";}catch(e){}})();',
+              '(function(){try{var raw=localStorage.getItem("dss-planner.session.v1");if(!raw)return;var data=JSON.parse(raw);var theme=data&&data.theme;if(theme!=="light"&&theme!=="dark"&&theme!=="night")theme=data&&data.vision==="red"?"night":"dark";document.documentElement.dataset.theme=theme;}catch(e){}})();',
           }}
         />
       </head>

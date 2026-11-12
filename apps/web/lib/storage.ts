@@ -2,17 +2,18 @@ import type { Camera, ImagingFilter, SensorKind, Site, Telescope, FilterKind } f
 import { isValidTimeZone } from "@dss/core";
 import { defaultSite, locations } from "@dss/data";
 
-export type Vision = "ink" | "red";
+export type ThemeName = "light" | "dark" | "night";
 
 export type StoredSession = {
-  version: 2;
-  vision: Vision;
+  version: 3;
+  theme: ThemeName;
   locationId: string;
   customSite?: Site;
   bortle: number;
   bortleMode: "estimate" | "manual";
   telescopeId: string;
   reducer: number;
+  focalOverrideMm: number | null;
   cameraId: string;
   filterIds: string[];
   customTelescopes: Telescope[];
@@ -43,20 +44,24 @@ export function loadSession(): StoredSession | null {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Omit<Partial<StoredSession>, "version"> & { version?: number };
-    if (parsed.version !== 1 && parsed.version !== 2) return null;
+    const bag = parsed as { theme?: unknown; vision?: unknown };
+    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3) return null;
     return {
-      version: 2,
-      vision: parsed.vision === "red" ? "red" : "ink",
+      version: 3,
+      theme: parseTheme(bag.theme, bag.vision),
       locationId: typeof parsed.locationId === "string" ? parsed.locationId : defaultSite.id,
       customSite: parseSite(parsed.customSite),
       bortle: clampInt(parsed.bortle, 1, 9, 7),
-      bortleMode: parsed.version === 2 && parsed.bortleMode === "estimate" ? "estimate" : "manual",
+      bortleMode: parsed.bortleMode === "estimate" ? "estimate" : "manual",
       telescopeId: typeof parsed.telescopeId === "string" ? parsed.telescopeId : "",
       reducer: clampNum(parsed.reducer, 0.25, 5, 1),
+      focalOverrideMm: parseFocal(parsed.focalOverrideMm),
       cameraId: typeof parsed.cameraId === "string" ? parsed.cameraId : "",
-      filterIds: Array.isArray(parsed.filterIds)
-        ? parsed.filterIds.filter((id): id is string => typeof id === "string")
-        : [],
+      filterIds: withoutLegacyDefaultFilter(
+        Array.isArray(parsed.filterIds)
+          ? parsed.filterIds.filter((id): id is string => typeof id === "string")
+          : [],
+      ),
       customTelescopes: arrayOf(parsed.customTelescopes, isTelescope),
       customCameras: arrayOf(parsed.customCameras, isCamera),
       customFilters: arrayOf(parsed.customFilters, isFilter),
@@ -75,6 +80,25 @@ export function resolveSite(session: Pick<StoredSession, "locationId" | "customS
   if (preset) return preset;
   if (session.customSite) return session.customSite;
   return defaultSite;
+}
+
+function parseFocal(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  if (rounded < 10 || rounded > 20_000) return null;
+  return rounded;
+}
+
+/** Sessions saved before "no filter" stored the old Astronomik default as the only chip. */
+function withoutLegacyDefaultFilter(ids: string[]): string[] {
+  if (ids.length === 1 && ids[0] === "astronomik-l2") return [];
+  return ids;
+}
+
+function parseTheme(theme: unknown, legacyVision: unknown): ThemeName {
+  if (theme === "light" || theme === "dark" || theme === "night") return theme;
+  if (legacyVision === "red" || theme === "red") return "night";
+  return "dark";
 }
 
 function parseSite(value: unknown): Site | undefined {

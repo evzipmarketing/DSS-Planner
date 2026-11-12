@@ -1,0 +1,14 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "astrocue",
+    short_name: "astrocue",
+    description: "An astrophotography session planner by DarkSkyscapes.",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#141616",
+    theme_color: "#141616",
+    icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml" }],
+  };
+}

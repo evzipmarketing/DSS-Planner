@@ -1,22 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   CATALOGUE_IDS,
   DEEP_SKY_TYPES,
   TARGET_LIST_FILTERS,
   bandLabel,
-  brightnessHintLabel,
   catalogueLabel,
   formatArcmin,
   formatCatalogueId,
-  formatClock,
   formatDeclination,
   formatHours,
   formatRightAscension,
   formatSignedDegrees,
-  frameFitHint,
-  frameFitLabel,
   listFilterLabel,
   objectTitle,
   primaryDesignation,
@@ -28,7 +24,7 @@ import { constellationName } from "@dss/data";
 import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
-export function Shortlist() {
+export function Shortlist({ detail }: { detail?: ReactNode }) {
   const {
     shortlist,
     scoring,
@@ -40,7 +36,6 @@ export function Shortlist() {
     extendedReady,
     listFilter,
     setListFilter,
-    site,
     query,
     setQuery,
     results,
@@ -48,7 +43,7 @@ export function Shortlist() {
   const [shown, setShown] = useState(20);
   const visible = shortlist.slice(0, shown);
   return (
-    <Section index="06" title="Best targets tonight">
+    <Section index="06" title="Tonight's targets">
       <div className="target-tools">
         <div className="tabs" aria-label="Target filters">
           {TARGET_LIST_FILTERS.map((filter) => (
@@ -177,33 +172,37 @@ export function Shortlist() {
       ) : null}
       <div className="rows">
         {visible.map((item) => (
+          <div key={item.object.id} className="target-slot">
           <button
-            key={item.object.id}
             type="button"
             className="target"
-            aria-pressed={selected?.id === item.object.id}
+            aria-expanded={selected?.id === item.object.id}
             onClick={() => chooseTarget(item.object.id)}
           >
             <span className="target-top">
+              <TargetThumb raDeg={item.object.raDeg} decDeg={item.object.decDeg} majorArcmin={item.object.majorArcmin} />
               <strong>{objectTitle(item.object)}</strong>
               {objectTitle(item.object) === primaryDesignation(item.object) ? null : (
                 <span>{primaryDesignation(item.object)}</span>
               )}
               <span>{objectTypeLabel(item.object.type)}</span>
               <span className="tag">{bandLabel(item.band)}</span>
-              <span className={`brightness brightness-${item.brightness}`}>{brightnessHintLabel(item.brightness)}</span>
             </span>
             <span className="target-facts">
-              <span>Usable {formatHours(item.usableHours)}</span>
-              <span>Above horizon {formatHours(item.hoursAboveHorizon)}</span>
-              <span>
-                Frame {item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`} · {frameFitLabel(item.frameFit)}
-              </span>
-              <span>{riseSet(item, site.timezone)}</span>
+              <Fact
+                label="Frame"
+                value={item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`}
+                tip="How much of the sensor the object fills, from its catalogued size and the current telescope, corrector, and camera."
+              />
+              <Fact
+                label="Imageable"
+                value={`${item.usableHours.toFixed(1)} h`}
+                tip="Hours tonight when the object is at least 30° up and the sun is below −18°."
+              />
             </span>
-            <span className="note">{frameFitHint(item.frameFit)}</span>
-            {item.moonHint ? <span className="hint">{item.moonHint}</span> : null}
           </button>
+          {detail && selected?.id === item.object.id ? <div className="inline-detail">{detail}</div> : null}
+          </div>
         ))}
       </div>
       {shortlist.length > shown ? (
@@ -215,17 +214,110 @@ export function Shortlist() {
   );
 }
 
-function riseSet(
-  item: { rise: Date | null; set: Date | null; upAtStart: boolean; alwaysUp: boolean; hoursAboveHorizon: number },
-  timeZone: string,
-): string {
-  if (item.alwaysUp) return "Circumpolar";
-  if (item.hoursAboveHorizon <= 0) return "Below the horizon";
-  const parts: string[] = [];
-  if (item.upAtStart) parts.push("Up at dusk");
-  if (item.rise) parts.push(`Rises ${formatClock(item.rise, timeZone)}`);
-  if (item.set) parts.push(`Sets ${formatClock(item.set, timeZone)}`);
-  return parts.join(" · ") || "Above the horizon";
+function Fact({ label, value, tip }: { label: string; value: string; tip: string }) {
+  return (
+    <span className="fact">
+      <span className="fact-label">{label}</span>
+      <span className="fact-value">{value}</span>
+      <span className="fact-tip" role="tooltip">
+        {tip}
+      </span>
+    </span>
+  );
+}
+
+const THUMB_SLOTS = 4;
+let thumbActive = 0;
+const thumbWaiters: Array<() => void> = [];
+
+function acquireThumb(): Promise<void> {
+  if (thumbActive < THUMB_SLOTS) {
+    thumbActive += 1;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    thumbWaiters.push(() => {
+      thumbActive += 1;
+      resolve();
+    });
+  });
+}
+
+function releaseThumb(): void {
+  thumbActive = Math.max(0, thumbActive - 1);
+  thumbWaiters.shift()?.();
+}
+
+function TargetThumb({ raDeg, decDeg, majorArcmin }: { raDeg: number; decDeg: number; majorArcmin: number | null }) {
+  const host = useRef<HTMLSpanElement>(null);
+  const [phase, setPhase] = useState<"wait" | "show" | "empty">("wait");
+  const fov = Math.min(6, Math.max(0.15, ((majorArcmin ?? 15) / 60) * 1.8));
+  const src = `/api/sky?ra=${raDeg.toFixed(4)}&dec=${decDeg.toFixed(4)}&fov=${fov.toFixed(3)}&size=96`;
+
+  useEffect(() => {
+    const node = host.current;
+    if (!node) return;
+    let cancelled = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        void loadThumb();
+      },
+      { rootMargin: "280px" },
+    );
+    observer.observe(node);
+
+    async function loadThumb(): Promise<void> {
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt += 1) {
+        await acquireThumb();
+        if (cancelled) {
+          releaseThumb();
+          return;
+        }
+        const ok = await probeImage(src);
+        releaseThumb();
+        if (cancelled) return;
+        if (ok) {
+          setPhase("show");
+          return;
+        }
+        await delay(400 * (attempt + 1));
+      }
+      if (!cancelled) setPhase("empty");
+    }
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [src]);
+
+  return (
+    <span className="thumb-slot" ref={host}>
+      {phase === "show" ? (
+        <img className="thumb" alt="" width={40} height={40} src={src} />
+      ) : (
+        <span className={`thumb thumb-empty${phase === "wait" ? " thumb-wait" : ""}`} aria-hidden="true" />
+      )}
+    </span>
+  );
+}
+
+function probeImage(src: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    const finish = (ok: boolean) => resolve(ok);
+    image.onload = () => finish(image.naturalWidth > 0);
+    image.onerror = () => finish(false);
+    image.src = src;
+  });
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 export function ObjectCard() {
@@ -284,7 +376,7 @@ export function ObjectCard() {
             ) : null}
             {track ? (
               <div>
-                <dt>Usable tonight</dt>
+                <dt>Imageable tonight</dt>
                 <dd>{track.usableHours > 0 ? formatHours(track.usableHours) : "None"}</dd>
               </div>
             ) : null}

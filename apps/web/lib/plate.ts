@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import {
   chooseHipsOrder,
   hipsDirectory,
@@ -24,7 +26,12 @@ export type SkyPlate = {
 type Tile = { width: number; height: number; data: Uint8Array };
 
 const tiles = new Map<string, Tile | null>();
+const tileMissUntil = new Map<string, number>();
 const plates = new Map<string, SkyPlate>();
+const plateGate = createGate(4);
+const tileGate = createGate(6);
+const DISK_CACHE = "/tmp/dss-sky-plates";
+let diskReady: Promise<void> | null = null;
 let hips2fitsBlockedUntil = 0;
 
 export async function renderSkyPlate(input: {
@@ -41,15 +48,33 @@ export async function renderSkyPlate(input: {
   ].join("|");
   const cached = plates.get(key);
   if (cached) return cached;
-
-  const fromService = await fetchHips2Fits(input);
-  const plate = fromService ?? (await renderFromTiles(input));
-  plates.set(key, plate);
-  if (plates.size > 24) {
-    const oldest = plates.keys().next().value;
-    if (oldest) plates.delete(oldest);
+  const stored = await readDisk(key);
+  if (stored) {
+    const plate = { bytes: stored, source: "hips-tiles" as const };
+    rememberPlate(key, plate);
+    return plate;
   }
-  return plate;
+
+  return plateGate.run(async () => {
+    const again = plates.get(key);
+    if (again) return again;
+    // Small thumbnails skip the cutout service. It is often unreachable, and
+    // waiting on it stalls every other row behind the first handful.
+    const fromService = input.size > 160 ? await fetchHips2Fits(input) : null;
+    const plate = fromService ?? (await renderFromTiles(input));
+    rememberPlate(key, plate);
+    await writeDisk(key, plate.bytes);
+    return plate;
+  });
+}
+
+function rememberPlate(key: string, plate: SkyPlate): void {
+  plates.set(key, plate);
+  while (plates.size > 240) {
+    const oldest = plates.keys().next().value;
+    if (!oldest) break;
+    plates.delete(oldest);
+  }
 }
 
 async function fetchHips2Fits(input: {
@@ -135,6 +160,12 @@ async function renderFromTiles(input: {
     rgba[target + 3] = 255;
   }
 
+  let lit = 0;
+  for (let index = 0; index < rgba.length; index += 16) {
+    lit += (rgba[index] ?? 0) + (rgba[index + 1] ?? 0) + (rgba[index + 2] ?? 0);
+  }
+  if (lit < 80) throw new Error("Sky thumbnail had no survey pixels.");
+
   const encoded = jpeg.encode({ data: rgba, width: size, height: size }, 82);
   return { bytes: encoded.data, source: "hips-tiles" };
 }
@@ -142,34 +173,83 @@ async function renderFromTiles(input: {
 async function loadTile(order: number, tile: number): Promise<void> {
   const key = `${order}:${tile}`;
   if (tiles.has(key)) return;
-  const directory = hipsDirectory(tile);
-  for (const root of TILE_ROOTS) {
-    try {
-      const response = await fetch(`${root}/Norder${order}/Dir${directory}/Npix${tile}.jpg`, {
-        signal: AbortSignal.timeout(12_000),
-        headers: { "user-agent": "dss-planner/0.1" },
-      });
-      if (!response.ok) continue;
-      const decoded = jpeg.decode(new Uint8Array(await response.arrayBuffer()), {
-        useTArray: true,
-        formatAsRGBA: true,
-      });
-      tiles.set(key, { width: decoded.width, height: decoded.height, data: decoded.data });
-      trimTiles();
-      return;
-    } catch {
-      // Try the next mirror.
+  const missed = tileMissUntil.get(key);
+  if (missed != null && Date.now() < missed) return;
+  await tileGate.run(async () => {
+    if (tiles.has(key)) return;
+    const directory = hipsDirectory(tile);
+    for (const root of TILE_ROOTS) {
+      try {
+        const response = await fetch(`${root}/Norder${order}/Dir${directory}/Npix${tile}.jpg`, {
+          signal: AbortSignal.timeout(12_000),
+          headers: { "user-agent": "dss-planner/0.1" },
+        });
+        if (!response.ok) continue;
+        const decoded = jpeg.decode(new Uint8Array(await response.arrayBuffer()), {
+          useTArray: true,
+          formatAsRGBA: true,
+        });
+        tiles.set(key, { width: decoded.width, height: decoded.height, data: decoded.data });
+        tileMissUntil.delete(key);
+        trimTiles();
+        return;
+      } catch {
+        // Try the next mirror.
+      }
     }
-  }
-  tiles.set(key, null);
+    tileMissUntil.set(key, Date.now() + 20_000);
+  });
 }
 
 function trimTiles(): void {
-  while (tiles.size > 80) {
+  while (tiles.size > 180) {
     const oldest = tiles.keys().next().value;
     if (!oldest) break;
     tiles.delete(oldest);
   }
+}
+
+function diskPath(key: string): string {
+  return `${DISK_CACHE}/${createHash("sha1").update(key).digest("hex")}.jpg`;
+}
+
+async function readDisk(key: string): Promise<Uint8Array | null> {
+  try {
+    return new Uint8Array(await readFile(diskPath(key)));
+  } catch {
+    return null;
+  }
+}
+
+async function writeDisk(key: string, bytes: Uint8Array): Promise<void> {
+  try {
+    diskReady ??= mkdir(DISK_CACHE, { recursive: true }).then(() => undefined);
+    await diskReady;
+    await writeFile(diskPath(key), bytes);
+  } catch {
+    // A full disk should not fail the response. The memory cache still holds it.
+  }
+}
+
+function createGate(limit: number): { run<T>(task: () => Promise<T>): Promise<T> } {
+  let active = 0;
+  const waiting: Array<() => void> = [];
+  return {
+    async run<T>(task: () => Promise<T>): Promise<T> {
+      if (active >= limit) {
+        await new Promise<void>((resolve) => {
+          waiting.push(resolve);
+        });
+      }
+      active += 1;
+      try {
+        return await task();
+      } finally {
+        active -= 1;
+        waiting.shift()?.();
+      }
+    },
+  };
 }
 
 function inverseTan(

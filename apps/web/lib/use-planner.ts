@@ -10,12 +10,10 @@ import {
   samplingAdvice,
   searchCatalogue,
   sensorDisagreement,
-  suggestExposure,
   buildNightTrack,
   EMPTY_TARGET_QUERY,
   type Camera,
   type DeepSkyObject,
-  type ExposureSuggestion,
   type ImagingFilter,
   type NightTrack,
   type RankedTarget,
@@ -29,14 +27,13 @@ import {
 import {
   cameras as seedCameras,
   defaultCameraId,
-  defaultFilterId,
   defaultSite,
   defaultTelescopeId,
   estimateBortle,
   filters as seedFilters,
   telescopes as seedTelescopes,
 } from "@dss/data";
-import { loadSession, resolveSite, saveSession, type Vision } from "./storage";
+import { loadSession, resolveSite, saveSession, type ThemeName } from "./storage";
 
 export type Pointing = {
   raDeg: number;
@@ -64,7 +61,7 @@ export function usePlanner() {
   const [extendedCatalogue, setExtendedCatalogue] = useState<DeepSkyObject[] | null>(null);
   const [targetQuery, setTargetQuery] = useState<TargetQuery>(EMPTY_TARGET_QUERY);
   const [listFilter, setListFilter] = useState<TargetListFilter>("all");
-  const [vision, setVision] = useState<Vision>("ink");
+  const [theme, setTheme] = useState<ThemeName>("dark");
   const [site, setSite] = useState<Site>(defaultSite);
   const [placeStatus, setPlaceStatus] = useState<PlaceStatus>("detecting");
   const [date, setDate] = useState(() => {
@@ -82,8 +79,9 @@ export function usePlanner() {
   const [pointing, setPointing] = useState<Pointing | null>(null);
   const [telescopeId, setTelescopeId] = useState(defaultTelescopeId);
   const [reducer, setReducer] = useState(1);
+  const [focalOverrideMm, setFocalOverrideMmState] = useState<number | null>(null);
   const [cameraId, setCameraId] = useState(defaultCameraId);
-  const [filterIds, setFilterIds] = useState<string[]>([defaultFilterId]);
+  const [filterIds, setFilterIds] = useState<string[]>([]);
   const [customTelescopes, setCustomTelescopes] = useState<Telescope[]>([]);
   const [customCameras, setCustomCameras] = useState<Camera[]>([]);
   const [customFilters, setCustomFilters] = useState<ImagingFilter[]>([]);
@@ -104,15 +102,16 @@ export function usePlanner() {
     if (stored) {
       const restored = resolveSite(stored);
       hadStoredSite.current = true;
-      setVision(stored.vision);
+      setTheme(stored.theme);
       setSite(restored);
       setBortleMode(stored.bortleMode);
       setBortle(stored.bortleMode === "estimate" ? estimateBortle(restored.latitude, restored.longitude) : stored.bortle);
       setPlaceStatus("saved");
       if (stored.telescopeId) setTelescopeId(stored.telescopeId);
       setReducer(stored.reducer);
+      setFocalOverrideMmState(stored.focalOverrideMm);
       if (stored.cameraId) setCameraId(stored.cameraId);
-      if (stored.filterIds.length > 0) setFilterIds(stored.filterIds);
+      setFilterIds(stored.filterIds);
       setCustomTelescopes(stored.customTelescopes);
       setCustomCameras(stored.customCameras);
       setCustomFilters(stored.customFilters);
@@ -181,14 +180,15 @@ export function usePlanner() {
   useEffect(() => {
     if (!hydrated) return;
     saveSession({
-      version: 2,
-      vision,
+      version: 3,
+      theme,
       locationId: site.id,
       customSite: site.id === "custom" ? site : undefined,
       bortle,
       bortleMode,
       telescopeId,
       reducer,
+      focalOverrideMm,
       cameraId,
       filterIds,
       customTelescopes,
@@ -197,12 +197,13 @@ export function usePlanner() {
     });
   }, [
     hydrated,
-    vision,
+    theme,
     site,
     bortle,
     bortleMode,
     telescopeId,
     reducer,
+    focalOverrideMm,
     cameraId,
     filterIds,
     customTelescopes,
@@ -212,21 +213,21 @@ export function usePlanner() {
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    if (!hydrated && root.dataset.vision === "red" && vision === "ink") return;
-    root.dataset.vision = vision;
-  }, [vision, hydrated]);
+    if (!hydrated && root.dataset.theme && root.dataset.theme !== theme) return;
+    root.dataset.theme = theme;
+    delete root.dataset.vision;
+  }, [theme, hydrated]);
 
   const telescopes = useMemo(() => [...seedTelescopes, ...customTelescopes], [customTelescopes]);
   const cameraList = useMemo(() => [...seedCameras, ...customCameras], [customCameras]);
   const filterList = useMemo(() => [...seedFilters, ...customFilters], [customFilters]);
   const telescope = telescopes.find((item) => item.id === telescopeId) ?? telescopes[0] ?? null;
   const camera = cameraList.find((item) => item.id === cameraId) ?? cameraList[0] ?? null;
-  const activeFilters = filterList.filter((item) => filterIds.includes(item.id));
   const bortleEstimate = estimateBortle(site.latitude, site.longitude);
 
   const optics = useMemo<Optics | null>(() => {
     if (!telescope || !camera) return null;
-    const focalLengthMm = effectiveFocalLengthMm(telescope, reducer);
+    const focalLengthMm = focalOverrideMm ?? effectiveFocalLengthMm(telescope, reducer);
     const field = fieldOfView(camera, focalLengthMm);
     const longest = Math.max(field.widthDeg, field.heightDeg);
     const scale = pixelScaleArcsec(camera.pixelSizeUm, focalLengthMm);
@@ -239,7 +240,7 @@ export function usePlanner() {
       imageFovDeg: Math.min(20, Math.max(0.08, longest * 1.45)),
       disagreement: sensorDisagreement(camera),
     };
-  }, [telescope, camera, reducer, bortle]);
+  }, [telescope, camera, reducer, focalOverrideMm, bortle]);
 
   const catalogue = useMemo(() => {
     if (!coreCatalogue) return null;
@@ -273,10 +274,10 @@ export function usePlanner() {
     };
   }, [hydrated, catalogue, site, date, shortlistKey, targetQuery, field, listFilter, bortle]);
 
-  const selected = useMemo(() => {
-    const chosen = catalogue?.find((object) => object.id === selectedId);
-    return chosen ?? shortlist[0]?.object ?? null;
-  }, [catalogue, selectedId, shortlist]);
+  const selected = useMemo(
+    () => catalogue?.find((object) => object.id === selectedId) ?? null,
+    [catalogue, selectedId],
+  );
 
   if (selected && pointingFor !== selected.id) {
     setPointingFor(selected.id);
@@ -294,61 +295,27 @@ export function usePlanner() {
     });
   }, [selected, site, date]);
 
-  const moon = useMemo(() => {
-    if (!track) return null;
-    let separation: number | null = null;
-    let altitude = -90;
-    for (const sample of track.samples) {
-      if (!sample.usable) continue;
-      if (sample.moonAltitude > altitude) altitude = sample.moonAltitude;
-      if (sample.moonAltitude >= 0) {
-        separation = separation == null ? sample.moonSeparationDeg : Math.min(separation, sample.moonSeparationDeg);
-      }
-    }
-    return {
-      illuminated: track.moonIlluminatedFraction,
-      altitude,
-      separation,
-      usableHours: track.usableHours,
-    };
-  }, [track]);
-
-  const exposures = useMemo<ExposureSuggestion[]>(() => {
-    if (!telescope || !camera || !optics) return [];
-    return activeFilters.map((filter) =>
-      suggestExposure({
-        filter,
-        bortle,
-        apertureMm: telescope.apertureMm,
-        focalLengthMm: optics.focalLengthMm,
-        pixelScaleArcsec: optics.pixelScale,
-        readNoiseE: camera.readNoiseE,
-        moonIlluminatedFraction: moon?.illuminated,
-        moonSeparationDeg: moon?.separation,
-        moonAltitudeDeg: moon?.altitude,
-        usableHours: moon?.usableHours,
-        magnitude: selected?.magnitude ?? null,
-      }),
-    );
-  }, [activeFilters, telescope, camera, optics, bortle, moon, selected]);
-
   const results = useMemo(() => {
     if (!catalogue || query.trim().length < 1) return [];
     return searchCatalogue(catalogue, query, 18);
   }, [catalogue, query]);
 
   function chooseTarget(id: string) {
-    setSelectedId(id);
+    setSelectedId((current) => (current === id ? null : id));
+  }
+
+  function setFocalOverrideMm(value: number | null) {
+    if (value == null || !Number.isFinite(value)) {
+      setFocalOverrideMmState(null);
+      return;
+    }
+    const rounded = Math.round(value);
+    if (rounded < 10 || rounded > 20_000) return;
+    setFocalOverrideMmState(rounded);
   }
 
   function toggleFilter(id: string) {
-    setFilterIds((current) => {
-      if (current.includes(id)) {
-        if (current.length === 1) return current;
-        return current.filter((item) => item !== id);
-      }
-      return [...current, id];
-    });
+    setFilterIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
   function chooseSite(next: Site) {
@@ -391,10 +358,7 @@ export function usePlanner() {
       if (cameraId === id) setCameraId(defaultCameraId);
     } else {
       setCustomFilters((current) => current.filter((item) => item.id !== id));
-      setFilterIds((current) => {
-        const next = current.filter((item) => item !== id);
-        return next.length > 0 ? next : [defaultFilterId];
-      });
+      setFilterIds((current) => current.filter((item) => item !== id));
     }
   }
 
@@ -405,8 +369,8 @@ export function usePlanner() {
     setTargetQuery,
     listFilter,
     setListFilter,
-    vision,
-    setVision,
+    theme,
+    setTheme,
     site,
     chooseSite,
     placeStatus,
@@ -435,11 +399,12 @@ export function usePlanner() {
     setTelescopeId,
     reducer,
     setReducer,
+    focalOverrideMm,
+    setFocalOverrideMm,
     setCameraId,
     filterIds,
     toggleFilter,
     optics,
-    exposures,
     addTelescope,
     addCamera,
     addFilter,
