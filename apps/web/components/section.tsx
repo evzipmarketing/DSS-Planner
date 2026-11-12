@@ -8,7 +8,7 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="block">
+    <section className="block" data-panel={`${index} ${title}`}>
       <header className="block-head">
         <span>{index}</span>
         <h2>{title}</h2>

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:layout": "node scripts/check-layout.mjs"
   },
   "dependencies": {
     "@dss/core": "workspace:*",
@@ -24,6 +25,7 @@
     "@types/react-dom": "^19.2.2",
     "eslint": "^9.39.1",
     "eslint-config-next": "16.4.6",
+    "playwright": "^1.65.0",
     "typescript": "5.9.3"
   }
 }

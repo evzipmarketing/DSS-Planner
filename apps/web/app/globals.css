@@ -77,9 +77,9 @@ button { cursor: pointer; }
 .skip:focus { top: 12px; }
 
 .desk {
-  width: min(1180px, calc(100% - 28px));
+  width: min(1180px, 100%);
   margin: 0 auto;
-  padding-bottom: 48px;
+  padding: 0 16px 48px;
 }
 
 .topbar {
@@ -126,13 +126,43 @@ button { cursor: pointer; }
 
 .layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   padding-top: 16px;
+  min-width: 0;
 }
 
-.stack { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+  max-width: 100%;
+}
 
-.block, .note, .summary, .coords, p { overflow-wrap: break-word; }
+.block,
+.fields,
+label.field,
+.hour-row,
+.rows,
+.row,
+.facts,
+.readout,
+.chart-wrap,
+.legend,
+.checks,
+.tools,
+.inline,
+.note,
+.summary,
+.coords,
+p {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.block, .note, .summary, .coords, p, .row strong, .row small { overflow-wrap: anywhere; }
 
 .block {
   background: var(--bg-raised);
@@ -147,7 +177,10 @@ button { cursor: pointer; }
   align-items: baseline;
   gap: 10px;
   margin-bottom: 12px;
+  min-width: 0;
 }
+
+.block-head h2 { min-width: 0; }
 
 .block-head span {
   color: var(--saffron);
@@ -170,6 +203,8 @@ label.field { display: grid; gap: 6px; color: var(--muted); font-size: 0.86rem; 
 
 input, select {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   border-radius: 10px;
   border: 1px solid var(--line-strong);
@@ -183,6 +218,7 @@ input[type="range"] { padding: 0; min-height: 32px; accent-color: var(--saffron)
 
 .inline {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   color: var(--muted);
@@ -196,7 +232,11 @@ input[type="range"] { padding: 0; min-height: 32px; accent-color: var(--saffron)
 .hour-row {
   display: flex;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 4px;
 }
 
@@ -435,9 +475,11 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-@media (min-width: 980px) {
-  .layout { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); align-items: start; }
-  .desk { width: min(1180px, calc(100% - 48px)); }
+@media (min-width: 1200px) {
+  .layout {
+    grid-template-columns: minmax(0, 22.5rem) minmax(0, 1fr);
+    align-items: start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
