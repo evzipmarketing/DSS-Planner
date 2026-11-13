@@ -1,7 +1,7 @@
 import * as Astronomy from "astronomy-engine";
 import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
-  USABLE_MIN_ALTITUDE_DEG,
+  IMAGEABLE_MIN_ALTITUDE_DEG,
   type Site,
 } from "./types";
 import { nightInstants, parseIsoDate, zonedDateTimeToUtc } from "./time";
@@ -105,7 +105,7 @@ export function buildNightTrack(input: {
     const sunAltitude = bodyAltitude(Astronomy.Body.Sun, time, observer);
     const moonSeparationDeg = angularSeparationDeg(targetVector, moonVector);
     const usable =
-      targetAltitude >= USABLE_MIN_ALTITUDE_DEG && sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG;
+      targetAltitude >= IMAGEABLE_MIN_ALTITUDE_DEG && sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG;
     samples.push({ time, targetAltitude, moonAltitude, sunAltitude, moonSeparationDeg, usable });
     if (targetAltitude > maxTargetAltitude) {
       maxTargetAltitude = targetAltitude;

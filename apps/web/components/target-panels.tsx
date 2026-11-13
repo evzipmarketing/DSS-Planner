@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
+  ASTRONOMICAL_SUN_ALTITUDE_DEG,
   CATALOGUE_IDS,
   DEEP_SKY_TYPES,
+  IMAGEABLE_MIN_ALTITUDE_DEG,
   TARGET_LIST_FILTERS,
   bandAdvice,
   bandLabel,
@@ -244,7 +246,7 @@ function TargetRow({
           <Fact
             label="Imageable"
             value={`${item.usableHours.toFixed(1)} h`}
-            tip="Hours tonight when the object is at least 30° up and the sun is below −18°."
+            tip={`Hours tonight when the object is at least ${IMAGEABLE_MIN_ALTITUDE_DEG}° up and the sun is below −${Math.abs(ASTRONOMICAL_SUN_ALTITUDE_DEG)}°.`}
           />
         </span>
       </div>

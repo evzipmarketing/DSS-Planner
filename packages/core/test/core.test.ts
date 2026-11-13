@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  ASTRONOMICAL_SUN_ALTITUDE_DEG,
+  IMAGEABLE_MIN_ALTITUDE_DEG,
   ang2pixNest,
   assumedSeeingArcsec,
   buildNightTrack,
@@ -312,8 +314,12 @@ describe("night track and shortlist", () => {
     const geometric = 90 - Math.abs(HYDERABAD.latitude - M42.decDeg);
     expect(track.maxTargetAltitude).toBeGreaterThan(60);
     expect(track.maxTargetAltitude).toBeCloseTo(geometric, 0);
+    expect(IMAGEABLE_MIN_ALTITUDE_DEG).toBe(20);
     expect(track.usableHours).toBeGreaterThan(1);
-    expect(track.samples.some((sample) => sample.sunAltitude < -18)).toBe(true);
+    const dark = track.samples.filter((sample) => sample.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG);
+    expect(dark.filter((sample) => sample.targetAltitude >= IMAGEABLE_MIN_ALTITUDE_DEG).every((sample) => sample.usable)).toBe(true);
+    expect(dark.filter((sample) => sample.targetAltitude < IMAGEABLE_MIN_ALTITUDE_DEG).every((sample) => !sample.usable)).toBe(true);
+    expect(track.samples.some((sample) => sample.sunAltitude < ASTRONOMICAL_SUN_ALTITUDE_DEG)).toBe(true);
     expect(moonPhaseName(0)).toBe("New");
     expect(moonPhaseName(180)).toBe("Full");
   });

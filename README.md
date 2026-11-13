@@ -7,10 +7,10 @@ Phase 1 is a web app. Later phases add accounts, a private Panchang engine, and 
 ## What you can do
 
 - Site and date, defaulting to Hyderabad (17.385° N, 78.4867° E, `Asia/Kolkata`). Presets cover a few other Indian cities, or you can type coordinates and an IANA timezone.
-- A shortlist of deep-sky objects that reach at least 30° while the Sun is below −18°.
+- A shortlist of deep-sky objects, with imageable time counted while the target is at least 20° up and the Sun is below −18°.
 - Search by catalogue id (`M 42`, `NGC 224`, `LDN 1`) or common name.
 - Catalogue details: J2000 RA/Dec, constellation, size, magnitude, type, and Lynds opacity when the object has one.
-- An altitude chart for the target and the Moon, with the horizon and the usable window marked.
+- An altitude chart for the target and the Moon, with the horizon and the imageable window marked.
 - A seeded list of telescopes, cameras, and filters, or your own values: aperture, focal length, reducer/Barlow factor, sensor size, pixel size, resolution, mono or colour, and filter kind (broadband, UV/IR cut, dual/tri/quad narrowband, Hα, OIII, SII, LRGB).
 - Field of view, arcseconds per pixel, and a sampling note against a Bortle-based seeing assumption.
 - A framing preview: DSS2 colour, north up, east left, sensor rectangle, catalogue ellipse, drag to pan, handle to rotate.
@@ -55,7 +55,7 @@ Sampling compares arcseconds per pixel with an assumed seeing that only tracks B
 
 The catalogue is two JSON files so the app can paint from the core list and load the rest in the background. `core.json` is the objects an imager usually searches first (Messier, Caldwell, named nebulae and clusters, Sharpless, Barnard, Lynds bright, van den Bergh, Abell planetaries, Arp, RCW, Cederblad, the Herschel 400, and the brighter NGC/IC). `extended.json` is the remaining NGC/IC, Lynds dark nebulae, Abell galaxy clusters, and UGC galaxies that pass the cut. Both are static imports behind separate package entry points (`@dss/data/catalogue` and `@dss/data/catalogue-extended`), so a future Expo app can load them the same way.
 
-Objects that share a designation are one record. M42 carries NGC 1976, LBN 974, Sh2-281, and Ced 55d. Search matches any alias or common name. The shortlist filters by object type, catalogue, faintest magnitude, and minimum size; with the filters left empty it still prefers named and bright targets that actually clear 30°.
+Objects that share a designation are one record. M42 carries NGC 1976, LBN 974, Sh2-281, and Ced 55d. Search matches any alias or common name. The shortlist filters by object type, catalogue, faintest magnitude, and minimum size; with the filters left empty it still prefers named and bright targets that actually clear 20°.
 
 | Data | What landed in the files | Licence / credit |
 | --- | --- | --- |

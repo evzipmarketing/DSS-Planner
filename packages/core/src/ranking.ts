@@ -17,7 +17,7 @@ import { angularSeparationDeg, equatorialUnit, geometricAltitude, nightHorizonGr
 import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
   EMPTY_TARGET_QUERY,
-  USABLE_MIN_ALTITUDE_DEG,
+  IMAGEABLE_MIN_ALTITUDE_DEG,
   type DeepSkyObject,
   type Site,
   type TargetQuery,
@@ -106,7 +106,7 @@ function scoreObject(
     const altitude = geometricAltitude(vector, cell.matrix);
     altitudes.push({ time: cell.time, altitude });
     if (altitude > maxAltitude) maxAltitude = altitude;
-    const usable = cell.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG && altitude >= USABLE_MIN_ALTITUDE_DEG;
+    const usable = cell.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG && altitude >= IMAGEABLE_MIN_ALTITUDE_DEG;
     if (usable) usableHours += stepHours;
     if (altitude >= 0) {
       aboveSteps += 1;

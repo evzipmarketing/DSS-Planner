@@ -258,13 +258,13 @@ function frameFitWeight(fit: FrameFit): number {
   }
 }
 
-/** Frame fit gates the score. Usable hours and visibility share the rest. */
+/** Frame fit gates the score. Imageable hours and visibility share the rest. */
 export function observationScore(item: PriorityFields): number {
   const hours = Math.min(item.usableHours, 8) / 5;
   return frameFitWeight(item.frameFit) * (0.42 * hours + item.visibility);
 }
 
-/** Objects with under an hour of usable darkness sort after everything that has a real window. */
+/** Objects with under an hour of imageable darkness sort after everything that has a real window. */
 export function compareTargetPriority(a: PriorityFields, b: PriorityFields): number {
   const demoted = Number(a.usableHours < MIN_USABLE_HOURS) - Number(b.usableHours < MIN_USABLE_HOURS);
   if (demoted !== 0) return demoted;

@@ -116,7 +116,7 @@ describe("moon separation and priority", () => {
     });
     expect(moonlit.totalHours).toBeGreaterThan(dark.totalHours);
     expect(moonlit.tonightHours).toBeLessThanOrEqual(2);
-    expect(moonlit.explanation).toMatch(/usable time/i);
+    expect(moonlit.explanation).toMatch(/imageable time/i);
   });
 
   it("does not treat the start of the window as a rise", () => {
