@@ -1059,6 +1059,14 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
   aspect-ratio: 1440 / 360;
 }
 
+/* The head script writes data-theme before first paint. React theme state is
+   still the server default ("dark") until hydration, so the lockup follows
+   data-theme instead of that state. Night keeps the dark artwork and tints it. */
+.brand-lockup-light { display: none; }
+
+[data-theme="light"] .brand-lockup-light { display: block; }
+[data-theme="light"] .brand-lockup-dark { display: none; }
+
 [data-theme="night"] .brand-lockup {
   /* Flatten cyan (#7ad0e7) and near-white (#f1f2f2) to the night rose (~#e6aaa1).
      A hue shift alone leaves the wordmark bright white, which breaks night vision. */
