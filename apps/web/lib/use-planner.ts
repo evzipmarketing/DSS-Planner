@@ -8,6 +8,8 @@ import {
   pixelScaleArcsec,
   rankTargets,
   samplingAdvice,
+  type SortDirection,
+  type TargetSortKey,
   searchCatalogue,
   sensorDisagreement,
   buildNightTrack,
@@ -60,6 +62,8 @@ export function usePlanner() {
   const [extendedCatalogue, setExtendedCatalogue] = useState<DeepSkyObject[] | null>(null);
   const [targetQuery, setTargetQuery] = useState<TargetQuery>(EMPTY_TARGET_QUERY);
   const [listFilter, setListFilter] = useState<TargetListFilter>("all");
+  const [listSort, setListSort] = useState<TargetSortKey>("recommended");
+  const [listSortDirection, setListSortDirection] = useState<SortDirection>("desc");
   const [theme, setTheme] = useState<ThemeName>("dark");
   const [site, setSite] = useState<Site>(defaultSite);
   const [placeStatus, setPlaceStatus] = useState<PlaceStatus>("detecting");
@@ -102,6 +106,8 @@ export function usePlanner() {
       setFocalOverrideMmState(stored.focalOverrideMm);
       if (stored.cameraId) setCameraId(stored.cameraId);
       setFilterIds(stored.filterIds);
+      setListSort(stored.listSort);
+      setListSortDirection(stored.listSortDirection);
       setCustomTelescopes(stored.customTelescopes);
       setCustomCameras(stored.customCameras);
       setCustomFilters(stored.customFilters);
@@ -178,6 +184,8 @@ export function usePlanner() {
       focalOverrideMm,
       cameraId,
       filterIds,
+      listSort,
+      listSortDirection,
       customTelescopes,
       customCameras,
       customFilters,
@@ -191,6 +199,8 @@ export function usePlanner() {
     focalOverrideMm,
     cameraId,
     filterIds,
+    listSort,
+    listSortDirection,
     customTelescopes,
     customCameras,
     customFilters,
@@ -347,6 +357,10 @@ export function usePlanner() {
     setTargetQuery,
     listFilter,
     setListFilter,
+    listSort,
+    setListSort,
+    listSortDirection,
+    setListSortDirection,
     theme,
     setTheme,
     site,

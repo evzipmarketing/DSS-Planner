@@ -3,12 +3,15 @@ import { angularSeparationDeg, equatorialUnit } from "../src/altitude";
 import {
   bandAdvice,
   compareTargetPriority,
+  compareTargetSort,
   frameFillPercent,
   frameFit,
   horizonStory,
+  imageableCrossing,
   moonPlan,
   passesListFilter,
   visibilityScore,
+  type TargetSortFields,
 } from "../src/planning";
 import { exposureClass, suggestExposure } from "../src/integration";
 import { primaryDesignation } from "../src/catalogue";
@@ -206,5 +209,78 @@ describe("moon separation and priority", () => {
     const faint = visibilityScore({ ...shape, type: "Neb", id: "LBN546", magnitude: null, aliases: ["LBN546"] }, 9);
     expect(orion).toBeGreaterThan(faint);
     expect(orion).toBeGreaterThan(dark * 3);
+  });
+});
+
+function sorted(items: TargetSortFields[], key: "recommended" | "frame" | "imageable" | "rise", direction: "asc" | "desc") {
+  return [...items].sort((a, b) => compareTargetSort(a, b, key, direction)).map((item) => item.id);
+}
+
+function target(partial: Partial<TargetSortFields> & Pick<TargetSortFields, "id">): TargetSortFields {
+  return {
+    frameFit: "good",
+    usableHours: 4,
+    moonScore: 0.5,
+    visibility: 0.5,
+    frameFillPercent: 20,
+    imageableAtDusk: false,
+    imageableRise: null,
+    ...partial,
+  };
+}
+
+describe("target list sort", () => {
+  const dusk = new Date("2026-11-13T16:30:00Z");
+  const early = new Date("2026-11-13T17:00:00Z");
+  const late = new Date("2026-11-13T20:00:00Z");
+  const items = [
+    target({ id: "up", imageableAtDusk: true, usableHours: 8, frameFillPercent: 10, visibility: 0.2 }),
+    target({ id: "early", imageableRise: early, usableHours: 5, frameFillPercent: 40, visibility: 0.9 }),
+    target({ id: "late", imageableRise: late, usableHours: 2, frameFillPercent: 70, visibility: 0.4 }),
+    target({ id: "never", usableHours: 0, frameFillPercent: null, visibility: 0.1, frameFit: "unknown" }),
+  ];
+
+  it("keeps the recommended ranking, with the best target first when descending", () => {
+    const recommended = [...items].sort(compareTargetPriority).map((item) => item.id);
+    expect(sorted(items, "recommended", "desc")).toEqual(recommended);
+    expect(sorted(items, "recommended", "asc")).toEqual([...recommended].reverse());
+  });
+
+  it("sorts frame fill in either direction and leaves an unknown size last", () => {
+    expect(sorted(items, "frame", "desc")).toEqual(["late", "early", "up", "never"]);
+    expect(sorted(items, "frame", "asc")).toEqual(["up", "early", "late", "never"]);
+  });
+
+  it("sorts imageable hours in either direction", () => {
+    expect(sorted(items, "imageable", "desc")).toEqual(["up", "early", "late", "never"]);
+    expect(sorted(items, "imageable", "asc")).toEqual(["never", "late", "early", "up"]);
+  });
+
+  it("sorts rise time with targets already up at dusk first when ascending, and targets that never rise last", () => {
+    expect(sorted(items, "rise", "asc")).toEqual(["up", "early", "late", "never"]);
+    expect(sorted(items, "rise", "desc")).toEqual(["late", "early", "up", "never"]);
+  });
+
+  it("marks a target already above 20° at dusk, a later climb, and a target that never reaches 20°", () => {
+    const night = [
+      { time: new Date("2026-11-13T12:00:00Z"), altitude: 5, sunAltitude: 10 },
+      { time: dusk, altitude: 25, sunAltitude: -18 },
+      { time: early, altitude: 40, sunAltitude: -30 },
+    ];
+    expect(imageableCrossing(night)).toEqual({ atDusk: true, rise: null });
+    expect(
+      imageableCrossing([
+        { time: new Date("2026-11-13T12:00:00Z"), altitude: 5, sunAltitude: 10 },
+        { time: dusk, altitude: 12, sunAltitude: -18 },
+        { time: early, altitude: 22, sunAltitude: -30 },
+        { time: new Date("2026-11-13T23:00:00Z"), altitude: 8, sunAltitude: 5 },
+      ]),
+    ).toEqual({ atDusk: false, rise: early });
+    expect(
+      imageableCrossing([
+        { time: dusk, altitude: 10, sunAltitude: -20 },
+        { time: late, altitude: 15, sunAltitude: -40 },
+      ]),
+    ).toEqual({ atDusk: false, rise: null });
   });
 });

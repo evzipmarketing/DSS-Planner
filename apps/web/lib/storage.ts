@@ -1,4 +1,4 @@
-import type { Camera, ImagingFilter, SensorKind, Site, Telescope, FilterKind } from "@dss/core";
+import type { Camera, ImagingFilter, SensorKind, Site, Telescope, FilterKind, SortDirection, TargetSortKey } from "@dss/core";
 import { isValidTimeZone } from "@dss/core";
 import { defaultSite, locations } from "@dss/data";
 
@@ -17,6 +17,8 @@ export type StoredSession = {
   customTelescopes: Telescope[];
   customCameras: Camera[];
   customFilters: ImagingFilter[];
+  listSort: TargetSortKey;
+  listSortDirection: SortDirection;
 };
 
 const KEY = "dss-planner.session.v1";
@@ -61,6 +63,8 @@ export function loadSession(): StoredSession | null {
       customTelescopes: arrayOf(parsed.customTelescopes, isTelescope),
       customCameras: arrayOf(parsed.customCameras, isCamera),
       customFilters: arrayOf(parsed.customFilters, isFilter),
+      listSort: parseSortKey(parsed.listSort),
+      listSortDirection: parsed.listSortDirection === "asc" || parsed.listSortDirection === "desc" ? parsed.listSortDirection : "desc",
     };
   } catch {
     return null;
@@ -89,6 +93,11 @@ function parseFocal(value: unknown): number | null {
 function withoutLegacyDefaultFilter(ids: string[]): string[] {
   if (ids.length === 1 && ids[0] === "astronomik-l2") return [];
   return ids;
+}
+
+function parseSortKey(value: unknown): TargetSortKey {
+  if (value === "recommended" || value === "frame" || value === "imageable" || value === "rise") return value;
+  return "recommended";
 }
 
 function parseTheme(theme: unknown, legacyVision: unknown): ThemeName {

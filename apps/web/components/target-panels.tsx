@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
@@ -8,17 +8,25 @@ import {
   DEEP_SKY_TYPES,
   IMAGEABLE_MIN_ALTITUDE_DEG,
   TARGET_LIST_FILTERS,
+  TARGET_SORT_KEYS,
   bandAdvice,
   bandLabel,
   catalogueLabel,
+  compareTargetSort,
+  defaultSortDirection,
   frameFillPercent,
   formatArcmin,
   formatCatalogueId,
+  formatClock,
   formatDeclination,
   formatHours,
   formatRightAscension,
   formatSignedDegrees,
+  imageableCrossing,
   listFilterLabel,
+  targetSortLabel,
+  type SortDirection,
+  type TargetSortKey,
   objectTitle,
   primaryDesignation,
   objectTypeLabel,
@@ -41,6 +49,10 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
     extendedReady,
     listFilter,
     setListFilter,
+    listSort,
+    setListSort,
+    listSortDirection,
+    setListSortDirection,
     query,
     setQuery,
     results,
@@ -50,7 +62,37 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
   } = usePlannerState();
   const [shown, setShown] = useState(20);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
-  const visible = shortlist.slice(0, shown);
+  const ordered = useMemo(
+    () =>
+      [...shortlist].sort((a, b) =>
+        compareTargetSort(
+          {
+            id: a.object.id,
+            frameFit: a.frameFit,
+            usableHours: a.usableHours,
+            moonScore: a.moonScore,
+            visibility: a.visibility,
+            frameFillPercent: a.frameFillPercent,
+            imageableAtDusk: a.imageableAtDusk,
+            imageableRise: a.imageableRise,
+          },
+          {
+            id: b.object.id,
+            frameFit: b.frameFit,
+            usableHours: b.usableHours,
+            moonScore: b.moonScore,
+            visibility: b.visibility,
+            frameFillPercent: b.frameFillPercent,
+            imageableAtDusk: b.imageableAtDusk,
+            imageableRise: b.imageableRise,
+          },
+          listSort,
+          listSortDirection,
+        ),
+      ),
+    [shortlist, listSort, listSortDirection],
+  );
+  const visible = ordered.slice(0, shown);
   const field = optics
     ? { widthArcmin: optics.field.widthArcmin, heightArcmin: optics.field.heightArcmin }
     : null;
@@ -69,7 +111,8 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
   }
 
   return (
-    <Section index="06" title="Tonight's targets">
+    <Section index="06" title="Tonight's targets" hideHeading>
+      <div className="list-tools">
       <div className="target-tools">
         <div className="tabs" aria-label="Target filters">
           {TARGET_LIST_FILTERS.map((filter) => (
@@ -118,6 +161,20 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
             ) : null}
           </span>
         </label>
+      </div>
+      <ListSort
+        sortKey={listSort}
+        direction={listSortDirection}
+        onKey={(next) => {
+          setListSort(next);
+          setListSortDirection(defaultSortDirection(next));
+          setShown(20);
+        }}
+        onDirection={(next) => {
+          setListSortDirection(next);
+          setShown(20);
+        }}
+      />
       </div>
       {pinnedId ? (
         <button type="button" className="show-all" onClick={clearSearch}>
@@ -232,10 +289,15 @@ function TargetRow({
             typeLabel={objectTypeLabel(item.object.type)}
             magnitude={item.object.magnitude}
           />
-          <strong>{objectTitle(item.object)}</strong>
-          {objectTitle(item.object) === primaryDesignation(item.object) ? null : <span>{primaryDesignation(item.object)}</span>}
-          <span>{objectTypeLabel(item.object.type)}</span>
-          <span className="tag">{bandLabel(item.band)}</span>
+          <span className="target-copy">
+            <span className="target-title">
+              <strong>{objectTitle(item.object)}</strong>
+              <span className="tag">{bandLabel(item.band)}</span>
+            </span>
+            <span className="target-sub">
+              {primaryDesignation(item.object)} · {objectTypeLabel(item.object.type)}
+            </span>
+          </span>
         </span>
         <span className="target-facts">
           <Fact
@@ -251,6 +313,87 @@ function TargetRow({
         </span>
       </div>
       {expanded && detail ? <div className="inline-detail">{detail}</div> : null}
+    </div>
+  );
+}
+
+function ListSort({
+  sortKey,
+  direction,
+  onKey,
+  onDirection,
+}: {
+  sortKey: TargetSortKey;
+  direction: SortDirection;
+  onKey: (key: TargetSortKey) => void;
+  onDirection: (direction: SortDirection) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointer(event: PointerEvent) {
+      if (!host.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="list-sort">
+      <div className={`sort-menu${open ? " open" : ""}`} ref={host}>
+        <button
+          type="button"
+          className="tab sort-tab"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-controls="target-sort"
+          onClick={() => setOpen((current) => !current)}
+        >
+          {targetSortLabel(sortKey)}
+          <svg className="custom-chevron" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3.5 6l4.5 4.5L12.5 6" />
+          </svg>
+        </button>
+        {open ? (
+          <div className="sort-panel" id="target-sort" role="listbox" aria-label="Sort targets">
+            {TARGET_SORT_KEYS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                className="sort-option"
+                role="option"
+                aria-selected={key === sortKey}
+                onClick={() => {
+                  onKey(key);
+                  setOpen(false);
+                }}
+              >
+                {targetSortLabel(key)}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        className="tab sort-dir"
+        aria-label={direction === "asc" ? "Sorting ascending. Switch to descending." : "Sorting descending. Switch to ascending."}
+        title={direction === "asc" ? "Ascending" : "Descending"}
+        onClick={() => onDirection(direction === "asc" ? "desc" : "asc")}
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          {direction === "asc" ? <path d="M8 3.2v9.6M4.8 6.4L8 3.2l3.2 3.2" /> : <path d="M8 12.8V3.2M4.8 9.6L8 12.8l3.2-3.2" />}
+        </svg>
+      </button>
     </div>
   );
 }
@@ -590,7 +733,16 @@ function delay(ms: number): Promise<void> {
 }
 
 export function ObjectCard() {
-  const { selected, track } = usePlannerState();
+  const { selected, track, site } = usePlannerState();
+  const crossing = track
+    ? imageableCrossing(
+        track.samples.map((sample) => ({
+          time: sample.time,
+          altitude: sample.targetAltitude,
+          sunAltitude: sample.sunAltitude,
+        })),
+      )
+    : null;
   return (
     <Section index="07" title="Object">
       {!selected ? (
@@ -647,6 +799,18 @@ export function ObjectCard() {
               <div>
                 <dt>Imageable tonight</dt>
                 <dd>{track.usableHours > 0 ? formatHours(track.usableHours) : "None"}</dd>
+              </div>
+            ) : null}
+            {crossing ? (
+              <div>
+                <dt>Rises above {IMAGEABLE_MIN_ALTITUDE_DEG}°</dt>
+                <dd>
+                  {crossing.atDusk
+                    ? "Already up at dusk"
+                    : crossing.rise
+                      ? formatClock(crossing.rise, site.timezone)
+                      : `Does not reach ${IMAGEABLE_MIN_ALTITUDE_DEG}°`}
+                </dd>
               </div>
             ) : null}
           </dl>

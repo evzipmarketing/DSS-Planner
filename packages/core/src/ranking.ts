@@ -5,6 +5,7 @@ import {
   brightnessHint,
   frameFit,
   horizonStory,
+  imageableCrossing,
   moonPlan,
   passesListFilter,
   visibilityScore,
@@ -32,6 +33,8 @@ export type RankedTarget = {
   set: Date | null;
   upAtStart: boolean;
   alwaysUp: boolean;
+  imageableAtDusk: boolean;
+  imageableRise: Date | null;
   frameFillPercent: number | null;
   frameFit: FrameFit;
   band: BandAdvice;
@@ -101,10 +104,10 @@ function scoreObject(
   let minSeparation: number | null = null;
   let moonUp = false;
   const band = bandAdvice(object.type);
-  const altitudes: { time: Date; altitude: number }[] = [];
+  const altitudes: { time: Date; altitude: number; sunAltitude: number }[] = [];
   for (const cell of grid) {
     const altitude = geometricAltitude(vector, cell.matrix);
-    altitudes.push({ time: cell.time, altitude });
+    altitudes.push({ time: cell.time, altitude, sunAltitude: cell.sunAltitude });
     if (altitude > maxAltitude) maxAltitude = altitude;
     const usable = cell.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG && altitude >= IMAGEABLE_MIN_ALTITUDE_DEG;
     if (usable) usableHours += stepHours;
@@ -118,6 +121,7 @@ function scoreObject(
     }
   }
   const horizon = horizonStory(altitudes);
+  const crossing = imageableCrossing(altitudes);
   const illuminated = grid[0]?.moonIlluminatedFraction ?? 0;
   const moon = moonPlan({ band, illuminatedFraction: illuminated, moonUp, minSeparationDeg: minSeparation });
   const fill = frameFillPercent(object.majorArcmin, field);
@@ -131,6 +135,8 @@ function scoreObject(
     set: horizon.set,
     upAtStart: horizon.upAtStart,
     alwaysUp: horizon.circumpolar,
+    imageableAtDusk: crossing.atDusk,
+    imageableRise: crossing.rise,
     frameFillPercent: fill,
     frameFit: frameFit(fill),
     band,
