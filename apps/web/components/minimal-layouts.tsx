@@ -106,8 +106,10 @@ export function TonightPage() {
           detail={
             <>
               <ObjectCard />
-              <AltitudeChart />
-              <FramingPreview />
+              <div className="detail-viz">
+                <AltitudeChart />
+                <FramingPreview />
+              </div>
             </>
           }
         />

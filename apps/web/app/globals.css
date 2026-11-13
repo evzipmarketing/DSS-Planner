@@ -1528,6 +1528,23 @@ html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
   padding-bottom: 16px;
 }
 
+.detail-viz {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 1024px) {
+  .detail-viz {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .detail-viz .block {
+    min-width: 0;
+  }
+}
+
 .inline-detail .note { display: block; }
 
 .moon-glyph { display: block; flex: 0 0 auto; }
