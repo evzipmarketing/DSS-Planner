@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   CATALOGUE_IDS,
   DEEP_SKY_TYPES,
   TARGET_LIST_FILTERS,
+  bandAdvice,
   bandLabel,
   catalogueLabel,
+  frameFillPercent,
   formatArcmin,
   formatCatalogueId,
   formatDeclination,
@@ -18,7 +21,9 @@ import {
   primaryDesignation,
   objectTypeLabel,
   type CatalogueId,
+  type DeepSkyObject,
   type DeepSkyType,
+  type RankedTarget,
 } from "@dss/core";
 import { constellationName } from "@dss/data";
 import { usePlannerState } from "./planner-context";
@@ -31,17 +36,36 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
     catalogue,
     selected,
     chooseTarget,
-    targetQuery,
-    setTargetQuery,
     extendedReady,
     listFilter,
     setListFilter,
     query,
     setQuery,
     results,
+    focusTarget,
+    optics,
+    track,
   } = usePlannerState();
   const [shown, setShown] = useState(20);
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
   const visible = shortlist.slice(0, shown);
+  const field = optics
+    ? { widthArcmin: optics.field.widthArcmin, heightArcmin: optics.field.heightArcmin }
+    : null;
+  const pinned = pinnedRow(pinnedId, catalogue, shortlist, field, selected?.id === pinnedId ? (track?.usableHours ?? null) : null);
+
+  function selectResult(object: (typeof results)[number]) {
+    setPinnedId(object.id);
+    setQuery(objectTitle(object));
+    focusTarget(object.id);
+  }
+
+  function clearSearch() {
+    setPinnedId(null);
+    setQuery("");
+    focusTarget(null);
+  }
+
   return (
     <Section index="06" title="Tonight's targets">
       <div className="target-tools">
@@ -60,20 +84,49 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
               {listFilterLabel(filter)}
             </button>
           ))}
+          <CustomFilters />
         </div>
-        <label className="field">
+        <label className="field search-field">
           Name or catalogue id
-          <input
-            value={query}
-            placeholder="M42, NGC 224, Horsehead"
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          <span className="search-input">
+            <input
+              value={query}
+              placeholder="M42, NGC 224, Horsehead"
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPinnedId(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !pinnedId && results[0]) {
+                  event.preventDefault();
+                  selectResult(results[0]);
+                }
+                if (event.key === "Escape" && (query || pinnedId)) {
+                  event.preventDefault();
+                  clearSearch();
+                }
+              }}
+            />
+            {query || pinnedId ? (
+              <button type="button" className="search-clear" aria-label="Clear search and show all targets" onClick={clearSearch}>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M4 4l8 8M12 4l-8 8" />
+                </svg>
+              </button>
+            ) : null}
+          </span>
         </label>
       </div>
+      {pinnedId ? (
+        <button type="button" className="show-all" onClick={clearSearch}>
+          Show all targets
+        </button>
+      ) : null}
       {!catalogue ? <p className="note">Loading the deep-sky catalogue…</p> : null}
+      {pinnedId ? null : (
       <div className="rows">
         {results.map((object) => (
-          <button key={object.id} type="button" className="row" onClick={() => chooseTarget(object.id)}>
+          <button key={object.id} type="button" className="row" onClick={() => selectResult(object)}>
             <span className="row-index">{primaryDesignation(object)}</span>
             <span>
               <strong>{objectTitle(object)}</strong>
@@ -86,131 +139,239 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
           </button>
         ))}
       </div>
-      {catalogue && query.trim() && results.length === 0 ? (
+      )}
+      {!pinnedId && catalogue && query.trim() && results.length === 0 ? (
         <p className="note">
           {extendedReady ? "No match in the loaded catalogues." : "No match in the core list yet. The extended catalogues are still loading."}
         </p>
       ) : null}
-      <details className="drawer">
-        <summary>Type, catalogue, magnitude, size</summary>
-        <div className="fields">
-          <label className="field">
-            Object types
-            <select
-              multiple
-              value={targetQuery.types}
-              onChange={(event) => {
-                const types = Array.from(event.target.selectedOptions, (option) => option.value as DeepSkyType);
-                setTargetQuery({ ...targetQuery, types });
-              }}
-            >
-              {DEEP_SKY_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {objectTypeLabel(type)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Catalogues
-            <select
-              multiple
-              value={targetQuery.catalogues}
-              onChange={(event) => {
-                const catalogues = Array.from(event.target.selectedOptions, (option) => option.value as CatalogueId);
-                setTargetQuery({ ...targetQuery, catalogues });
-              }}
-            >
-              {CATALOGUE_IDS.map((catalogueId) => (
-                <option key={catalogueId} value={catalogueId}>
-                  {catalogueLabel(catalogueId)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Fainter than this magnitude is hidden
-            <input
-              inputMode="decimal"
-              placeholder="Any"
-              value={targetQuery.maxMagnitude ?? ""}
-              onChange={(event) => {
-                const value = event.target.value.trim();
-                const maxMagnitude = value === "" ? null : Number(value);
-                setTargetQuery({
-                  ...targetQuery,
-                  maxMagnitude: maxMagnitude != null && Number.isFinite(maxMagnitude) ? maxMagnitude : null,
-                });
-              }}
-            />
-          </label>
-          <label className="field">
-            Minimum size (arcmin)
-            <input
-              inputMode="decimal"
-              placeholder="Any"
-              value={targetQuery.minSizeArcmin ?? ""}
-              onChange={(event) => {
-                const value = event.target.value.trim();
-                const minSizeArcmin = value === "" ? null : Number(value);
-                setTargetQuery({
-                  ...targetQuery,
-                  minSizeArcmin: minSizeArcmin != null && Number.isFinite(minSizeArcmin) ? minSizeArcmin : null,
-                });
-              }}
-            />
-          </label>
-        </div>
-        <p className="note">
-          Leave the lists empty for the usual shortlist. Hold Ctrl or Command to pick more than one type or catalogue.
-          {!extendedReady ? " The extended catalogues are still loading." : ""}
-        </p>
-      </details>
-      {!catalogue || scoring ? <p className="note">Scoring objects for this site, date, and rig…</p> : null}
-      {catalogue && !scoring && shortlist.length === 0 ? (
+      {!pinned && (!catalogue || scoring) ? <p className="note">Scoring objects for this site, date, and rig…</p> : null}
+      {!pinned && catalogue && !scoring && shortlist.length === 0 ? (
         <p className="note">Nothing in this view clears the horizon. Try another night, site, or filter.</p>
       ) : null}
       <div className="rows">
-        {visible.map((item) => (
-          <div key={item.object.id} className="target-slot">
-          <button
-            type="button"
-            className="target"
-            aria-expanded={selected?.id === item.object.id}
-            onClick={() => chooseTarget(item.object.id)}
-          >
-            <span className="target-top">
-              <TargetThumb raDeg={item.object.raDeg} decDeg={item.object.decDeg} majorArcmin={item.object.majorArcmin} />
-              <strong>{objectTitle(item.object)}</strong>
-              {objectTitle(item.object) === primaryDesignation(item.object) ? null : (
-                <span>{primaryDesignation(item.object)}</span>
-              )}
-              <span>{objectTypeLabel(item.object.type)}</span>
-              <span className="tag">{bandLabel(item.band)}</span>
-            </span>
-            <span className="target-facts">
-              <Fact
-                label="Frame"
-                value={item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`}
-                tip="How much of the sensor the object fills, from its catalogued size and the current telescope, corrector, and camera."
-              />
-              <Fact
-                label="Imageable"
-                value={`${item.usableHours.toFixed(1)} h`}
-                tip="Hours tonight when the object is at least 30° up and the sun is below −18°."
-              />
-            </span>
-          </button>
-          {detail && selected?.id === item.object.id ? <div className="inline-detail">{detail}</div> : null}
-          </div>
+        {(pinned ? [pinned] : visible).map((item) => (
+          <TargetRow
+            key={item.object.id}
+            item={item}
+            expanded={pinned != null || selected?.id === item.object.id}
+            onToggle={() => {
+              if (pinned) return;
+              chooseTarget(item.object.id);
+            }}
+            detail={detail}
+          />
         ))}
       </div>
-      {shortlist.length > shown ? (
+      {!pinned && shortlist.length > shown ? (
         <button type="button" className="ghost show-more" onClick={() => setShown((count) => count + 20)}>
           Show more
         </button>
       ) : null}
     </Section>
+  );
+}
+
+type ListedTarget = Pick<RankedTarget, "object" | "frameFillPercent" | "usableHours" | "band">;
+
+function pinnedRow(
+  pinnedId: string | null,
+  catalogue: DeepSkyObject[] | null,
+  shortlist: RankedTarget[],
+  field: { widthArcmin: number; heightArcmin: number } | null,
+  usableHours: number | null,
+): ListedTarget | null {
+  if (!pinnedId || !catalogue) return null;
+  const ranked = shortlist.find((item) => item.object.id === pinnedId);
+  if (ranked) return ranked;
+  const object = catalogue.find((item) => item.id === pinnedId);
+  if (!object) return null;
+  return {
+    object,
+    frameFillPercent: frameFillPercent(object.majorArcmin, field),
+    usableHours: usableHours ?? 0,
+    band: bandAdvice(object.type),
+  };
+}
+
+function TargetRow({
+  item,
+  expanded,
+  onToggle,
+  detail,
+}: {
+  item: ListedTarget;
+  expanded: boolean;
+  onToggle: () => void;
+  detail?: ReactNode;
+}) {
+  return (
+    <div className="target-slot">
+      <div
+        className="target"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={onToggle}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        <span className="target-top">
+          <TargetThumb
+            raDeg={item.object.raDeg}
+            decDeg={item.object.decDeg}
+            majorArcmin={item.object.majorArcmin}
+            name={objectTitle(item.object)}
+            typeLabel={objectTypeLabel(item.object.type)}
+            magnitude={item.object.magnitude}
+          />
+          <strong>{objectTitle(item.object)}</strong>
+          {objectTitle(item.object) === primaryDesignation(item.object) ? null : <span>{primaryDesignation(item.object)}</span>}
+          <span>{objectTypeLabel(item.object.type)}</span>
+          <span className="tag">{bandLabel(item.band)}</span>
+        </span>
+        <span className="target-facts">
+          <Fact
+            label="Frame"
+            value={item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`}
+            tip="How much of the sensor the object fills, from its catalogued size and the current telescope, corrector, and camera."
+          />
+          <Fact
+            label="Imageable"
+            value={`${item.usableHours.toFixed(1)} h`}
+            tip="Hours tonight when the object is at least 30° up and the sun is below −18°."
+          />
+        </span>
+      </div>
+      {expanded && detail ? <div className="inline-detail">{detail}</div> : null}
+    </div>
+  );
+}
+
+function customFilterCount(query: { types: readonly unknown[]; catalogues: readonly unknown[]; maxMagnitude: number | null; minSizeArcmin: number | null }): number {
+  return query.types.length + query.catalogues.length + (query.maxMagnitude != null ? 1 : 0) + (query.minSizeArcmin != null ? 1 : 0);
+}
+
+function CustomFilters() {
+  const { targetQuery, setTargetQuery, extendedReady } = usePlannerState();
+  const [open, setOpen] = useState(false);
+  const host = useRef<HTMLSpanElement>(null);
+  const count = customFilterCount(targetQuery);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointer(event: PointerEvent) {
+      if (!host.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <span className={`custom-filter${open ? " open" : ""}`} ref={host}>
+      <button
+        type="button"
+        className="tab custom-tab"
+        aria-expanded={open}
+        aria-controls="custom-filters"
+        aria-label={count > 0 ? `Custom filters, ${count} active` : "Custom filters"}
+        onClick={() => setOpen((current) => !current)}
+      >
+        Custom
+        {count > 0 ? <span className="custom-count">{count}</span> : null}
+        <svg className="custom-chevron" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3.5 6l4.5 4.5L12.5 6" />
+        </svg>
+      </button>
+      {open ? (
+        <div className="custom-panel" id="custom-filters" role="region" aria-label="Custom filters">
+          <div className="fields">
+            <label className="field">
+              Type
+              <select
+                multiple
+                value={targetQuery.types}
+                onChange={(event) => {
+                  const types = Array.from(event.target.selectedOptions, (option) => option.value as DeepSkyType);
+                  setTargetQuery({ ...targetQuery, types });
+                }}
+              >
+                {DEEP_SKY_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {objectTypeLabel(type)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              Magnitude
+              <input
+                inputMode="decimal"
+                placeholder="Hide fainter than"
+                value={targetQuery.maxMagnitude ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value.trim();
+                  const maxMagnitude = value === "" ? null : Number(value);
+                  setTargetQuery({
+                    ...targetQuery,
+                    maxMagnitude: maxMagnitude != null && Number.isFinite(maxMagnitude) ? maxMagnitude : null,
+                  });
+                }}
+              />
+            </label>
+            <label className="field">
+              Catalogue
+              <select
+                multiple
+                value={targetQuery.catalogues}
+                onChange={(event) => {
+                  const catalogues = Array.from(event.target.selectedOptions, (option) => option.value as CatalogueId);
+                  setTargetQuery({ ...targetQuery, catalogues });
+                }}
+              >
+                {CATALOGUE_IDS.map((catalogueId) => (
+                  <option key={catalogueId} value={catalogueId}>
+                    {catalogueLabel(catalogueId)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              Size
+              <input
+                inputMode="decimal"
+                placeholder="Minimum arcmin"
+                value={targetQuery.minSizeArcmin ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value.trim();
+                  const minSizeArcmin = value === "" ? null : Number(value);
+                  setTargetQuery({
+                    ...targetQuery,
+                    minSizeArcmin: minSizeArcmin != null && Number.isFinite(minSizeArcmin) ? minSizeArcmin : null,
+                  });
+                }}
+              />
+            </label>
+          </div>
+          <p className="custom-hint">
+            Leave these empty for the usual shortlist. Hold Ctrl or Command to pick more than one type or catalogue.
+            {!extendedReady ? " The extended catalogues are still loading." : ""}
+          </p>
+        </div>
+      ) : null}
+    </span>
   );
 }
 
@@ -248,11 +409,30 @@ function releaseThumb(): void {
   thumbWaiters.shift()?.();
 }
 
-function TargetThumb({ raDeg, decDeg, majorArcmin }: { raDeg: number; decDeg: number; majorArcmin: number | null }) {
-  const host = useRef<HTMLSpanElement>(null);
-  const [phase, setPhase] = useState<"wait" | "show" | "empty">("wait");
+function skySrc(raDeg: number, decDeg: number, majorArcmin: number | null, size: number): string {
   const fov = Math.min(6, Math.max(0.15, ((majorArcmin ?? 15) / 60) * 1.8));
-  const src = `/api/sky?ra=${raDeg.toFixed(4)}&dec=${decDeg.toFixed(4)}&fov=${fov.toFixed(3)}&size=96`;
+  return `/api/sky?ra=${raDeg.toFixed(4)}&dec=${decDeg.toFixed(4)}&fov=${fov.toFixed(3)}&size=${size}`;
+}
+
+function TargetThumb({
+  raDeg,
+  decDeg,
+  majorArcmin,
+  name,
+  typeLabel,
+  magnitude,
+}: {
+  raDeg: number;
+  decDeg: number;
+  majorArcmin: number | null;
+  name: string;
+  typeLabel: string;
+  magnitude: number | null;
+}) {
+  const host = useRef<HTMLButtonElement>(null);
+  const [phase, setPhase] = useState<"wait" | "show" | "empty">("wait");
+  const [preview, setPreview] = useState(false);
+  const src = skySrc(raDeg, decDeg, majorArcmin, 96);
 
   useEffect(() => {
     const node = host.current;
@@ -294,13 +474,100 @@ function TargetThumb({ raDeg, decDeg, majorArcmin }: { raDeg: number; decDeg: nu
   }, [src]);
 
   return (
-    <span className="thumb-slot" ref={host}>
-      {phase === "show" ? (
-        <img className="thumb" alt="" width={40} height={40} src={src} />
-      ) : (
-        <span className={`thumb thumb-empty${phase === "wait" ? " thumb-wait" : ""}`} aria-hidden="true" />
-      )}
-    </span>
+    <>
+      <button
+        type="button"
+        className="thumb-open"
+        ref={host}
+        aria-label={`Preview ${name}`}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          setPreview(true);
+        }}
+      >
+        {phase === "show" ? (
+          <img className="thumb" alt="" width={40} height={40} src={src} />
+        ) : (
+          <span className={`thumb thumb-empty${phase === "wait" ? " thumb-wait" : ""}`} aria-hidden="true" />
+        )}
+      </button>
+      {preview ? (
+        <SkyPreview
+          src={skySrc(raDeg, decDeg, majorArcmin, 560)}
+          name={name}
+          typeLabel={typeLabel}
+          magnitude={magnitude}
+          onClose={() => setPreview(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function SkyPreview({
+  src,
+  name,
+  typeLabel,
+  magnitude,
+  onClose,
+}: {
+  src: string;
+  name: string;
+  typeLabel: string;
+  magnitude: number | null;
+  onClose: () => void;
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="preview-backdrop" onClick={onClose}>
+      <div
+        className="preview-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${name} preview`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="preview-close" ref={closeRef} aria-label="Close preview" onClick={onClose}>
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </button>
+        <div className="preview-frame">
+          {phase === "loading" ? <p className="preview-status">Loading the field…</p> : null}
+          {phase === "error" ? <p className="preview-status">The preview did not load.</p> : null}
+          {phase === "error" ? null : (
+            <img
+              src={src}
+              alt=""
+              onLoad={() => setPhase("ready")}
+              onError={() => setPhase("error")}
+              hidden={phase !== "ready"}
+            />
+          )}
+        </div>
+        <p className="preview-caption">
+          <strong>{name}</strong>
+          <span>{typeLabel}</span>
+          <span>{magnitude == null ? "Magnitude not listed" : `mag ${magnitude.toFixed(1)}`}</span>
+        </p>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
