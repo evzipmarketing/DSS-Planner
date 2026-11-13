@@ -33,8 +33,15 @@ export function TonightPage() {
         <div className="min-bar">
           <div className="brand">
             <img
-              className="brand-lockup"
-              src={planner.theme === "light" ? "/deepskymate-logo-light.svg" : "/deepskymate-logo-dark.svg"}
+              className="brand-lockup brand-lockup-light"
+              src="/deepskymate-logo-light.svg"
+              alt="DeepSkyMate"
+              width={1440}
+              height={360}
+            />
+            <img
+              className="brand-lockup brand-lockup-dark"
+              src="/deepskymate-logo-dark.svg"
               alt="DeepSkyMate"
               width={1440}
               height={360}
