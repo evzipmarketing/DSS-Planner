@@ -37,25 +37,32 @@ for (const theme of ["dark", "night", "light"]) {
   if (contrast.hint === contrast.typed) throw new Error(`${theme} placeholder matches typed text`);
   if (contrast.italic !== "italic") throw new Error(`${theme} placeholder is not italic`);
   console.log(theme, JSON.stringify(contrast));
-  await page.locator(".search-field").screenshot({ path: `${outDir}/${theme}-search-empty.png` });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const tagline = await page.locator(".tagline").innerText();
+  if (tagline !== "Astrophotography planner by DarkSkyscapes") throw new Error(`Unexpected tagline: ${tagline}`);
+  await page.screenshot({ path: `${outDir}/${theme}-search-empty.png` });
   await page.getByPlaceholder(search).fill("M42");
-  await page.locator(".search-field").screenshot({ path: `${outDir}/${theme}-search-typed.png` });
+  await page.screenshot({ path: `${outDir}/${theme}-search-typed.png` });
   await page.getByPlaceholder(search).fill("");
 
   await page.locator(".custom-tab").click();
   await page.locator(".custom-panel").waitFor();
-  await page.locator(".custom-panel").screenshot({ path: `${outDir}/${theme}-custom.png` });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `${outDir}/${theme}-custom.png` });
   await page.locator(".custom-tab").click();
 
   await page.getByRole("button", { name: /^Telescope/ }).click();
   await page.getByPlaceholder("e.g. 800").waitFor();
-  await page.locator(".field", { has: page.getByPlaceholder("e.g. 800") }).screenshot({ path: `${outDir}/${theme}-focal.png` });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `${outDir}/${theme}-focal.png` });
   await page.getByRole("button", { name: /^Telescope/ }).click();
 }
 
 await page.setViewportSize({ width: 390, height: 844 });
 await ensureTheme("dark");
-await page.locator(".search-field").scrollIntoViewIfNeeded();
+await page.evaluate(() => window.scrollTo(0, 0));
+const mobileTagline = await page.locator(".tagline").innerText();
+if (mobileTagline !== "Astrophotography planner by DarkSkyscapes") throw new Error(`Unexpected mobile tagline: ${mobileTagline}`);
 await page.screenshot({ path: `${outDir}/mobile-search-empty.png` });
 
 await browser.close();

@@ -6,7 +6,7 @@ const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
 const sans = Outfit({ subsets: ["latin"], variable: "--font-ui" });
 
 const title = "astrocue";
-const description = "An astrophotography session planner by DarkSkyscapes.";
+const description = "Astrophotography planner by DarkSkyscapes";
 
 export const metadata: Metadata = {
   title,
