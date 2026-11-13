@@ -12,6 +12,7 @@ import {
   type Telescope,
 } from "@dss/core";
 import { Combobox } from "./combobox";
+import { NumericField } from "./numeric-field";
 import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
@@ -173,22 +174,24 @@ function FocalLength({ telescope }: { telescope: Telescope }) {
       {planner.focalOverrideMm != null ? (
         <p className="focal-hint">Using the number you enter. The scope and corrector give {computed} mm.</p>
       ) : null}
-      <label className="field">
-        Enter a focal length (mm)
-        <input
-          type="number"
-          min={10}
-          max={20000}
-          step={1}
-          inputMode="numeric"
-          placeholder="e.g. 800"
-          value={planner.focalOverrideMm ?? ""}
-          onChange={(event) => {
-            const text = event.target.value.trim();
-            planner.setFocalOverrideMm(text === "" ? null : Number(text));
-          }}
-        />
-      </label>
+      <NumericField
+        label="Enter a focal length (mm)"
+        value={planner.focalOverrideMm}
+        fallback={computed}
+        min={10}
+        max={20_000}
+        step={1}
+        inputMode="numeric"
+        placeholder="e.g. 800"
+        allowEmpty
+        onCommit={(next) => {
+          if (next == null) {
+            planner.setFocalOverrideMm(null);
+            return;
+          }
+          planner.setFocalOverrideMm(Math.round(next));
+        }}
+      />
     </>
   );
 }
@@ -242,16 +245,16 @@ function CustomGear({ part }: { part: "all" | "telescope" | "camera" }) {
 
 function ScopeForm({ onSave }: { onSave: (scope: Telescope) => void }) {
   const [name, setName] = useState("");
-  const [aperture, setAperture] = useState("80");
-  const [focal, setFocal] = useState("480");
+  const [aperture, setAperture] = useState<number | null>(80);
+  const [focal, setFocal] = useState<number | null>(480);
   const [error, setError] = useState("");
   return (
     <form
       className="fields"
       onSubmit={(event) => {
         event.preventDefault();
-        const apertureMm = Number(aperture);
-        const focalLengthMm = Number(focal);
+        const apertureMm = aperture ?? 0;
+        const focalLengthMm = focal ?? 0;
         if (!name.trim() || !(apertureMm > 0) || !(focalLengthMm > 0)) {
           setError("Name, aperture, and focal length need positive values.");
           return;
@@ -262,8 +265,8 @@ function ScopeForm({ onSave }: { onSave: (scope: Telescope) => void }) {
       }}
     >
       <label className="field">Name<input value={name} placeholder="e.g. My 80 mm refractor" onChange={(event) => setName(event.target.value)} /></label>
-      <label className="field">Aperture (mm)<input value={aperture} placeholder="e.g. 80" onChange={(event) => setAperture(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Focal length (mm)<input value={focal} placeholder="e.g. 480" onChange={(event) => setFocal(event.target.value)} inputMode="decimal" /></label>
+      <NumericField label="Aperture (mm)" value={aperture} fallback={80} min={1} max={2000} placeholder="e.g. 80" allowEmpty={false} onCommit={setAperture} />
+      <NumericField label="Focal length (mm)" value={focal} fallback={480} min={1} max={20000} placeholder="e.g. 480" allowEmpty={false} onCommit={setFocal} />
       {error ? <p className="warn">{error}</p> : null}
       <button type="submit" className="vision">Save telescope</button>
     </form>
@@ -272,24 +275,24 @@ function ScopeForm({ onSave }: { onSave: (scope: Telescope) => void }) {
 
 function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
   const [name, setName] = useState("");
-  const [width, setWidth] = useState("11.31");
-  const [height, setHeight] = useState("11.31");
-  const [pixel, setPixel] = useState("3.76");
-  const [cols, setCols] = useState("3008");
-  const [rows, setRows] = useState("3008");
+  const [width, setWidth] = useState<number | null>(11.31);
+  const [height, setHeight] = useState<number | null>(11.31);
+  const [pixel, setPixel] = useState<number | null>(3.76);
+  const [cols, setCols] = useState<number | null>(3008);
+  const [rows, setRows] = useState<number | null>(3008);
   const [sensor, setSensor] = useState<SensorKind>("colour");
-  const [noise, setNoise] = useState("1.5");
+  const [noise, setNoise] = useState<number | null>(1.5);
   const [error, setError] = useState("");
   return (
     <form
       className="fields"
       onSubmit={(event) => {
         event.preventDefault();
-        const widthPx = Number(cols);
-        const heightPx = Number(rows);
-        let sensorWidthMm = Number(width);
-        let sensorHeightMm = Number(height);
-        let pixelSizeUm = Number(pixel);
+        const widthPx = cols ?? 0;
+        const heightPx = rows ?? 0;
+        let sensorWidthMm = width ?? 0;
+        let sensorHeightMm = height ?? 0;
+        let pixelSizeUm = pixel ?? 0;
         if (!(pixelSizeUm > 0) && sensorWidthMm > 0 && widthPx > 0) {
           pixelSizeUm = (sensorWidthMm / widthPx) * 1000;
           if (!(sensorHeightMm > 0) && heightPx > 0) sensorHeightMm = (heightPx * pixelSizeUm) / 1000;
@@ -307,7 +310,7 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
           widthPx,
           heightPx,
           sensor,
-          readNoiseE: Number(noise),
+          readNoiseE: noise ?? 0,
           custom: true as const,
         };
         if (
@@ -328,11 +331,11 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
       }}
     >
       <label className="field">Name<input value={name} placeholder="e.g. My camera" onChange={(event) => setName(event.target.value)} /></label>
-      <label className="field">Sensor width (mm)<input value={width} placeholder="e.g. 11.31" onChange={(event) => setWidth(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Sensor height (mm)<input value={height} placeholder="e.g. 11.31" onChange={(event) => setHeight(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Pixel size (µm, optional if resolution is set)<input value={pixel} placeholder="e.g. 3.76" onChange={(event) => setPixel(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Width (px)<input value={cols} placeholder="e.g. 3008" onChange={(event) => setCols(event.target.value)} inputMode="numeric" /></label>
-      <label className="field">Height (px)<input value={rows} placeholder="e.g. 3008" onChange={(event) => setRows(event.target.value)} inputMode="numeric" /></label>
+      <NumericField label="Sensor width (mm)" value={width} fallback={11.31} min={0.1} max={100} placeholder="e.g. 11.31" allowEmpty={false} onCommit={setWidth} />
+      <NumericField label="Sensor height (mm)" value={height} fallback={11.31} min={0.1} max={100} placeholder="e.g. 11.31" allowEmpty={false} onCommit={setHeight} />
+      <NumericField label="Pixel size (µm, optional if resolution is set)" value={pixel} fallback={3.76} min={0.1} max={50} placeholder="e.g. 3.76" allowEmpty onCommit={setPixel} />
+      <NumericField label="Width (px)" value={cols} fallback={3008} min={1} max={30000} inputMode="numeric" placeholder="e.g. 3008" allowEmpty={false} onCommit={(next) => setCols(next == null ? null : Math.round(next))} />
+      <NumericField label="Height (px)" value={rows} fallback={3008} min={1} max={30000} inputMode="numeric" placeholder="e.g. 3008" allowEmpty={false} onCommit={(next) => setRows(next == null ? null : Math.round(next))} />
       <label className="field">
         Sensor
         <select value={sensor} onChange={(event) => setSensor(event.target.value as SensorKind)}>
@@ -340,7 +343,7 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
           <option value="mono">Mono</option>
         </select>
       </label>
-      <label className="field">Read noise (e−, nominal)<input value={noise} placeholder="e.g. 1.5" onChange={(event) => setNoise(event.target.value)} inputMode="decimal" /></label>
+      <NumericField label="Read noise (e−, nominal)" value={noise} fallback={1.5} min={0.01} max={50} placeholder="e.g. 1.5" allowEmpty={false} onCommit={setNoise} />
       {error ? <p className="warn">{error}</p> : null}
       <button type="submit" className="vision">Save camera</button>
     </form>
@@ -350,8 +353,8 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
 function FilterForm({ onSave }: { onSave: (filter: ImagingFilter) => void }) {
   const [name, setName] = useState("");
   const [kind, setKind] = useState<FilterKind>("ha");
-  const [bandpass, setBandpass] = useState("6");
-  const [transmission, setTransmission] = useState("0.9");
+  const [bandpass, setBandpass] = useState<number | null>(6);
+  const [transmission, setTransmission] = useState<number | null>(0.9);
   const [error, setError] = useState("");
   return (
     <form
@@ -362,8 +365,8 @@ function FilterForm({ onSave }: { onSave: (filter: ImagingFilter) => void }) {
           id: `custom-${crypto.randomUUID()}`,
           name: name.trim(),
           kind,
-          bandpassNm: Number(bandpass),
-          transmission: Number(transmission),
+          bandpassNm: bandpass ?? 0,
+          transmission: transmission ?? 0,
           custom: true as const,
         };
         if (!filter.name || !(filter.bandpassNm > 0) || !(filter.transmission > 0 && filter.transmission <= 1)) {
@@ -386,8 +389,8 @@ function FilterForm({ onSave }: { onSave: (filter: ImagingFilter) => void }) {
           ))}
         </select>
       </label>
-      <label className="field">Bandpass (nm)<input value={bandpass} placeholder="e.g. 6" onChange={(event) => setBandpass(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Peak transmission (0–1)<input value={transmission} placeholder="e.g. 0.9" onChange={(event) => setTransmission(event.target.value)} inputMode="decimal" /></label>
+      <NumericField label="Bandpass (nm)" value={bandpass} fallback={6} min={0.1} max={500} placeholder="e.g. 6" allowEmpty={false} onCommit={setBandpass} />
+      <NumericField label="Peak transmission (0–1)" value={transmission} fallback={0.9} min={0.01} max={1} placeholder="e.g. 0.9" allowEmpty={false} onCommit={setTransmission} />
       {error ? <p className="warn">{error}</p> : null}
       <button type="submit" className="vision">Save filter</button>
     </form>

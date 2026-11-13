@@ -37,4 +37,34 @@ describe("city shortlist", () => {
     expect(ranked.filter((item) => showpiece(item.object)).length).toBeGreaterThanOrEqual(5);
     expect(ranked.some((item) => darkNebula(item.object))).toBe(false);
   });
+
+  it("keeps frame fill identical across dates and different across telescopes", () => {
+    const camera = cameras.find((item) => item.id === defaultCameraId)!;
+    const short = telescopes.find((item) => item.id === "sw-evostar-72ed")!;
+    const long = telescopes.find((item) => item.id === "celestron-c8")!;
+    const shortField = fieldOfView(camera, short.focalLengthMm);
+    const longField = fieldOfView(camera, long.focalLengthMm);
+    const catalogue = [...deepSkyCore, ...deepSkyExtended];
+    const dates = ["2026-11-12", "2026-12-01", "2027-01-15"];
+    const fills = dates.map((date) => {
+      const ranked = rankTargets(catalogue, defaultSite, date, 40, undefined, {
+        widthArcmin: shortField.widthArcmin,
+        heightArcmin: shortField.heightArcmin,
+      });
+      const orion = ranked.find((item) => item.object.messier === 42);
+      expect(orion).toBeTruthy();
+      return orion!.frameFillPercent;
+    });
+    expect(fills[0]).toBeCloseTo(fills[1]!, 8);
+    expect(fills[0]).toBeCloseTo(fills[2]!, 8);
+
+    const withLong = rankTargets(catalogue, defaultSite, dates[0]!, 40, undefined, {
+      widthArcmin: longField.widthArcmin,
+      heightArcmin: longField.heightArcmin,
+    });
+    const orionLong = withLong.find((item) => item.object.messier === 42);
+    expect(orionLong).toBeTruthy();
+    expect(orionLong!.frameFillPercent).not.toBeCloseTo(fills[0]!, 1);
+    expect(orionLong!.frameFillPercent!).toBeGreaterThan(fills[0]!);
+  });
 });
