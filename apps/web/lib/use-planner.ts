@@ -5,6 +5,8 @@ import {
   effectiveFocalLengthMm,
   fieldOfView,
   focalRatio,
+  frameFillPercent,
+  frameFit,
   pixelScaleArcsec,
   rankTargets,
   samplingAdvice,
@@ -90,7 +92,11 @@ export function usePlanner() {
   const [hydrated, setHydrated] = useState(false);
   const [ranked, setRanked] = useState<{ key: string; items: RankedTarget[] } | null>(null);
   const [pointingFor, setPointingFor] = useState<string | null>(null);
+  const [bortle, setBortle] = useState(() => estimateBortle(defaultSite.latitude, defaultSite.longitude));
+  const [bortleLoading, setBortleLoading] = useState(false);
   const hadStoredSite = useRef(false);
+  const siteLocked = useRef(false);
+  const bortleRequest = useRef(0);
 
   useEffect(() => {
     // localStorage is only available after mount, so the stored session is applied here.
@@ -99,6 +105,7 @@ export function usePlanner() {
     if (stored) {
       const restored = resolveSite(stored);
       hadStoredSite.current = true;
+      siteLocked.current = true;
       setTheme(stored.theme);
       setSite(restored);
       setPlaceStatus("saved");
@@ -121,10 +128,13 @@ export function usePlanner() {
 
   useEffect(() => {
     if (!hydrated || !navigator.geolocation) {
-      if (hydrated) setPlaceStatus(hadStoredSite.current ? "saved" : "default");
+      if (hydrated) setPlaceStatus(hadStoredSite.current || siteLocked.current ? "saved" : "default");
       return;
     }
+    // Respect a saved or user-chosen site; only auto-detect on a blank first visit.
+    if (hadStoredSite.current || siteLocked.current) return;
     let cancelled = false;
+    const requestId = ++bortleRequest.current;
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const latitude = position.coords.latitude;
@@ -135,7 +145,7 @@ export function usePlanner() {
             return (await response.json()) as PlaceBody;
           })
           .then((place) => {
-            if (cancelled) return;
+            if (cancelled || siteLocked.current || requestId !== bortleRequest.current) return;
             const next: Site = {
               id: "custom",
               name: place.name || "Current location",
@@ -147,11 +157,11 @@ export function usePlanner() {
             setPlaceStatus("gps");
           })
           .catch(() => {
-            if (!cancelled) setPlaceStatus(hadStoredSite.current ? "saved" : "default");
+            if (!cancelled && !siteLocked.current) setPlaceStatus("default");
           });
       },
       () => {
-        if (!cancelled) setPlaceStatus(hadStoredSite.current ? "saved" : "default");
+        if (!cancelled && !siteLocked.current) setPlaceStatus("default");
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 10 * 60 * 1000 },
     );
@@ -159,6 +169,25 @@ export function usePlanner() {
       cancelled = true;
     };
   }, [hydrated]);
+
+  useEffect(() => {
+    const requestId = ++bortleRequest.current;
+    let cancelled = false;
+    /* eslint-disable react-hooks/set-state-in-effect -- loading flag for out-of-order location updates */
+    setBortleLoading(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    const timer = window.setTimeout(() => {
+      if (cancelled || requestId !== bortleRequest.current) return;
+      const next = estimateBortle(site.latitude, site.longitude);
+      if (cancelled || requestId !== bortleRequest.current) return;
+      setBortle(next);
+      setBortleLoading(false);
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [site.latitude, site.longitude]);
 
   useEffect(() => {
     let cancelled = false;
@@ -219,7 +248,6 @@ export function usePlanner() {
   const filterList = useMemo(() => [...seedFilters, ...customFilters], [customFilters]);
   const telescope = telescopes.find((item) => item.id === telescopeId) ?? telescopes[0] ?? null;
   const camera = cameraList.find((item) => item.id === cameraId) ?? cameraList[0] ?? null;
-  const bortle = estimateBortle(site.latitude, site.longitude);
 
   const optics = useMemo<Optics | null>(() => {
     if (!telescope || !camera) return null;
@@ -247,11 +275,22 @@ export function usePlanner() {
     () => (optics ? { widthArcmin: optics.field.widthArcmin, heightArcmin: optics.field.heightArcmin } : null),
     [optics],
   );
-  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${field ? `${field.widthArcmin.toFixed(2)}x${field.heightArcmin.toFixed(2)}` : "none"}|${listFilter}|${bortle}|${extendedCatalogue ? "extended" : "core"}`;
-  const shortlist = useMemo(
-    () => (ranked?.key === shortlistKey ? ranked.items : []),
-    [ranked, shortlistKey],
-  );
+  // Ranking key includes site/date for altitude and field for good-fit filtering.
+  // Displayed frame % is always recomputed from live optics so it tracks gear immediately
+  // and cannot drift with date, location, or time.
+  const fieldKey = field ? `${field.widthArcmin.toFixed(4)}x${field.heightArcmin.toFixed(4)}` : "none";
+  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${fieldKey}|${listFilter}|${bortle}|${extendedCatalogue ? "extended" : "core"}`;
+  const shortlist = useMemo(() => {
+    if (ranked?.key !== shortlistKey) return [];
+    return ranked.items.map((item) => {
+      const fill = frameFillPercent(item.object.majorArcmin, field);
+      return {
+        ...item,
+        frameFillPercent: fill,
+        frameFit: frameFit(fill),
+      };
+    });
+  }, [ranked, shortlistKey, field]);
   const scoring = Boolean(hydrated && catalogue && ranked?.key !== shortlistKey);
 
   useEffect(() => {
@@ -319,6 +358,8 @@ export function usePlanner() {
   }
 
   function chooseSite(next: Site) {
+    siteLocked.current = true;
+    bortleRequest.current += 1;
     setSite(next);
     setPlaceStatus("saved");
   }
@@ -370,6 +411,7 @@ export function usePlanner() {
     date,
     setDate,
     bortle,
+    bortleLoading,
     query,
     setQuery,
     results,

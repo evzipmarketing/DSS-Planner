@@ -11,8 +11,7 @@ export function FramingPreview() {
   const { selected, pointing, setPointing, optics } = usePlannerState();
   const stageRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [source, setSource] = useState<string | null>(null);
+  const [plate, setPlate] = useState<{ key: string; url: string; source: string | null } | null>(null);
   const [failureFor, setFailureFor] = useState<string | null>(null);
   const drag = useRef<
     | { mode: "pan"; id: number; x: number; y: number; baseX: number; baseY: number }
@@ -23,36 +22,6 @@ export function FramingPreview() {
   const plateRa = pointing?.raDeg;
   const plateDec = pointing?.decDeg;
   const plateFov = optics?.imageFovDeg;
-
-  useEffect(() => {
-    if (plateRa == null || plateDec == null || plateFov == null) return;
-    const controller = new AbortController();
-    const params = new URLSearchParams({
-      ra: plateRa.toFixed(5),
-      dec: plateDec.toFixed(5),
-      fov: plateFov.toFixed(4),
-      size: String(PLATE),
-    });
-    const requestKey = params.toString();
-    void fetch(`/api/sky?${params}`, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("plate");
-        setSource(response.headers.get("x-sky-source"));
-        setFailureFor((current) => (current === requestKey ? null : current));
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        setImageUrl((previous) => {
-          if (previous) URL.revokeObjectURL(previous);
-          return url;
-        });
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setFailureFor(requestKey);
-      });
-    return () => controller.abort();
-  }, [plateRa, plateDec, plateFov]);
-
   const requestKey =
     plateRa == null || plateDec == null || plateFov == null
       ? null
@@ -62,6 +31,33 @@ export function FramingPreview() {
           fov: plateFov.toFixed(4),
           size: String(PLATE),
         }).toString();
+
+  useEffect(() => {
+    if (requestKey == null) return;
+    const controller = new AbortController();
+    // Fetch a plate that matches the current FOV. Overlays always use live optics; the image
+    // is only shown when its key matches so gear changes never draw on a stale sky plate.
+    void fetch(`/api/sky?${requestKey}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("plate");
+        const source = response.headers.get("x-sky-source");
+        setFailureFor((current) => (current === requestKey ? null : current));
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        setPlate((previous) => {
+          if (previous) URL.revokeObjectURL(previous.url);
+          return { key: requestKey, url, source };
+        });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setFailureFor(requestKey);
+      });
+    return () => controller.abort();
+  }, [requestKey]);
+
+  const imageUrl = plate && requestKey != null && plate.key === requestKey ? plate.url : null;
+  const source = imageUrl && plate ? plate.source : null;
   const failed = requestKey != null && failureFor === requestKey;
 
   if (!selected || !pointing || !optics) {

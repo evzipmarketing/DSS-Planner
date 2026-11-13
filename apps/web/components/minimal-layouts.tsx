@@ -55,7 +55,7 @@ export function TonightPage() {
               icon={<PinIcon />}
               prefix="Location"
               value={place}
-              label={`Location, ${place}, Bortle ${planner.bortle}`}
+              label={`Location, ${place}, ${planner.bortleLoading ? "Bortle updating" : `Bortle ${planner.bortle}`}`}
               open={panel === "location"}
               onToggle={() => toggle("location")}
             />
@@ -96,7 +96,7 @@ export function TonightPage() {
         <div className="sky-meta">
           <WeatherPanel plain />
           <span className="bortle-line" title="Sky brightness class estimated for this site.">
-            Bortle {planner.bortle}
+            {planner.bortleLoading ? "Bortle…" : `Bortle ${planner.bortle}`}
           </span>
           <LookUpNote />
         </div>
