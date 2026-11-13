@@ -132,7 +132,7 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
           <CustomFilters />
         </div>
         <label className="field search-field">
-          Name or catalogue id
+          <span className="visually-hidden">Name or catalogue id</span>
           <span className="search-input">
             <input
               value={query}
