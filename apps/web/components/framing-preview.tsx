@@ -57,7 +57,6 @@ export function FramingPreview() {
   }, [requestKey]);
 
   const imageUrl = plate && requestKey != null && plate.key === requestKey ? plate.url : null;
-  const source = imageUrl && plate ? plate.source : null;
   const failed = requestKey != null && failureFor === requestKey;
 
   if (!selected || !pointing || !optics) {
@@ -238,20 +237,6 @@ export function FramingPreview() {
           Centre on target
         </button>
       </div>
-      <p className="note">
-        North is up and east is left. The rectangle is the sensor and the ellipse is the catalogue size. Drag the rectangle
-        to point the rig, or the handle to rotate it. Arrow keys pan when the frame is focused.
-      </p>
-      <p className="note">
-        {failed
-          ? "The sky plate did not load. The frame is still drawn to scale."
-          : source === "hips2fits"
-            ? "DSS2 colour from CDS hips2fits."
-            : source === "hips-tiles"
-              ? "DSS2 colour HiPS tiles from CDS/P/DSS2/color. hips2fits did not answer, so the plate is built from a public tile mirror."
-              : "Loading the DSS2 colour plate…"}{" "}
-        Digitized Sky Survey, STScI/NASA, coloured by CDS.
-      </p>
     </Section>
   );
 }
