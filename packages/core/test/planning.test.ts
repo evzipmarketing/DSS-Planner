@@ -256,6 +256,15 @@ describe("target list sort", () => {
     expect(sorted(items, "imageable", "asc")).toEqual(["never", "late", "early", "up"]);
   });
 
+  it("sorts imageable hours by the value rounded once to a tenth", () => {
+    const close = [
+      target({ id: "a", usableHours: 7.16 }),
+      target({ id: "b", usableHours: 7.24 }),
+      target({ id: "c", usableHours: 7.26 }),
+    ];
+    expect(sorted(close, "imageable", "desc")).toEqual(["c", "a", "b"]);
+  });
+
   it("sorts rise time with targets already up at dusk first when ascending, and targets that never rise last", () => {
     expect(sorted(items, "rise", "asc")).toEqual(["up", "early", "late", "never"]);
     expect(sorted(items, "rise", "desc")).toEqual(["late", "early", "up", "never"]);

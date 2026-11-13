@@ -523,7 +523,9 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
 
 .search-input { position: relative; display: block; }
 
-.search-input input { padding-right: 44px; }
+.search-input input { padding-right: 12px; }
+
+.search-input:has(.search-clear) input { padding-right: 44px; }
 
 .search-clear {
   position: absolute;
@@ -1296,9 +1298,10 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 
   .tonight .target-tools .field {
-    flex: 0 1 180px;
-    max-width: 200px;
-    min-width: 140px;
+    flex: 0 0 220px;
+    width: 220px;
+    max-width: 220px;
+    min-width: 220px;
   }
 
   .tonight .target-tools .tab,

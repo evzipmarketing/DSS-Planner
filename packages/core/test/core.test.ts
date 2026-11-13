@@ -4,7 +4,10 @@ import {
   IMAGEABLE_MIN_ALTITUDE_DEG,
   ang2pixNest,
   assumedSeeingArcsec,
+  IMAGEABLE_SAMPLE_MINUTES,
   buildNightTrack,
+  formatImageableHours,
+  roundHours,
   centerAfterSensorDrag,
   chooseHipsOrder,
   civilDate,
@@ -309,13 +312,18 @@ describe("night track and shortlist", () => {
       decDeg: M42.decDeg,
       site: HYDERABAD,
       dateIso: "2026-01-15",
-      stepMinutes: 10,
+      stepMinutes: IMAGEABLE_SAMPLE_MINUTES,
     });
     const geometric = 90 - Math.abs(HYDERABAD.latitude - M42.decDeg);
     expect(track.maxTargetAltitude).toBeGreaterThan(60);
     expect(track.maxTargetAltitude).toBeCloseTo(geometric, 0);
     expect(IMAGEABLE_MIN_ALTITUDE_DEG).toBe(20);
     expect(track.usableHours).toBeGreaterThan(1);
+    const ranked = rankTargets([M42], HYDERABAD, "2026-01-15", 5);
+    const listed = ranked.find((item) => item.object.id === "NGC1976");
+    expect(listed).toBeTruthy();
+    expect(roundHours(listed?.usableHours ?? -1)).toBe(roundHours(track.usableHours));
+    expect(formatImageableHours(listed?.usableHours ?? 0)).toBe(formatImageableHours(track.usableHours));
     const dark = track.samples.filter((sample) => sample.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG);
     expect(dark.filter((sample) => sample.targetAltitude >= IMAGEABLE_MIN_ALTITUDE_DEG).every((sample) => sample.usable)).toBe(true);
     expect(dark.filter((sample) => sample.targetAltitude < IMAGEABLE_MIN_ALTITUDE_DEG).every((sample) => !sample.usable)).toBe(true);

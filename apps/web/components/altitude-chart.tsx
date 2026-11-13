@@ -4,7 +4,7 @@ import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
   IMAGEABLE_MIN_ALTITUDE_DEG,
   formatClock,
-  formatHours,
+  formatImageableHours,
   objectTitle,
 } from "@dss/core";
 import { usePlannerState } from "./planner-context";
@@ -37,7 +37,7 @@ export function AltitudeChart() {
             ? `It does not stay above ${IMAGEABLE_MIN_ALTITUDE_DEG}° while the sun is below −${Math.abs(ASTRONOMICAL_SUN_ALTITUDE_DEG)}°.`
             : `Imageable ${track.usableIntervals
                 .map((interval) => `${formatClock(interval.start, site.timezone)}–${formatClock(interval.end, site.timezone)}`)
-                .join(", ")} (${formatHours(track.usableHours)}).`
+                .join(", ")} (${formatImageableHours(track.usableHours)}).`
         } Moon is ${track.moonPhaseName.toLowerCase()}, ${Math.round(track.moonIlluminatedFraction * 100)}% lit.`;
 
   return (

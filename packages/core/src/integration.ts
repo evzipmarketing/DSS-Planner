@@ -1,3 +1,4 @@
+import { formatImageableHours } from "./format";
 import { assertNever } from "./never";
 import { BORTLE_SKY_MAG, type FilterKind, type ImagingFilter } from "./types";
 
@@ -256,7 +257,7 @@ function integrationExplanation(input: {
     input.usableHours == null
       ? `A full stack is about ${stack} h.`
       : input.totalHours - input.tonightHours > 0.15
-        ? `A full stack is about ${stack} h. This night has about ${input.usableHours.toFixed(1)} h of imageable time, so plan on ${tonight} h tonight and finish on another night.`
+        ? `A full stack is about ${stack} h. This night has about ${formatImageableHours(input.usableHours)} of imageable time, so plan on ${tonight} h tonight and finish on another night.`
         : `About ${tonight} h fits in this night’s imageable window.`;
   return `${target} ${night} The length follows the object’s brightness, then a modest stretch for a Bortle ${input.bortle} sky at f/${ratio}. Subs stay in the usual range for this sky: long enough for sky noise to matter, and not so short that the stack becomes thousands of frames. ${input.moonNote}`;
 }

@@ -145,6 +145,8 @@ export type Site = {
 
 /** Target altitude, in degrees, at or above which a dark sample counts as imageable. */
 export const IMAGEABLE_MIN_ALTITUDE_DEG = 20;
+/** Sample spacing for the imageable window. The list and the altitude chart share it. */
+export const IMAGEABLE_SAMPLE_MINUTES = 10;
 export const ASTRONOMICAL_SUN_ALTITUDE_DEG = -18;
 
 export const BORTLE_SKY_MAG: Record<number, number> = {

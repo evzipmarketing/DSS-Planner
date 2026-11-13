@@ -12,6 +12,7 @@ import {
   type TargetSortKey,
   searchCatalogue,
   sensorDisagreement,
+  IMAGEABLE_SAMPLE_MINUTES,
   buildNightTrack,
   EMPTY_TARGET_QUERY,
   type Camera,
@@ -286,7 +287,7 @@ export function usePlanner() {
       decDeg: selected.decDeg,
       site,
       dateIso: date,
-      stepMinutes: 10,
+      stepMinutes: IMAGEABLE_SAMPLE_MINUTES,
     });
   }, [selected, site, date]);
 

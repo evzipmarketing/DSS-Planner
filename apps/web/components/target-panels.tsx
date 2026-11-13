@@ -19,7 +19,7 @@ import {
   formatCatalogueId,
   formatClock,
   formatDeclination,
-  formatHours,
+  formatImageableHours,
   formatRightAscension,
   formatSignedDegrees,
   imageableCrossing,
@@ -136,7 +136,7 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
           <span className="search-input">
             <input
               value={query}
-              placeholder="e.g. M42, NGC 224, Horsehead"
+              placeholder="e.g. M42, NGC 224"
               onChange={(event) => {
                 setQuery(event.target.value);
                 setPinnedId(null);
@@ -307,7 +307,7 @@ function TargetRow({
           />
           <Fact
             label="Imageable"
-            value={`${item.usableHours.toFixed(1)} h`}
+            value={formatImageableHours(item.usableHours)}
             tip={`Hours tonight when the object is at least ${IMAGEABLE_MIN_ALTITUDE_DEG}° up and the sun is below −${Math.abs(ASTRONOMICAL_SUN_ALTITUDE_DEG)}°.`}
           />
         </span>
@@ -798,7 +798,7 @@ export function ObjectCard() {
             {track ? (
               <div>
                 <dt>Imageable tonight</dt>
-                <dd>{track.usableHours > 0 ? formatHours(track.usableHours) : "None"}</dd>
+                <dd>{formatImageableHours(track.usableHours)}</dd>
               </div>
             ) : null}
             {crossing ? (

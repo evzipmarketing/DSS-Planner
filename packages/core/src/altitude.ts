@@ -104,8 +104,9 @@ export function buildNightTrack(input: {
     const moonAltitude = bodyAltitude(Astronomy.Body.Moon, time, observer);
     const sunAltitude = bodyAltitude(Astronomy.Body.Sun, time, observer);
     const moonSeparationDeg = angularSeparationDeg(targetVector, moonVector);
+    const geometric = geometricAltitude(targetVector, Astronomy.Rotation_EQJ_HOR(astroTime, observer).rot);
     const usable =
-      targetAltitude >= IMAGEABLE_MIN_ALTITUDE_DEG && sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG;
+      geometric >= IMAGEABLE_MIN_ALTITUDE_DEG && sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG;
     samples.push({ time, targetAltitude, moonAltitude, sunAltitude, moonSeparationDeg, usable });
     if (targetAltitude > maxTargetAltitude) {
       maxTargetAltitude = targetAltitude;
@@ -114,10 +115,7 @@ export function buildNightTrack(input: {
   }
 
   const usableIntervals = mergeUsable(samples, step);
-  const usableHours = usableIntervals.reduce(
-    (sum, interval) => sum + (interval.end.getTime() - interval.start.getTime()) / 3_600_000,
-    0,
-  );
+  const usableHours = hoursInIntervals(usableIntervals);
   const midnight = localMidnight(input.dateIso, input.site.timezone);
   const phaseAngle = Astronomy.MoonPhase(midnight);
   const illumination = Astronomy.Illumination(Astronomy.Body.Moon, midnight);
@@ -134,7 +132,15 @@ export function buildNightTrack(input: {
   };
 }
 
-function mergeUsable(samples: TrackSample[], stepMinutes: number): TimeInterval[] {
+export function imageableWindowHours(samples: { time: Date; usable: boolean }[], stepMinutes: number): number {
+  return hoursInIntervals(mergeUsable(samples, stepMinutes));
+}
+
+function hoursInIntervals(intervals: TimeInterval[]): number {
+  return intervals.reduce((sum, interval) => sum + (interval.end.getTime() - interval.start.getTime()) / 3_600_000, 0);
+}
+
+function mergeUsable(samples: { time: Date; usable: boolean }[], stepMinutes: number): TimeInterval[] {
   const intervals: TimeInterval[] = [];
   let start: Date | null = null;
   let last: Date | null = null;

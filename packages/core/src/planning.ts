@@ -1,3 +1,4 @@
+import { roundHours } from "./format";
 import { assertNever } from "./never";
 import { ASTRONOMICAL_SUN_ALTITUDE_DEG, IMAGEABLE_MIN_ALTITUDE_DEG, type DeepSkyType } from "./types";
 
@@ -358,7 +359,7 @@ export function compareTargetSort(a: TargetSortFields, b: TargetSortFields, key:
     case "frame":
       return compareNumber(a.frameFillPercent, b.frameFillPercent, direction, a.id, b.id);
     case "imageable":
-      return compareNumber(a.usableHours, b.usableHours, direction, a.id, b.id);
+      return compareNumber(roundHours(a.usableHours), roundHours(b.usableHours), direction, a.id, b.id);
     case "rise":
       return compareRise(a, b, direction);
     default:
