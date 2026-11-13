@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "astrocue",
-    short_name: "astrocue",
+    name: "DeepSkyMate",
+    short_name: "DeepSkyMate",
     description: "Astrophotography planner by DarkSkyscapes",
     start_url: "/",
     display: "standalone",

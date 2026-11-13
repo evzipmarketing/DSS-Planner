@@ -9,7 +9,6 @@ import { LocationPanel } from "./location-panel";
 import { ObjectCard, Shortlist } from "./target-panels";
 import { RigPanel } from "./rig-panel";
 import { WeatherPanel } from "./weather-panel";
-import { OrbitMark } from "./brand-mark";
 import { usePlannerState } from "./planner-context";
 import type { ThemeName } from "@/lib/storage";
 
@@ -33,14 +32,14 @@ export function TonightPage() {
       <header className="app-head">
         <div className="min-bar">
           <div className="brand">
-            <OrbitMark />
-            <div className="brand-copy">
-              <p className="wordmark">
-                <span className="wordmark-astro">astro</span>
-                <span className="wordmark-cue">cue</span>
-              </p>
-              <p className="tagline">Astrophotography planner by DarkSkyscapes</p>
-            </div>
+            <img
+              className="brand-lockup"
+              src={planner.theme === "light" ? "/deepskymate-logo-light.svg" : "/deepskymate-logo-dark.svg"}
+              alt="DeepSkyMate"
+              width={1440}
+              height={190}
+            />
+            <p className="tagline">Astrophotography planner by DarkSkyscapes</p>
           </div>
           <ThemeToggle />
         </div>

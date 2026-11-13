@@ -1042,45 +1042,25 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .tonight .brand {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   min-width: 0;
 }
 
-.brand-copy { min-width: 0; }
-
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 auto;
+.brand-lockup {
   display: block;
+  width: min(380px, 100%);
+  height: auto;
+  aspect-ratio: 1440 / 190;
 }
 
-.brand-mark .planet,
-.brand-mark .orbit {
-  fill: none;
-  stroke-width: 1.8;
-  stroke-linecap: round;
+[data-theme="night"] .brand-lockup {
+  /* Flatten cyan (#7ad0e7) and near-white (#f1f2f2) to the night rose (~#e6aaa1).
+     A hue shift alone leaves the wordmark bright white, which breaks night vision. */
+  filter: brightness(0) saturate(100%) invert(78%) sepia(14%) saturate(800%) hue-rotate(318deg) brightness(0.9);
 }
-
-.brand-mark .planet { stroke: var(--saffron); }
-
-.brand-mark .orbit { stroke: var(--sage); }
-
-.tonight .wordmark {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 520;
-  letter-spacing: -0.04em;
-  font-size: clamp(1.2rem, 3vw, 1.5rem);
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.wordmark-astro { color: var(--text); }
-
-.wordmark-cue { color: var(--saffron); }
 
 .tonight .tagline {
   margin: 3px 0 0;
@@ -1536,6 +1516,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .theme-toggle {
   margin-left: auto;
+  flex: 0 0 auto;
   width: 40px;
   height: 40px;
   border-radius: 50%;
