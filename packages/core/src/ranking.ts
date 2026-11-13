@@ -5,6 +5,7 @@ import {
   brightnessHint,
   frameFit,
   horizonStory,
+  imageableCrossing,
   moonPlan,
   passesListFilter,
   visibilityScore,
@@ -13,11 +14,12 @@ import {
   type FrameFit,
   type TargetListFilter,
 } from "./planning";
-import { angularSeparationDeg, equatorialUnit, geometricAltitude, nightHorizonGrid, type HorizonRotation } from "./altitude";
+import { angularSeparationDeg, equatorialUnit, geometricAltitude, imageableWindowHours, nightHorizonGrid, type HorizonRotation } from "./altitude";
 import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
   EMPTY_TARGET_QUERY,
-  USABLE_MIN_ALTITUDE_DEG,
+  IMAGEABLE_MIN_ALTITUDE_DEG,
+  IMAGEABLE_SAMPLE_MINUTES,
   type DeepSkyObject,
   type Site,
   type TargetQuery,
@@ -32,6 +34,8 @@ export type RankedTarget = {
   set: Date | null;
   upAtStart: boolean;
   alwaysUp: boolean;
+  imageableAtDusk: boolean;
+  imageableRise: Date | null;
   frameFillPercent: number | null;
   frameFit: FrameFit;
   band: BandAdvice;
@@ -96,18 +100,18 @@ function scoreObject(
   bortle: number,
 ): Scored {
   let maxAltitude = -90;
-  let usableHours = 0;
   let aboveSteps = 0;
   let minSeparation: number | null = null;
   let moonUp = false;
   const band = bandAdvice(object.type);
-  const altitudes: { time: Date; altitude: number }[] = [];
+  const altitudes: { time: Date; altitude: number; sunAltitude: number }[] = [];
+  const usableSamples: { time: Date; usable: boolean }[] = [];
   for (const cell of grid) {
     const altitude = geometricAltitude(vector, cell.matrix);
-    altitudes.push({ time: cell.time, altitude });
+    altitudes.push({ time: cell.time, altitude, sunAltitude: cell.sunAltitude });
     if (altitude > maxAltitude) maxAltitude = altitude;
-    const usable = cell.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG && altitude >= USABLE_MIN_ALTITUDE_DEG;
-    if (usable) usableHours += stepHours;
+    const usable = cell.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG && altitude >= IMAGEABLE_MIN_ALTITUDE_DEG;
+    usableSamples.push({ time: cell.time, usable });
     if (altitude >= 0) {
       aboveSteps += 1;
       if (cell.moonAltitude >= 0) {
@@ -118,10 +122,12 @@ function scoreObject(
     }
   }
   const horizon = horizonStory(altitudes);
+  const crossing = imageableCrossing(altitudes);
   const illuminated = grid[0]?.moonIlluminatedFraction ?? 0;
   const moon = moonPlan({ band, illuminatedFraction: illuminated, moonUp, minSeparationDeg: minSeparation });
   const fill = frameFillPercent(object.majorArcmin, field);
   const visibility = visibilityScore(object, bortle);
+  const usableHours = imageableWindowHours(usableSamples, stepHours * 60);
   return {
     object,
     maxAltitudeDeg: maxAltitude,
@@ -131,6 +137,8 @@ function scoreObject(
     set: horizon.set,
     upAtStart: horizon.upAtStart,
     alwaysUp: horizon.circumpolar,
+    imageableAtDusk: crossing.atDusk,
+    imageableRise: crossing.rise,
     frameFillPercent: fill,
     frameFit: frameFit(fill),
     band,
@@ -152,8 +160,8 @@ export function rankTargets(
   listFilter: TargetListFilter = "all",
   bortle = 5,
 ): RankedTarget[] {
-  const grid = nightHorizonGrid(site, dateIso, 15);
-  const stepHours = 0.25;
+  const grid = nightHorizonGrid(site, dateIso, IMAGEABLE_SAMPLE_MINUTES);
+  const stepHours = IMAGEABLE_SAMPLE_MINUTES / 60;
   const scored = objects
     .filter((object) => passesTargetQuery(object, query))
     .map((object) => scoreObject(object, equatorialUnit(object.raDeg, object.decDeg), grid, stepHours, field, bortle))

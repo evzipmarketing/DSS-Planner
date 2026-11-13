@@ -76,6 +76,15 @@ export function formatHours(hours: number): string {
   return `${hours.toFixed(1)} h`;
 }
 
+/** One decimal, rounded once. Imageable hours are shown and sorted with this value. */
+export function roundHours(hours: number): number {
+  return Math.round(hours * 10) / 10;
+}
+
+export function formatImageableHours(hours: number): string {
+  return `${roundHours(hours).toFixed(1)} h`;
+}
+
 export function formatClock(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone,

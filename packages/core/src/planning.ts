@@ -1,5 +1,6 @@
+import { roundHours } from "./format";
 import { assertNever } from "./never";
-import type { DeepSkyType } from "./types";
+import { ASTRONOMICAL_SUN_ALTITUDE_DEG, IMAGEABLE_MIN_ALTITUDE_DEG, type DeepSkyType } from "./types";
 
 export type BandAdvice = "narrowband" | "broadband" | "both";
 
@@ -258,19 +259,154 @@ function frameFitWeight(fit: FrameFit): number {
   }
 }
 
-/** Frame fit gates the score. Usable hours and visibility share the rest. */
+/** Frame fit gates the score. Imageable hours and visibility share the rest. */
 export function observationScore(item: PriorityFields): number {
   const hours = Math.min(item.usableHours, 8) / 5;
   return frameFitWeight(item.frameFit) * (0.42 * hours + item.visibility);
 }
 
-/** Objects with under an hour of usable darkness sort after everything that has a real window. */
+/** Objects with under an hour of imageable darkness sort after everything that has a real window. */
 export function compareTargetPriority(a: PriorityFields, b: PriorityFields): number {
   const demoted = Number(a.usableHours < MIN_USABLE_HOURS) - Number(b.usableHours < MIN_USABLE_HOURS);
   if (demoted !== 0) return demoted;
   const score = observationScore(b) - observationScore(a);
   if (Math.abs(score) > 1e-9) return score;
   return b.moonScore - a.moonScore;
+}
+
+export const TARGET_SORT_KEYS = ["recommended", "frame", "imageable", "rise"] as const;
+
+export type TargetSortKey = (typeof TARGET_SORT_KEYS)[number];
+
+export type SortDirection = "asc" | "desc";
+
+export type ImageableCrossing = {
+  /** Already at or above the imageable altitude when astronomical dusk begins. */
+  atDusk: boolean;
+  /** First climb through the imageable altitude after dusk. Null when it never happens. */
+  rise: Date | null;
+};
+
+export type TargetSortFields = PriorityFields & {
+  id: string;
+  frameFillPercent: number | null;
+  imageableAtDusk: boolean;
+  imageableRise: Date | null;
+};
+
+/**
+ * When the target is already above the imageable altitude at astronomical dusk,
+ * and when it later climbs through that altitude. A night with no astronomical
+ * twilight uses the first sample as dusk.
+ */
+export function imageableCrossing(
+  samples: { time: Date; altitude: number; sunAltitude: number }[],
+): ImageableCrossing {
+  if (samples.length === 0) return { atDusk: false, rise: null };
+  const duskIndex = samples.findIndex((sample) => sample.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG);
+  const start = duskIndex >= 0 ? duskIndex : 0;
+  const first = samples[start];
+  if (!first) return { atDusk: false, rise: null };
+  if (first.altitude >= IMAGEABLE_MIN_ALTITUDE_DEG) return { atDusk: true, rise: null };
+  let previous = first.altitude;
+  for (let index = start + 1; index < samples.length; index += 1) {
+    const sample = samples[index];
+    if (duskIndex >= 0 && sample.sunAltitude > ASTRONOMICAL_SUN_ALTITUDE_DEG) break;
+    if (previous < IMAGEABLE_MIN_ALTITUDE_DEG && sample.altitude >= IMAGEABLE_MIN_ALTITUDE_DEG) {
+      return { atDusk: false, rise: sample.time };
+    }
+    previous = sample.altitude;
+  }
+  return { atDusk: false, rise: null };
+}
+
+export function defaultSortDirection(key: TargetSortKey): SortDirection {
+  switch (key) {
+    case "recommended":
+    case "frame":
+    case "imageable":
+      return "desc";
+    case "rise":
+      return "asc";
+    default:
+      return assertNever(key, "sort");
+  }
+}
+
+export function targetSortLabel(key: TargetSortKey): string {
+  switch (key) {
+    case "recommended":
+      return "Recommended";
+    case "frame":
+      return "Frame fill";
+    case "imageable":
+      return "Imageable hours";
+    case "rise":
+      return "Rise time";
+    default:
+      return assertNever(key, "sort");
+  }
+}
+
+/** Recommended is the existing ranking. Missing frame sizes and targets that never reach 20° stay last. */
+export function compareTargetSort(a: TargetSortFields, b: TargetSortFields, key: TargetSortKey, direction: SortDirection): number {
+  switch (key) {
+    case "recommended": {
+      const ranked = compareTargetPriority(a, b);
+      const ordered = direction === "desc" ? ranked : -ranked;
+      return ordered !== 0 ? ordered : a.id.localeCompare(b.id);
+    }
+    case "frame":
+      return compareNumber(a.frameFillPercent, b.frameFillPercent, direction, a.id, b.id);
+    case "imageable":
+      return compareNumber(roundHours(a.usableHours), roundHours(b.usableHours), direction, a.id, b.id);
+    case "rise":
+      return compareRise(a, b, direction);
+    default:
+      return assertNever(key, "sort");
+  }
+}
+
+function compareNumber(
+  a: number | null,
+  b: number | null,
+  direction: SortDirection,
+  aId: string,
+  bId: string,
+): number {
+  if (a == null || b == null) {
+    if (a == null && b == null) return aId.localeCompare(bId);
+    return a == null ? 1 : -1;
+  }
+  if (a !== b) return direction === "asc" ? a - b : b - a;
+  return aId.localeCompare(bId);
+}
+
+function compareRise(a: TargetSortFields, b: TargetSortFields, direction: SortDirection): number {
+  const bucket = (item: TargetSortFields) => (item.imageableAtDusk ? 0 : item.imageableRise ? 1 : 2);
+  const aBucket = bucket(a);
+  const bBucket = bucket(b);
+  if (aBucket === 2 || bBucket === 2) {
+    if (aBucket !== bBucket) return aBucket - bBucket;
+    return a.id.localeCompare(b.id);
+  }
+  if (direction === "asc") {
+    if (aBucket !== bBucket) return aBucket - bBucket;
+    return compareRiseTime(a, b, "asc");
+  }
+  const descendingBucket = (value: number) => (value === 1 ? 0 : 1);
+  const aOrder = descendingBucket(aBucket);
+  const bOrder = descendingBucket(bBucket);
+  if (aOrder !== bOrder) return aOrder - bOrder;
+  return compareRiseTime(a, b, "desc");
+}
+
+function compareRiseTime(a: TargetSortFields, b: TargetSortFields, direction: SortDirection): number {
+  const aTime = a.imageableRise?.getTime() ?? null;
+  const bTime = b.imageableRise?.getTime() ?? null;
+  if (aTime == null || bTime == null) return a.id.localeCompare(b.id);
+  if (aTime !== bTime) return direction === "asc" ? aTime - bTime : bTime - aTime;
+  return a.id.localeCompare(b.id);
 }
 
 function clamp(value: number, min: number, max: number): number {
