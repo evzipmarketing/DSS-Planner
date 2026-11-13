@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { addDaysIso } from "@dss/core";
 import { AltitudeChart } from "./altitude-chart";
 import { BortlePanel } from "./bortle-panel";
 import { DatePanel } from "./date-panel";
@@ -91,7 +90,7 @@ export function TonightPage() {
         <h1>Tonight from {planner.site.name}</h1>
         <div className="sky-meta">
           <WeatherPanel plain />
-          <span className="bortle-line" title="Sky brightness class for this site. Change it from Location.">
+          <span className="bortle-line" title="Sky brightness class estimated for this site.">
             Bortle {planner.bortle}
           </span>
           <LookUpNote />
@@ -154,7 +153,6 @@ function Control({
 }
 
 function PanelBody({ panel }: { panel: SettingsPanel }) {
-  const planner = usePlannerState();
   switch (panel) {
     case "location":
       return (
@@ -164,19 +162,7 @@ function PanelBody({ panel }: { panel: SettingsPanel }) {
         </>
       );
     case "date":
-      return (
-        <>
-          <DatePanel />
-          <div className="day-row">
-            <button type="button" className="day" onClick={() => planner.setDate(addDaysIso(planner.date, -1))}>
-              Previous day
-            </button>
-            <button type="button" className="day" onClick={() => planner.setDate(addDaysIso(planner.date, 1))}>
-              Next day
-            </button>
-          </div>
-        </>
-      );
+      return <DatePanel />;
     case "telescope":
       return <RigPanel part="telescope" />;
     case "camera":

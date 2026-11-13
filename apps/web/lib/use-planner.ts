@@ -52,7 +52,6 @@ export type Optics = {
 };
 
 export type PlaceStatus = "detecting" | "gps" | "saved" | "default";
-export type BortleMode = "estimate" | "manual";
 
 type PlaceBody = { name?: string; latitude?: number; longitude?: number; timezone?: string };
 
@@ -72,8 +71,6 @@ export function usePlanner() {
       day: "2-digit",
     }).format(new Date());
   });
-  const [bortleMode, setBortleMode] = useState<BortleMode>("estimate");
-  const [bortle, setBortle] = useState(() => estimateBortle(defaultSite.latitude, defaultSite.longitude));
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pointing, setPointing] = useState<Pointing | null>(null);
@@ -88,12 +85,7 @@ export function usePlanner() {
   const [hydrated, setHydrated] = useState(false);
   const [ranked, setRanked] = useState<{ key: string; items: RankedTarget[] } | null>(null);
   const [pointingFor, setPointingFor] = useState<string | null>(null);
-  const bortleModeRef = useRef(bortleMode);
   const hadStoredSite = useRef(false);
-
-  useEffect(() => {
-    bortleModeRef.current = bortleMode;
-  }, [bortleMode]);
 
   useEffect(() => {
     // localStorage is only available after mount, so the stored session is applied here.
@@ -104,8 +96,6 @@ export function usePlanner() {
       hadStoredSite.current = true;
       setTheme(stored.theme);
       setSite(restored);
-      setBortleMode(stored.bortleMode);
-      setBortle(stored.bortleMode === "estimate" ? estimateBortle(restored.latitude, restored.longitude) : stored.bortle);
       setPlaceStatus("saved");
       if (stored.telescopeId) setTelescopeId(stored.telescopeId);
       setReducer(stored.reducer);
@@ -147,7 +137,6 @@ export function usePlanner() {
               timezone: place.timezone || "UTC",
             };
             setSite(next);
-            if (bortleModeRef.current === "estimate") setBortle(estimateBortle(next.latitude, next.longitude));
             setPlaceStatus("gps");
           })
           .catch(() => {
@@ -184,8 +173,6 @@ export function usePlanner() {
       theme,
       locationId: site.id,
       customSite: site.id === "custom" ? site : undefined,
-      bortle,
-      bortleMode,
       telescopeId,
       reducer,
       focalOverrideMm,
@@ -199,8 +186,6 @@ export function usePlanner() {
     hydrated,
     theme,
     site,
-    bortle,
-    bortleMode,
     telescopeId,
     reducer,
     focalOverrideMm,
@@ -223,7 +208,7 @@ export function usePlanner() {
   const filterList = useMemo(() => [...seedFilters, ...customFilters], [customFilters]);
   const telescope = telescopes.find((item) => item.id === telescopeId) ?? telescopes[0] ?? null;
   const camera = cameraList.find((item) => item.id === cameraId) ?? cameraList[0] ?? null;
-  const bortleEstimate = estimateBortle(site.latitude, site.longitude);
+  const bortle = estimateBortle(site.latitude, site.longitude);
 
   const optics = useMemo<Optics | null>(() => {
     if (!telescope || !camera) return null;
@@ -325,17 +310,6 @@ export function usePlanner() {
   function chooseSite(next: Site) {
     setSite(next);
     setPlaceStatus("saved");
-    if (bortleModeRef.current === "estimate") setBortle(estimateBortle(next.latitude, next.longitude));
-  }
-
-  function setBortleManual(value: number) {
-    setBortleMode("manual");
-    setBortle(Math.min(9, Math.max(1, Math.round(value))));
-  }
-
-  function useBortleEstimate() {
-    setBortleMode("estimate");
-    setBortle(estimateBortle(site.latitude, site.longitude));
   }
 
   function addTelescope(scope: Telescope) {
@@ -381,10 +355,6 @@ export function usePlanner() {
     date,
     setDate,
     bortle,
-    bortleMode,
-    bortleEstimate,
-    setBortleManual,
-    useBortleEstimate,
     query,
     setQuery,
     results,
