@@ -304,6 +304,10 @@ export function usePlanner() {
     setSelectedId((current) => (current === id ? null : id));
   }
 
+  function focusTarget(id: string | null) {
+    setSelectedId(id);
+  }
+
   function setFocalOverrideMm(value: number | null) {
     if (value == null || !Number.isFinite(value)) {
       setFocalOverrideMmState(null);
@@ -388,6 +392,7 @@ export function usePlanner() {
     scoring,
     selected,
     chooseTarget,
+    focusTarget,
     pointing,
     setPointing,
     track,
