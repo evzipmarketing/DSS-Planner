@@ -1,6 +1,6 @@
 # astrocue
 
-An astrophotography session planner by DarkSkyscapes. Pick a site and a night, see which catalogue objects are actually up, check cloud cover, and preview how the target sits on the sensor of the rig you are using.
+Astrophotography planner by DarkSkyscapes. Pick a site and a night, see which catalogue objects are actually up, check cloud cover, and preview how the target sits on the sensor of the rig you are using.
 
 Phase 1 is a web app. Later phases add accounts, a private Panchang engine, and a native client. The astronomy and gear maths already live in a framework-free package so that work does not have to start over.
 

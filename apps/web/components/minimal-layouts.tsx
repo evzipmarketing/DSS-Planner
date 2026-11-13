@@ -40,7 +40,7 @@ export function TonightPage() {
                 <span className="wordmark-astro">astro</span>
                 <span className="wordmark-cue">cue</span>
               </p>
-              <p className="tagline">An astrophotography session planner by DarkSkyscapes</p>
+              <p className="tagline">Astrophotography planner by DarkSkyscapes</p>
             </div>
           </div>
           <ThemeToggle />

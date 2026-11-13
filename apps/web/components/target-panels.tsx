@@ -91,7 +91,7 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
           <span className="search-input">
             <input
               value={query}
-              placeholder="M42, NGC 224, Horsehead"
+              placeholder="e.g. M42, NGC 224, Horsehead"
               onChange={(event) => {
                 setQuery(event.target.value);
                 setPinnedId(null);
@@ -319,7 +319,7 @@ function CustomFilters() {
               Magnitude
               <input
                 inputMode="decimal"
-                placeholder="Hide fainter than"
+                placeholder="e.g. 8"
                 value={targetQuery.maxMagnitude ?? ""}
                 onChange={(event) => {
                   const value = event.target.value.trim();
@@ -352,7 +352,7 @@ function CustomFilters() {
               Size
               <input
                 inputMode="decimal"
-                placeholder="Minimum arcmin"
+                placeholder="e.g. 10"
                 value={targetQuery.minSizeArcmin ?? ""}
                 onChange={(event) => {
                   const value = event.target.value.trim();

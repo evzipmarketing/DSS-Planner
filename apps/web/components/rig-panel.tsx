@@ -86,7 +86,7 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
             <Combobox
               label="Telescope"
               value={telescope?.id ?? ""}
-              placeholder="Search scopes"
+              placeholder="e.g. Evostar 72ED"
               options={planner.telescopes.map((item) => ({
                 id: item.id,
                 label: item.name,
@@ -123,7 +123,7 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
             <Combobox
               label="Camera"
               value={camera?.id ?? ""}
-              placeholder="Search cameras"
+              placeholder="e.g. ASI533"
               options={planner.cameraList.map((item) => ({
                 id: item.id,
                 label: item.name,
@@ -134,7 +134,7 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
             <Combobox
               label="Add a filter"
               value=""
-              placeholder="Search filters"
+              placeholder="e.g. Astronomik"
               options={planner.filterList.map((item) => ({
                 id: item.id,
                 label: item.name,
@@ -181,7 +181,7 @@ function FocalLength({ telescope }: { telescope: Telescope }) {
           max={20000}
           step={1}
           inputMode="numeric"
-          placeholder="Optional"
+          placeholder="e.g. 800"
           value={planner.focalOverrideMm ?? ""}
           onChange={(event) => {
             const text = event.target.value.trim();
@@ -261,9 +261,9 @@ function ScopeForm({ onSave }: { onSave: (scope: Telescope) => void }) {
         setError("");
       }}
     >
-      <label className="field">Name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
-      <label className="field">Aperture (mm)<input value={aperture} onChange={(event) => setAperture(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Focal length (mm)<input value={focal} onChange={(event) => setFocal(event.target.value)} inputMode="decimal" /></label>
+      <label className="field">Name<input value={name} placeholder="e.g. My 80 mm refractor" onChange={(event) => setName(event.target.value)} /></label>
+      <label className="field">Aperture (mm)<input value={aperture} placeholder="e.g. 80" onChange={(event) => setAperture(event.target.value)} inputMode="decimal" /></label>
+      <label className="field">Focal length (mm)<input value={focal} placeholder="e.g. 480" onChange={(event) => setFocal(event.target.value)} inputMode="decimal" /></label>
       {error ? <p className="warn">{error}</p> : null}
       <button type="submit" className="vision">Save telescope</button>
     </form>
@@ -327,12 +327,12 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
         setError("");
       }}
     >
-      <label className="field">Name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
-      <label className="field">Sensor width (mm)<input value={width} onChange={(event) => setWidth(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Sensor height (mm)<input value={height} onChange={(event) => setHeight(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Pixel size (µm, optional if resolution is set)<input value={pixel} onChange={(event) => setPixel(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Width (px)<input value={cols} onChange={(event) => setCols(event.target.value)} inputMode="numeric" /></label>
-      <label className="field">Height (px)<input value={rows} onChange={(event) => setRows(event.target.value)} inputMode="numeric" /></label>
+      <label className="field">Name<input value={name} placeholder="e.g. My camera" onChange={(event) => setName(event.target.value)} /></label>
+      <label className="field">Sensor width (mm)<input value={width} placeholder="e.g. 11.31" onChange={(event) => setWidth(event.target.value)} inputMode="decimal" /></label>
+      <label className="field">Sensor height (mm)<input value={height} placeholder="e.g. 11.31" onChange={(event) => setHeight(event.target.value)} inputMode="decimal" /></label>
+      <label className="field">Pixel size (µm, optional if resolution is set)<input value={pixel} placeholder="e.g. 3.76" onChange={(event) => setPixel(event.target.value)} inputMode="decimal" /></label>
+      <label className="field">Width (px)<input value={cols} placeholder="e.g. 3008" onChange={(event) => setCols(event.target.value)} inputMode="numeric" /></label>
+      <label className="field">Height (px)<input value={rows} placeholder="e.g. 3008" onChange={(event) => setRows(event.target.value)} inputMode="numeric" /></label>
       <label className="field">
         Sensor
         <select value={sensor} onChange={(event) => setSensor(event.target.value as SensorKind)}>
@@ -340,7 +340,7 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
           <option value="mono">Mono</option>
         </select>
       </label>
-      <label className="field">Read noise (e−, nominal)<input value={noise} onChange={(event) => setNoise(event.target.value)} inputMode="decimal" /></label>
+      <label className="field">Read noise (e−, nominal)<input value={noise} placeholder="e.g. 1.5" onChange={(event) => setNoise(event.target.value)} inputMode="decimal" /></label>
       {error ? <p className="warn">{error}</p> : null}
       <button type="submit" className="vision">Save camera</button>
     </form>
@@ -375,7 +375,7 @@ function FilterForm({ onSave }: { onSave: (filter: ImagingFilter) => void }) {
         setError("");
       }}
     >
-      <label className="field">Name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
+      <label className="field">Name<input value={name} placeholder="e.g. My H-alpha" onChange={(event) => setName(event.target.value)} /></label>
       <label className="field">
         Kind
         <select value={kind} onChange={(event) => setKind(event.target.value as FilterKind)}>
@@ -386,8 +386,8 @@ function FilterForm({ onSave }: { onSave: (filter: ImagingFilter) => void }) {
           ))}
         </select>
       </label>
-      <label className="field">Bandpass (nm)<input value={bandpass} onChange={(event) => setBandpass(event.target.value)} inputMode="decimal" /></label>
-      <label className="field">Peak transmission (0–1)<input value={transmission} onChange={(event) => setTransmission(event.target.value)} inputMode="decimal" /></label>
+      <label className="field">Bandpass (nm)<input value={bandpass} placeholder="e.g. 6" onChange={(event) => setBandpass(event.target.value)} inputMode="decimal" /></label>
+      <label className="field">Peak transmission (0–1)<input value={transmission} placeholder="e.g. 0.9" onChange={(event) => setTransmission(event.target.value)} inputMode="decimal" /></label>
       {error ? <p className="warn">{error}</p> : null}
       <button type="submit" className="vision">Save filter</button>
     </form>
