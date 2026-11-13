@@ -1074,7 +1074,7 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
   display: block;
   width: min(430px, 78%);
   height: auto;
-  aspect-ratio: 1440 / 360;
+  aspect-ratio: 300 / 71;
 }
 
 /* The head script writes data-theme before first paint. React theme state is
