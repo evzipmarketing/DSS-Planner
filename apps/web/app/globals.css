@@ -8,12 +8,13 @@
   --text: #eceae4;
   --muted: #b7b5ae;
   --faint: #9c9a93;
-  --saffron: #5dcec0;
-  --saffron-ink: #06211e;
-  --sage: #e2ae62;
+  --saffron: #7ad0e7;
+  --saffron-ink: #0a5566;
+  --sage: #7ad0e7;
+  --accent-text: #7ad0e7;
   --clay: #e08a7a;
   --moon: #cfcbc4;
-  --usable: rgba(93, 206, 192, 0.18);
+  --usable: rgba(122, 208, 231, 0.2);
   --shadow: 0 1px 0 rgba(220, 210, 180, 0.05);
   --font-display: "Fraunces", "Iowan Old Style", Palatino, Georgia, serif;
   --font-ui: "Outfit", "Avenir Next", "Segoe UI", sans-serif;
@@ -30,12 +31,13 @@
   --text: #1a1e1d;
   --muted: #4e5652;
   --faint: #5f6762;
-  --saffron: #0f766e;
-  --saffron-ink: #f4fffc;
-  --sage: #9a5b16;
+  --saffron: #7ad0e7;
+  --saffron-ink: #0a5566;
+  --sage: #0e6d80;
+  --accent-text: #0e6d80;
   --clay: #9f3d32;
   --moon: #4d5560;
-  --usable: rgba(15, 118, 110, 0.16);
+  --usable: rgba(122, 208, 231, 0.28);
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
@@ -51,6 +53,7 @@
   --saffron: #ff6a6a;
   --saffron-ink: #2a0808;
   --sage: #e09090;
+  --accent-text: #ff6a6a;
   --clay: #ff9a90;
   --moon: #e0b0b0;
   --usable: rgba(255, 90, 90, 0.16);
@@ -80,7 +83,7 @@ button, input, select {
 button { cursor: pointer; }
 
 :focus-visible {
-  outline: 2px solid var(--saffron);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -209,7 +212,7 @@ p {
 .block-head h2 { min-width: 0; }
 
 .block-head span {
-  color: var(--saffron);
+  color: var(--accent-text);
   font-variant-numeric: tabular-nums;
   font-size: 0.78rem;
   letter-spacing: 0.08em;
@@ -249,7 +252,7 @@ textarea::placeholder {
 
 select[multiple] { min-height: 8.5rem; padding: 8px; }
 
-input[type="range"] { padding: 0; min-height: 32px; accent-color: var(--saffron); }
+input[type="range"] { padding: 0; min-height: 32px; accent-color: var(--accent-text); }
 
 .inline {
   display: flex;
@@ -290,10 +293,10 @@ input[type="range"] { padding: 0; min-height: 32px; accent-color: var(--saffron)
 
 .hour small { color: var(--muted); }
 
-.hour.selected { border-color: var(--saffron); }
+.hour.selected { border-color: var(--accent-text); }
 
 .hour.clear { color: var(--sage); }
-.hour.broken { color: var(--saffron); }
+.hour.broken { color: var(--accent-text); }
 .hour.cloudy, .hour.overcast { color: var(--clay); }
 
 .summary { margin: 10px 0 0; }
@@ -387,7 +390,7 @@ input[type="range"] { padding: 0; min-height: 32px; accent-color: var(--saffron)
   min-height: 40px;
 }
 
-.check input { width: 18px; min-height: 18px; accent-color: var(--saffron); }
+.check input { width: 18px; min-height: 18px; accent-color: var(--accent-text); }
 
 .custom-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
@@ -402,7 +405,7 @@ input[type="range"] { padding: 0; min-height: 32px; accent-color: var(--saffron)
 
 details.drawer { margin-top: 8px; }
 
-details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36px; display: flex; align-items: center; }
+details.drawer summary { cursor: pointer; color: var(--accent-text); min-height: 36px; display: flex; align-items: center; }
 
 .stage {
   position: relative;
@@ -448,7 +451,7 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   position: absolute;
   left: 50%;
   top: 50%;
-  border: 1.5px solid var(--saffron);
+  border: 1.5px solid var(--accent-text);
   transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot));
   cursor: grab;
   background: color-mix(in srgb, var(--saffron) 8%, transparent);
@@ -463,7 +466,7 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid var(--saffron);
+  border: 2px solid var(--accent-text);
   background: var(--bg);
   transform: translateX(-50%);
   cursor: grab;
@@ -476,7 +479,7 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   top: 14px;
   width: 1px;
   height: 8px;
-  background: var(--saffron);
+  background: var(--accent-text);
 }
 
 .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
@@ -540,8 +543,8 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 }
 
 .search-clear:hover {
-  border-color: var(--saffron);
-  color: var(--saffron);
+  border-color: var(--accent-text);
+  color: var(--accent-text);
 }
 
 .search-clear svg { width: 14px; height: 14px; display: block; }
@@ -557,7 +560,7 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   margin: 8px 0 4px;
   border: 0;
   background: transparent;
-  color: var(--saffron);
+  color: var(--accent-text);
   padding: 0;
   min-height: 32px;
   text-decoration: underline;
@@ -642,7 +645,7 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   color: var(--text);
 }
 
-.target[aria-pressed="true"] { border-color: var(--saffron); }
+.target[aria-pressed="true"] { border-color: var(--accent-text); }
 
 .target-top, .target-facts {
   display: flex;
@@ -797,7 +800,7 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   white-space: nowrap;
 }
 
-.minimal .target[aria-pressed="true"] strong { color: var(--saffron); }
+.minimal .target[aria-pressed="true"] strong { color: var(--accent-text); }
 
 .minimal .block {
   background: transparent;
@@ -905,7 +908,7 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   letter-spacing: inherit;
   background: transparent;
   border: 0;
-  border-bottom: 2px solid var(--saffron);
+  border-bottom: 2px solid var(--accent-text);
   border-radius: 0;
   padding: 0 2px;
   min-height: 0;
@@ -920,14 +923,14 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   background: var(--bg-sunken);
 }
 
-.chevron { color: var(--saffron); font-size: 0.75em; line-height: 1; }
+.chevron { color: var(--accent-text); font-size: 0.75em; line-height: 1; }
 
 .date-chip { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
 
 .nudge {
   border: 0;
   background: transparent;
-  color: var(--saffron);
+  color: var(--accent-text);
   min-width: 28px;
   min-height: 28px;
   padding: 0;
@@ -1056,12 +1059,6 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
   aspect-ratio: 1440 / 360;
 }
 
-@media (max-width: 520px) {
-  .tonight .min-bar { flex-wrap: wrap; row-gap: 8px; }
-  .tonight .brand { flex-basis: 100%; }
-  .brand-lockup { width: 100%; }
-}
-
 [data-theme="night"] .brand-lockup {
   /* Flatten cyan (#7ad0e7) and near-white (#f1f2f2) to the night rose (~#e6aaa1).
      A hue shift alone leaves the wordmark bright white, which breaks night vision. */
@@ -1150,7 +1147,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .tonight .settings-bar .chip-btn:hover,
 .tonight .settings-bar .chip-btn[aria-expanded="true"] {
-  border-color: var(--saffron);
+  border-color: var(--accent-text);
   background: color-mix(in srgb, var(--saffron) 16%, var(--bg-raised));
 }
 
@@ -1159,7 +1156,7 @@ input[type="date"]::-webkit-date-and-time-value {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  color: var(--saffron);
+  color: var(--accent-text);
 }
 
 .setting-icon svg,
@@ -1209,7 +1206,7 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 .tonight .tab:hover {
-  border-color: var(--saffron);
+  border-color: var(--accent-text);
   background: color-mix(in srgb, var(--saffron) 14%, var(--bg-raised));
 }
 
@@ -1267,6 +1264,32 @@ input[type="date"]::-webkit-date-and-time-value {
   background: var(--bg);
   color: var(--sage);
 }
+
+html:not([data-theme="night"]) .tonight .tab.custom-tab,
+html:not([data-theme="night"]) .tonight .tab.custom-tab:hover,
+html:not([data-theme="night"]) .tonight .tab.custom-tab[aria-expanded="true"],
+html:not([data-theme="night"]) .tonight .tab.custom-tab[aria-expanded="true"]:hover {
+  border: 1.5px solid var(--accent-text);
+  color: var(--accent-text);
+  background: transparent;
+}
+
+html:not([data-theme="night"]) .tonight .tab.custom-tab[aria-expanded="true"],
+html:not([data-theme="night"]) .tonight .tab.custom-tab[aria-expanded="true"]:hover {
+  background: color-mix(in srgb, var(--accent-text) 10%, var(--bg-raised));
+}
+
+html:not([data-theme="night"]) .custom-count,
+html:not([data-theme="night"]) .custom-tab[aria-expanded="true"] .custom-count {
+  background: var(--saffron);
+  color: var(--saffron-ink);
+}
+
+html:not([data-theme="night"]) .custom-panel {
+  border-color: var(--accent-text);
+}
+
+html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
 
 .custom-panel {
   position: absolute;
@@ -1353,7 +1376,7 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 .thumb-open:hover,
-.thumb-open:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
+.thumb-open:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 
 .preview-backdrop {
   position: fixed;
@@ -1393,7 +1416,7 @@ input[type="date"]::-webkit-date-and-time-value {
   place-items: center;
 }
 
-.preview-close:hover { border-color: var(--saffron); color: var(--saffron); }
+.preview-close:hover { border-color: var(--accent-text); color: var(--accent-text); }
 
 .preview-close svg { width: 14px; height: 14px; display: block; }
 
@@ -1473,6 +1496,11 @@ input[type="date"]::-webkit-date-and-time-value {
   font-size: 0.78rem;
 }
 
+.tonight .fact-value {
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
 .minimal.tonight .target-facts .fact:hover span.fact-tip,
 .minimal.tonight .target-facts .fact:focus-within span.fact-tip {
   display: block;
@@ -1524,6 +1552,25 @@ input[type="date"]::-webkit-date-and-time-value {
   display: grid;
   place-items: center;
   padding: 0;
+}
+
+@media (max-width: 759px) {
+  .tonight { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+
+  .tonight #targets {
+    padding-right: calc(56px + env(safe-area-inset-right, 0px));
+  }
+
+  .theme-toggle {
+    position: fixed;
+    z-index: 20;
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    margin: 0;
+    width: 48px;
+    height: 48px;
+    box-shadow: 0 8px 22px rgba(8, 18, 22, 0.28), 0 1px 3px rgba(8, 18, 22, 0.16);
+  }
 }
 
 .theme-toggle svg { width: 20px; height: 20px; }

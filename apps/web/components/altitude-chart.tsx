@@ -11,7 +11,8 @@ const Y_MIN = -20;
 const Y_MAX = 90;
 
 export function AltitudeChart() {
-  const { selected, track, site } = usePlannerState();
+  const { selected, track, site, theme } = usePlannerState();
+  const horizon = theme === "night" ? "var(--sage)" : "var(--moon)";
   const samples = track?.samples ?? [];
   const start = samples[0]?.time.getTime() ?? 0;
   const end = samples[samples.length - 1]?.time.getTime() ?? 1;
@@ -50,7 +51,7 @@ export function AltitudeChart() {
                   x2={WIDTH - PAD.right}
                   y1={yAt(altitude)}
                   y2={yAt(altitude)}
-                  stroke={altitude === 0 ? "var(--sage)" : "var(--line-strong)"}
+                  stroke={altitude === 0 ? horizon : "var(--line-strong)"}
                   strokeDasharray={altitude === 30 ? "4 4" : undefined}
                 />
                 <text x={4} y={yAt(altitude) + 4} fill="var(--faint)" fontSize="11">
@@ -60,7 +61,7 @@ export function AltitudeChart() {
             ))}
             <polyline fill="none" stroke="var(--moon)" strokeWidth="1.5" points={moon} />
             <MoonMark samples={samples} start={start} end={end} />
-            <polyline fill="none" stroke="var(--saffron)" strokeWidth="2.2" points={target} />
+            <polyline fill="none" stroke="var(--accent-text)" strokeWidth="2.2" points={target} />
             {labels.map((sample) => (
               <text
                 key={sample.time.toISOString()}
@@ -75,12 +76,12 @@ export function AltitudeChart() {
             ))}
           </svg>
           <div className="legend">
-            <span className="swatch"><i style={{ background: "var(--saffron)" }} /> Target</span>
+            <span className="swatch"><i style={{ background: "var(--accent-text)" }} /> Target</span>
             <span className="swatch">
               <MoonGlyph />
               Moon
             </span>
-            <span className="swatch"><i style={{ background: "var(--sage)" }} /> Horizon</span>
+            <span className="swatch"><i style={{ background: horizon }} /> Horizon</span>
             <span className="swatch"><i style={{ background: "var(--usable)", height: 10 }} /> Usable, above 30° and sun below −18°</span>
           </div>
         </div>
