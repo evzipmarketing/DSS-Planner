@@ -5,7 +5,7 @@ import "./globals.css";
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
 const sans = Outfit({ subsets: ["latin"], variable: "--font-ui" });
 
-const title = "astrocue";
+const title = "DeepSkyMate";
 const description = "Astrophotography planner by DarkSkyscapes";
 
 export const metadata: Metadata = {
@@ -17,10 +17,13 @@ export const metadata: Metadata = {
     description,
     siteName: title,
     type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "DeepSkyMate" }],
   },
   twitter: {
+    card: "summary_large_image",
     title,
     description,
+    images: ["/og.png"],
   },
   appleWebApp: {
     title,

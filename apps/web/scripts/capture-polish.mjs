@@ -21,7 +21,7 @@ await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
 await page.locator(".target").first().waitFor({ timeout: 30000 });
 await page.locator(".bortle-line").waitFor();
 const title = await page.title();
-if (title !== "astrocue") throw new Error(`Unexpected title: ${title}`);
+if (title !== "DeepSkyMate") throw new Error(`Unexpected title: ${title}`);
 await assertOneRow();
 await page.screenshot({ path: `${outDir}/desktop-1280.png` });
 await page.locator(".min-bar").screenshot({ path: `${outDir}/header-dark.png` });
