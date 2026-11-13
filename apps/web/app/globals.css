@@ -1074,7 +1074,7 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
   display: block;
   width: min(430px, 78%);
   height: auto;
-  aspect-ratio: 1440 / 360;
+  aspect-ratio: 300 / 71;
 }
 
 /* The head script writes data-theme before first paint. React theme state is
@@ -1526,6 +1526,23 @@ html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
 .tonight .inline-detail {
   border-bottom: 0;
   padding-bottom: 16px;
+}
+
+.detail-viz {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 1024px) {
+  .detail-viz {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 220px);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .detail-viz .block {
+    min-width: 0;
+  }
 }
 
 .inline-detail .note { display: block; }

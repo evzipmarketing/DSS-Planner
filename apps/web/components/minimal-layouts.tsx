@@ -34,17 +34,17 @@ export function TonightPage() {
           <div className="brand">
             <img
               className="brand-lockup brand-lockup-light"
-              src="/deepskymate-logo-light.svg"
+              src="/deepskymate-logo-light.png"
               alt="DeepSkyMate"
-              width={1440}
-              height={360}
+              width={300}
+              height={71}
             />
             <img
               className="brand-lockup brand-lockup-dark"
-              src="/deepskymate-logo-dark.svg"
+              src="/deepskymate-logo-dark.png"
               alt="DeepSkyMate"
-              width={1440}
-              height={360}
+              width={300}
+              height={71}
             />
           </div>
           <ThemeToggle />
@@ -106,8 +106,10 @@ export function TonightPage() {
           detail={
             <>
               <ObjectCard />
-              <AltitudeChart />
-              <FramingPreview />
+              <div className="detail-viz">
+                <AltitudeChart />
+                <FramingPreview />
+              </div>
             </>
           }
         />
