@@ -1535,7 +1535,7 @@ html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
 
 @media (min-width: 1024px) {
   .detail-viz {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 260px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 220px);
     align-items: start;
     gap: 20px;
   }
