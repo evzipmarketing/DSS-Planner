@@ -1122,12 +1122,33 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .tonight .settings-panel {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   max-height: min(70vh, 560px);
   overflow: auto;
   padding: 4px 16px 12px;
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: 16px;
+}
+
+.tonight .settings-panel .block,
+.tonight .settings-panel .field,
+.tonight .settings-panel .fields {
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="date"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-date-and-time-value {
+  min-width: 0;
 }
 
 .tonight .settings-bar .pop { min-width: 0; }

@@ -9,8 +9,6 @@ export type StoredSession = {
   theme: ThemeName;
   locationId: string;
   customSite?: Site;
-  bortle: number;
-  bortleMode: "estimate" | "manual";
   telescopeId: string;
   reducer: number;
   focalOverrideMm: number | null;
@@ -51,8 +49,6 @@ export function loadSession(): StoredSession | null {
       theme: parseTheme(bag.theme, bag.vision),
       locationId: typeof parsed.locationId === "string" ? parsed.locationId : defaultSite.id,
       customSite: parseSite(parsed.customSite),
-      bortle: clampInt(parsed.bortle, 1, 9, 7),
-      bortleMode: parsed.bortleMode === "estimate" ? "estimate" : "manual",
       telescopeId: typeof parsed.telescopeId === "string" ? parsed.telescopeId : "",
       reducer: clampNum(parsed.reducer, 0.25, 5, 1),
       focalOverrideMm: parseFocal(parsed.focalOverrideMm),
@@ -161,11 +157,6 @@ function isFilter(value: unknown): value is ImagingFilter {
 function arrayOf<T>(value: unknown, guard: (item: unknown) => item is T): T[] {
   if (!Array.isArray(value)) return [];
   return value.filter(guard);
-}
-
-function clampInt(value: unknown, min: number, max: number, fallback: number): number {
-  const number = typeof value === "number" ? Math.round(value) : fallback;
-  return Math.min(max, Math.max(min, number));
 }
 
 function clampNum(value: unknown, min: number, max: number, fallback: number): number {
