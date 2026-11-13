@@ -98,7 +98,7 @@ export function LocationPanel() {
         Search for a place
         <input
           value={text}
-          placeholder="Pune, Hanle, Atacama"
+          placeholder="e.g. Pune, Hanle, Atacama"
           onChange={(event) => setText(event.target.value)}
         />
       </label>
@@ -129,11 +129,11 @@ export function LocationPanel() {
         <div className="fields">
           <label className="field">
             Latitude
-            <input inputMode="decimal" value={manualLat} onChange={(event) => setManualLat(event.target.value)} />
+            <input inputMode="decimal" placeholder="e.g. 17.385" value={manualLat} onChange={(event) => setManualLat(event.target.value)} />
           </label>
           <label className="field">
             Longitude
-            <input inputMode="decimal" value={manualLon} onChange={(event) => setManualLon(event.target.value)} />
+            <input inputMode="decimal" placeholder="e.g. 78.487" value={manualLon} onChange={(event) => setManualLon(event.target.value)} />
           </label>
           <button type="button" className="ghost" onClick={() => void applyManual()}>
             Use these coordinates

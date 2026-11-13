@@ -227,7 +227,7 @@ p {
 
 label.field { display: grid; gap: 6px; color: var(--muted); font-size: 0.86rem; }
 
-input, select {
+input, select, textarea {
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -236,6 +236,15 @@ input, select {
   border: 1px solid var(--line-strong);
   background: var(--bg-sunken);
   padding: 0 12px;
+  color: var(--text);
+  font-style: normal;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 50%, transparent);
+  font-style: italic;
+  opacity: 1;
 }
 
 select[multiple] { min-height: 8.5rem; padding: 8px; }
