@@ -38,8 +38,8 @@ for (const theme of ["dark", "night", "light"]) {
   if (contrast.italic !== "italic") throw new Error(`${theme} placeholder is not italic`);
   console.log(theme, JSON.stringify(contrast));
   await page.evaluate(() => window.scrollTo(0, 0));
-  const tagline = await page.locator(".tagline").innerText();
-  if (tagline !== "Astrophotography planner by DarkSkyscapes") throw new Error(`Unexpected tagline: ${tagline}`);
+  const description = await page.locator('meta[name="description"]').getAttribute("content");
+  if (description !== "Astrophotography planner by DarkSkyscapes") throw new Error(`Unexpected description: ${description}`);
   await page.screenshot({ path: `${outDir}/${theme}-search-empty.png` });
   await page.getByPlaceholder(search).fill("M42");
   await page.screenshot({ path: `${outDir}/${theme}-search-typed.png` });
@@ -61,8 +61,10 @@ for (const theme of ["dark", "night", "light"]) {
 await page.setViewportSize({ width: 390, height: 844 });
 await ensureTheme("dark");
 await page.evaluate(() => window.scrollTo(0, 0));
-const mobileTagline = await page.locator(".tagline").innerText();
-if (mobileTagline !== "Astrophotography planner by DarkSkyscapes") throw new Error(`Unexpected mobile tagline: ${mobileTagline}`);
+const mobileDescription = await page.locator('meta[name="description"]').getAttribute("content");
+if (mobileDescription !== "Astrophotography planner by DarkSkyscapes") {
+  throw new Error(`Unexpected mobile description: ${mobileDescription}`);
+}
 await page.screenshot({ path: `${outDir}/mobile-search-empty.png` });
 
 await browser.close();

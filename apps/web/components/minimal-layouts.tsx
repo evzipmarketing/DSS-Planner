@@ -37,9 +37,8 @@ export function TonightPage() {
               src={planner.theme === "light" ? "/deepskymate-logo-light.svg" : "/deepskymate-logo-dark.svg"}
               alt="DeepSkyMate"
               width={1440}
-              height={190}
+              height={360}
             />
-            <p className="tagline">Astrophotography planner by DarkSkyscapes</p>
           </div>
           <ThemeToggle />
         </div>

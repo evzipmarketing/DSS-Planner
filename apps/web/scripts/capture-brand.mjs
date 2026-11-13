@@ -23,8 +23,9 @@ await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
 await page.locator(".brand-lockup").waitFor({ timeout: 30000 });
 const title = await page.title();
 if (title !== "DeepSkyMate") throw new Error(`Title is ${title}`);
-const tagline = await page.locator(".tagline").innerText();
-if (tagline !== "Astrophotography planner by DarkSkyscapes") throw new Error(tagline);
+const description = await page.locator('meta[name="description"]').getAttribute("content");
+if (description !== "Astrophotography planner by DarkSkyscapes") throw new Error(description ?? "missing description");
+if (await page.locator(".tagline").count()) throw new Error("Header still renders a separate tagline");
 
 for (const theme of ["dark", "light", "night"]) {
   await ensureTheme(theme);

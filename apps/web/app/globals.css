@@ -1051,22 +1051,21 @@ details.drawer summary { cursor: pointer; color: var(--saffron); min-height: 36p
 
 .brand-lockup {
   display: block;
-  width: min(380px, 100%);
+  width: min(560px, 100%);
   height: auto;
-  aspect-ratio: 1440 / 190;
+  aspect-ratio: 1440 / 360;
+}
+
+@media (max-width: 520px) {
+  .tonight .min-bar { flex-wrap: wrap; row-gap: 8px; }
+  .tonight .brand { flex-basis: 100%; }
+  .brand-lockup { width: 100%; }
 }
 
 [data-theme="night"] .brand-lockup {
   /* Flatten cyan (#7ad0e7) and near-white (#f1f2f2) to the night rose (~#e6aaa1).
      A hue shift alone leaves the wordmark bright white, which breaks night vision. */
   filter: brightness(0) saturate(100%) invert(78%) sepia(14%) saturate(800%) hue-rotate(318deg) brightness(0.9);
-}
-
-.tonight .tagline {
-  margin: 3px 0 0;
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.25;
 }
 
 .tonight {
