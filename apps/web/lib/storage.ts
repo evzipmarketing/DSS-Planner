@@ -2,16 +2,17 @@ import type { Camera, ImagingFilter, SensorKind, Site, Telescope, FilterKind, So
 import { isValidTimeZone } from "@dss/core";
 import { defaultSite, locations } from "@dss/data";
 
-export type ThemeName = "light" | "dark" | "night";
+export type ThemeName = "dark" | "night";
 
 export type StoredSession = {
-  version: 3;
+  version: 4;
   theme: ThemeName;
   locationId: string;
   customSite?: Site;
   telescopeId: string;
   reducer: number;
   focalOverrideMm: number | null;
+  smartModeId: string | null;
   cameraId: string;
   filterIds: string[];
   customTelescopes: Telescope[];
@@ -45,15 +46,16 @@ export function loadSession(): StoredSession | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Omit<Partial<StoredSession>, "version"> & { version?: number };
     const bag = parsed as { theme?: unknown; vision?: unknown };
-    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3) return null;
+    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== 4) return null;
     return {
-      version: 3,
+      version: 4,
       theme: parseTheme(bag.theme, bag.vision),
-      locationId: typeof parsed.locationId === "string" ? parsed.locationId : defaultSite.id,
+      locationId: typeof parsed.locationId === "string" ? parsed.locationId : "",
       customSite: parseSite(parsed.customSite),
       telescopeId: typeof parsed.telescopeId === "string" ? parsed.telescopeId : "",
       reducer: clampNum(parsed.reducer, 0.25, 5, 1),
       focalOverrideMm: parseFocal(parsed.focalOverrideMm),
+      smartModeId: typeof parsed.smartModeId === "string" ? parsed.smartModeId : null,
       cameraId: typeof parsed.cameraId === "string" ? parsed.cameraId : "",
       filterIds: withoutLegacyDefaultFilter(
         Array.isArray(parsed.filterIds)
@@ -101,8 +103,9 @@ function parseSortKey(value: unknown): TargetSortKey {
 }
 
 function parseTheme(theme: unknown, legacyVision: unknown): ThemeName {
-  if (theme === "light" || theme === "dark" || theme === "night") return theme;
-  if (legacyVision === "red" || theme === "red") return "night";
+  if (theme === "night" || legacyVision === "red" || theme === "red") return "night";
+  // Light is disabled for now; stored "light" sessions fall back to dark.
+  if (theme === "dark" || theme === "light") return "dark";
   return "dark";
 }
 

@@ -626,7 +626,7 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
   left: 0;
   right: 0;
   top: calc(100% + 4px);
-  max-height: 240px;
+  max-height: min(55vh, 420px);
   overflow: auto;
   background: var(--bg-raised);
   border: 1px solid var(--line-strong);
@@ -1057,7 +1057,7 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
 
 .tonight .min-bar {
   flex-wrap: nowrap;
-  align-items: flex-start;
+  align-items: center;
   padding-top: 16px;
 }
 
@@ -1126,12 +1126,20 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  max-height: min(70vh, 560px);
-  overflow: auto;
-  padding: 4px 16px 12px;
+  max-height: min(80vh, 720px);
+  overflow: visible;
+  padding: 4px 16px 16px;
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: 16px;
+}
+
+.tonight .settings-panel .fields {
+  overflow: visible;
+}
+
+.tonight .settings-panel .combo-list {
+  max-height: min(55vh, 420px);
 }
 
 .tonight .settings-panel .block,
@@ -1530,22 +1538,66 @@ html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
 
 .detail-viz {
   display: grid;
-  gap: 8px;
+  gap: 12px;
+}
+
+.detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.detail-col .facts-identity {
+  gap: 8px 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (min-width: 720px) {
+  .detail-col .facts-identity {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.tonight .inline-detail .block {
+  padding: 0;
+}
+
+.tonight .detail-viz .block {
+  padding: 0;
+}
+
+.tonight .detail-viz .tools {
+  margin-top: 8px;
 }
 
 @media (min-width: 1024px) {
   .detail-viz {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
+    align-items: stretch;
     gap: 20px;
   }
 
   .detail-viz .block {
     min-width: 0;
   }
+
+  .detail-col {
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 100%;
+  }
+
+  .detail-col .chart-wrap {
+    margin-top: auto;
+  }
 }
 
 .inline-detail .note { display: block; }
+
+.setup-hint {
+  color: var(--muted);
+}
 
 .moon-glyph { display: block; flex: 0 0 auto; }
 

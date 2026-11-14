@@ -26,7 +26,7 @@ export function Combobox({
     const pool = query
       ? options.filter((option) => `${option.label} ${option.hint ?? ""}`.toLowerCase().includes(query))
       : options;
-    return pool.slice(0, 12);
+    return [...pool].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
   }, [options, text]);
 
   return (

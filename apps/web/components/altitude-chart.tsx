@@ -17,7 +17,7 @@ const Y_MIN = -20;
 const Y_MAX = 90;
 const ALTITUDE_MARKS = [0, IMAGEABLE_MIN_ALTITUDE_DEG, 60, 90];
 
-export function AltitudeChart() {
+export function AltitudeChart({ compact = false }: { compact?: boolean }) {
   const { selected, track, site, theme } = usePlannerState();
   const horizon = theme === "night" ? "var(--sage)" : "var(--moon)";
   const samples = track?.samples ?? [];
@@ -41,8 +41,8 @@ export function AltitudeChart() {
         } Moon is ${track.moonPhaseName.toLowerCase()}, ${Math.round(track.moonIlluminatedFraction * 100)}% lit.`;
 
   return (
-    <Section index="08" title="Altitude">
-      <p>{summary}</p>
+    <Section index="08" title="Altitude" hideHeading={compact}>
+      {compact ? null : <p>{summary}</p>}
       {track && samples.length > 0 ? (
         <div className="chart-wrap">
           <svg className="chart" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={summary}>

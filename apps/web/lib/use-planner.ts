@@ -31,9 +31,7 @@ import {
 } from "@dss/core";
 import {
   cameras as seedCameras,
-  defaultCameraId,
   defaultSite,
-  defaultTelescopeId,
   estimateBortle,
   filters as seedFilters,
   telescopes as seedTelescopes,
@@ -56,9 +54,18 @@ export type Optics = {
   disagreement: ReturnType<typeof sensorDisagreement>;
 };
 
-export type PlaceStatus = "detecting" | "gps" | "saved" | "default";
+export type PlaceStatus = "detecting" | "gps" | "saved" | "needed";
 
 type PlaceBody = { name?: string; latitude?: number; longitude?: number; timezone?: string };
+
+function localDateIso(timeZone?: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: timeZone && timeZone.length > 0 ? timeZone : undefined,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
 export function usePlanner() {
   const [coreCatalogue, setCoreCatalogue] = useState<DeepSkyObject[] | null>(null);
@@ -70,21 +77,16 @@ export function usePlanner() {
   const [theme, setTheme] = useState<ThemeName>("dark");
   const [site, setSite] = useState<Site>(defaultSite);
   const [placeStatus, setPlaceStatus] = useState<PlaceStatus>("detecting");
-  const [date, setDate] = useState(() => {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: defaultSite.timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
-  });
+  // UTC on first paint so SSR and the client's initial render match; local/site date is applied after hydrate.
+  const [date, setDate] = useState(() => localDateIso("UTC"));
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pointing, setPointing] = useState<Pointing | null>(null);
-  const [telescopeId, setTelescopeId] = useState(defaultTelescopeId);
+  const [telescopeId, setTelescopeIdState] = useState("");
   const [reducer, setReducer] = useState(1);
   const [focalOverrideMm, setFocalOverrideMmState] = useState<number | null>(null);
-  const [cameraId, setCameraId] = useState(defaultCameraId);
+  const [smartModeId, setSmartModeId] = useState<string | null>(null);
+  const [cameraId, setCameraIdState] = useState("");
   const [filterIds, setFilterIds] = useState<string[]>([]);
   const [customTelescopes, setCustomTelescopes] = useState<Telescope[]>([]);
   const [customCameras, setCustomCameras] = useState<Camera[]>([]);
@@ -103,16 +105,24 @@ export function usePlanner() {
     /* eslint-disable react-hooks/set-state-in-effect */
     const stored = loadSession();
     if (stored) {
-      const restored = resolveSite(stored);
-      hadStoredSite.current = true;
-      siteLocked.current = true;
+      const hasSite = Boolean(stored.locationId);
+      hadStoredSite.current = hasSite;
+      if (hasSite) {
+        siteLocked.current = true;
+        const restored = resolveSite(stored);
+        setSite(restored);
+        setPlaceStatus("saved");
+        setDate(localDateIso(restored.timezone));
+      } else {
+        setPlaceStatus("detecting");
+        setDate(localDateIso());
+      }
       setTheme(stored.theme);
-      setSite(restored);
-      setPlaceStatus("saved");
-      if (stored.telescopeId) setTelescopeId(stored.telescopeId);
+      if (stored.telescopeId) setTelescopeIdState(stored.telescopeId);
       setReducer(stored.reducer);
       setFocalOverrideMmState(stored.focalOverrideMm);
-      if (stored.cameraId) setCameraId(stored.cameraId);
+      setSmartModeId(stored.smartModeId);
+      if (stored.cameraId) setCameraIdState(stored.cameraId);
       setFilterIds(stored.filterIds);
       setListSort(stored.listSort);
       setListSortDirection(stored.listSortDirection);
@@ -121,6 +131,7 @@ export function usePlanner() {
       setCustomFilters(stored.customFilters);
     } else {
       setPlaceStatus("detecting");
+      setDate(localDateIso());
     }
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -128,7 +139,7 @@ export function usePlanner() {
 
   useEffect(() => {
     if (!hydrated || !navigator.geolocation) {
-      if (hydrated) setPlaceStatus(hadStoredSite.current || siteLocked.current ? "saved" : "default");
+      if (hydrated && !hadStoredSite.current && !siteLocked.current) setPlaceStatus("needed");
       return;
     }
     // Respect a saved or user-chosen site; only auto-detect on a blank first visit.
@@ -146,22 +157,24 @@ export function usePlanner() {
           })
           .then((place) => {
             if (cancelled || siteLocked.current || requestId !== bortleRequest.current) return;
+            const timezone = place.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
             const next: Site = {
               id: "custom",
               name: place.name || "Current location",
               latitude: place.latitude ?? latitude,
               longitude: place.longitude ?? longitude,
-              timezone: place.timezone || "UTC",
+              timezone,
             };
             setSite(next);
+            setDate(localDateIso(timezone));
             setPlaceStatus("gps");
           })
           .catch(() => {
-            if (!cancelled && !siteLocked.current) setPlaceStatus("default");
+            if (!cancelled && !siteLocked.current) setPlaceStatus("needed");
           });
       },
       () => {
-        if (!cancelled && !siteLocked.current) setPlaceStatus("default");
+        if (!cancelled && !siteLocked.current) setPlaceStatus("needed");
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 10 * 60 * 1000 },
     );
@@ -202,16 +215,19 @@ export function usePlanner() {
     };
   }, []);
 
+  const locationReady = placeStatus === "gps" || placeStatus === "saved";
+
   useEffect(() => {
     if (!hydrated) return;
     saveSession({
-      version: 3,
+      version: 4,
       theme,
-      locationId: site.id,
-      customSite: site.id === "custom" ? site : undefined,
+      locationId: locationReady ? site.id : "",
+      customSite: locationReady && site.id === "custom" ? site : undefined,
       telescopeId,
       reducer,
       focalOverrideMm,
+      smartModeId,
       cameraId,
       filterIds,
       listSort,
@@ -224,9 +240,11 @@ export function usePlanner() {
     hydrated,
     theme,
     site,
+    locationReady,
     telescopeId,
     reducer,
     focalOverrideMm,
+    smartModeId,
     cameraId,
     filterIds,
     listSort,
@@ -246,25 +264,35 @@ export function usePlanner() {
   const telescopes = useMemo(() => [...seedTelescopes, ...customTelescopes], [customTelescopes]);
   const cameraList = useMemo(() => [...seedCameras, ...customCameras], [customCameras]);
   const filterList = useMemo(() => [...seedFilters, ...customFilters], [customFilters]);
-  const telescope = telescopes.find((item) => item.id === telescopeId) ?? telescopes[0] ?? null;
-  const camera = cameraList.find((item) => item.id === cameraId) ?? cameraList[0] ?? null;
+  const telescope = telescopes.find((item) => item.id === telescopeId) ?? null;
+  const camera = cameraList.find((item) => item.id === cameraId) ?? null;
+  const smart = telescope?.smart ?? null;
+  const smartMode =
+    smart?.modes?.find((mode) => mode.id === smartModeId) ??
+    smart?.modes?.find((mode) => mode.focalLengthMm === focalOverrideMm) ??
+    smart?.modes?.[0] ??
+    null;
 
   const optics = useMemo<Optics | null>(() => {
     if (!telescope || !camera) return null;
-    const focalLengthMm = focalOverrideMm ?? effectiveFocalLengthMm(telescope, reducer);
+    const apertureMm = smartMode?.apertureMm ?? telescope.apertureMm;
+    const focalLengthMm =
+      focalOverrideMm ??
+      smartMode?.focalLengthMm ??
+      (smart ? telescope.focalLengthMm : effectiveFocalLengthMm(telescope, reducer));
     const field = fieldOfView(camera, focalLengthMm);
     const longest = Math.max(field.widthDeg, field.heightDeg);
     const scale = pixelScaleArcsec(camera.pixelSizeUm, focalLengthMm);
     return {
       focalLengthMm,
-      focalRatio: focalRatio(telescope.apertureMm, focalLengthMm),
+      focalRatio: focalRatio(apertureMm, focalLengthMm),
       field,
       pixelScale: scale,
       sampling: samplingAdvice(scale, bortle),
       imageFovDeg: Math.min(20, Math.max(0.08, longest * 1.45)),
       disagreement: sensorDisagreement(camera),
     };
-  }, [telescope, camera, reducer, focalOverrideMm, bortle]);
+  }, [telescope, camera, reducer, focalOverrideMm, bortle, smart, smartMode]);
 
   const catalogue = useMemo(() => {
     if (!coreCatalogue) return null;
@@ -280,8 +308,9 @@ export function usePlanner() {
   // and cannot drift with date, location, or time.
   const fieldKey = field ? `${field.widthArcmin.toFixed(4)}x${field.heightArcmin.toFixed(4)}` : "none";
   const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${fieldKey}|${listFilter}|${bortle}|${extendedCatalogue ? "extended" : "core"}`;
+  const setupReady = locationReady && Boolean(date) && Boolean(telescope) && Boolean(camera);
   const shortlist = useMemo(() => {
-    if (ranked?.key !== shortlistKey) return [];
+    if (!setupReady || ranked?.key !== shortlistKey) return [];
     return ranked.items.map((item) => {
       const fill = frameFillPercent(item.object.majorArcmin, field);
       return {
@@ -290,11 +319,11 @@ export function usePlanner() {
         frameFit: frameFit(fill),
       };
     });
-  }, [ranked, shortlistKey, field]);
-  const scoring = Boolean(hydrated && catalogue && ranked?.key !== shortlistKey);
+  }, [ranked, shortlistKey, field, setupReady]);
+  const scoring = Boolean(hydrated && setupReady && catalogue && ranked?.key !== shortlistKey);
 
   useEffect(() => {
-    if (!hydrated || !catalogue) return;
+    if (!hydrated || !catalogue || !setupReady) return;
     let cancelled = false;
     const timer = window.setTimeout(() => {
       if (cancelled) return;
@@ -307,7 +336,7 @@ export function usePlanner() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [hydrated, catalogue, site, date, shortlistKey, targetQuery, field, listFilter, bortle]);
+  }, [hydrated, catalogue, site, date, shortlistKey, targetQuery, field, listFilter, bortle, setupReady]);
 
   const selected = useMemo(
     () => catalogue?.find((object) => object.id === selectedId) ?? null,
@@ -320,7 +349,7 @@ export function usePlanner() {
   }
 
   const track = useMemo<NightTrack | null>(() => {
-    if (!selected) return null;
+    if (!selected || !setupReady) return null;
     return buildNightTrack({
       raDeg: selected.raDeg,
       decDeg: selected.decDeg,
@@ -328,7 +357,7 @@ export function usePlanner() {
       dateIso: date,
       stepMinutes: IMAGEABLE_SAMPLE_MINUTES,
     });
-  }, [selected, site, date]);
+  }, [selected, site, date, setupReady]);
 
   const results = useMemo(() => {
     if (!catalogue || query.trim().length < 1) return [];
@@ -353,14 +382,56 @@ export function usePlanner() {
     setFocalOverrideMmState(rounded);
   }
 
+  function setSmartMode(modeId: string) {
+    const mode = telescope?.smart?.modes?.find((item) => item.id === modeId);
+    if (!mode) return;
+    setSmartModeId(mode.id);
+    setFocalOverrideMmState(mode.focalLengthMm);
+    setReducer(1);
+  }
+
+  function setTelescopeId(id: string) {
+    setTelescopeIdState(id);
+    const scope = [...seedTelescopes, ...customTelescopes].find((item) => item.id === id);
+    if (scope?.smart) {
+      setCameraIdState(scope.smart.cameraId);
+      setReducer(1);
+      const mode = scope.smart.modes?.[0] ?? null;
+      setSmartModeId(mode?.id ?? null);
+      setFocalOverrideMmState(mode?.focalLengthMm ?? null);
+      setFilterIds((current) => current.filter((filterId) => scope.smart?.filterIds.includes(filterId)));
+      return;
+    }
+    setSmartModeId(null);
+    setFocalOverrideMmState(null);
+  }
+
+  function setCameraId(id: string) {
+    setCameraIdState(id);
+    // Choosing a separate camera leaves a smart scope selection.
+    if (telescope?.smart && telescope.smart.cameraId !== id) {
+      setTelescopeIdState("");
+      setSmartModeId(null);
+      setFocalOverrideMmState(null);
+    }
+  }
+
   function toggleFilter(id: string) {
-    setFilterIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+    setFilterIds((current) => {
+      if (smart?.filterIds.length) {
+        // Smart scopes expose a short built-in list; pick one at a time (or none).
+        if (!smart.filterIds.includes(id)) return current;
+        return current.includes(id) ? [] : [id];
+      }
+      return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+    });
   }
 
   function chooseSite(next: Site) {
     siteLocked.current = true;
     bortleRequest.current += 1;
     setSite(next);
+    setDate(localDateIso(next.timezone));
     setPlaceStatus("saved");
   }
 
@@ -382,10 +453,14 @@ export function usePlanner() {
   function removeCustom(kind: "telescope" | "camera" | "filter", id: string) {
     if (kind === "telescope") {
       setCustomTelescopes((current) => current.filter((item) => item.id !== id));
-      if (telescopeId === id) setTelescopeId(defaultTelescopeId);
+      if (telescopeId === id) {
+        setTelescopeIdState("");
+        setSmartModeId(null);
+        setFocalOverrideMmState(null);
+      }
     } else if (kind === "camera") {
       setCustomCameras((current) => current.filter((item) => item.id !== id));
-      if (cameraId === id) setCameraId(defaultCameraId);
+      if (cameraId === id) setCameraIdState("");
     } else {
       setCustomFilters((current) => current.filter((item) => item.id !== id));
       setFilterIds((current) => current.filter((item) => item !== id));
@@ -408,6 +483,8 @@ export function usePlanner() {
     site,
     chooseSite,
     placeStatus,
+    locationReady,
+    setupReady,
     date,
     setDate,
     bortle,
@@ -428,11 +505,13 @@ export function usePlanner() {
     filterList,
     telescope,
     camera,
+    smartMode,
     setTelescopeId,
     reducer,
     setReducer,
     focalOverrideMm,
     setFocalOverrideMm,
+    setSmartMode,
     setCameraId,
     filterIds,
     toggleFilter,

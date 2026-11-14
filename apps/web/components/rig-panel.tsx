@@ -45,6 +45,9 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
   const showScope = part !== "camera";
   const showCamera = part !== "telescope";
   const title = part === "telescope" ? "Telescope" : part === "camera" ? "Camera" : "Rig";
+  const smartCameraIds = new Set(
+    planner.telescopes.flatMap((item) => (item.smart ? [item.smart.cameraId] : [])),
+  );
 
   return (
     <Section index="05" title={title}>
@@ -87,56 +90,90 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
             <Combobox
               label="Telescope"
               value={telescope?.id ?? ""}
-              placeholder="e.g. Evostar 72ED"
+              placeholder="e.g. Seestar S50, Evostar 72ED"
               options={planner.telescopes.map((item) => ({
                 id: item.id,
                 label: item.name,
-                hint: `${item.apertureMm} mm · ${item.focalLengthMm} mm`,
+                hint: item.smart
+                  ? `Smart · ${item.apertureMm} mm · ${item.focalLengthMm} mm`
+                  : `${item.apertureMm} mm · ${item.focalLengthMm} mm`,
               }))}
               onChange={planner.setTelescopeId}
             />
             {telescope ? (
               <p className="note">
-                {telescope.apertureMm} mm aperture, {telescope.focalLengthMm} mm native focal length.
+                {telescope.smart
+                  ? `Smart telescope with built-in camera. ${telescope.apertureMm} mm aperture, ${telescope.focalLengthMm} mm native focal length.`
+                  : `${telescope.apertureMm} mm aperture, ${telescope.focalLengthMm} mm native focal length.`}
               </p>
             ) : null}
-            <label className="field">
-              Flattener, reducer, or Barlow
-              <select
-                value={String(planner.reducer)}
-                onChange={(event) => planner.setReducer(Number(event.target.value))}
-              >
-                {REDUCERS.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-                {REDUCERS.some((item) => item.value === planner.reducer) ? null : (
-                  <option value={String(planner.reducer)}>{planner.reducer}×</option>
-                )}
-              </select>
-            </label>
-            {telescope ? <FocalLength telescope={telescope} /> : null}
+            {telescope?.smart?.modes?.length ? (
+              <label className="field">
+                Lens / focal length
+                <select
+                  value={planner.smartMode?.id ?? telescope.smart.modes[0]?.id ?? ""}
+                  onChange={(event) => planner.setSmartMode(event.target.value)}
+                >
+                  {telescope.smart.modes.map((mode) => (
+                    <option key={mode.id} value={mode.id}>
+                      {mode.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : telescope && !telescope.smart ? (
+              <>
+                <label className="field">
+                  Flattener, reducer, or Barlow
+                  <select
+                    value={String(planner.reducer)}
+                    onChange={(event) => planner.setReducer(Number(event.target.value))}
+                  >
+                    {REDUCERS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                    {REDUCERS.some((item) => item.value === planner.reducer) ? null : (
+                      <option value={String(planner.reducer)}>{planner.reducer}×</option>
+                    )}
+                  </select>
+                </label>
+                <FocalLength telescope={telescope} />
+              </>
+            ) : null}
           </>
         ) : null}
         {showCamera ? (
           <>
+            {telescope?.smart ? (
+              <p className="note">
+                Camera is paired with this smart telescope
+                {camera ? `: ${camera.name}` : ""}.
+              </p>
+            ) : (
+              <Combobox
+                label="Camera"
+                value={camera?.id ?? ""}
+                placeholder="e.g. ASI533"
+                options={planner.cameraList
+                  .filter((item) => item.custom || !smartCameraIds.has(item.id))
+                  .map((item) => ({
+                    id: item.id,
+                    label: item.name,
+                    hint: `${item.sensor} · ${item.widthPx}×${item.heightPx}`,
+                  }))}
+                onChange={planner.setCameraId}
+              />
+            )}
             <Combobox
-              label="Camera"
-              value={camera?.id ?? ""}
-              placeholder="e.g. ASI533"
-              options={planner.cameraList.map((item) => ({
-                id: item.id,
-                label: item.name,
-                hint: `${item.sensor} · ${item.widthPx}×${item.heightPx}`,
-              }))}
-              onChange={planner.setCameraId}
-            />
-            <Combobox
-              label="Add a filter"
+              label={telescope?.smart ? "Built-in filter" : "Add a filter"}
               value=""
-              placeholder="e.g. Astronomik"
-              options={planner.filterList.map((item) => ({
+              placeholder={telescope?.smart ? "e.g. dual-band" : "e.g. Astronomik"}
+              options={(telescope?.smart
+                ? planner.filterList.filter((item) => telescope.smart?.filterIds.includes(item.id))
+                : planner.filterList
+              ).map((item) => ({
                 id: item.id,
                 label: item.name,
                 hint: filterKindLabel(item.kind),

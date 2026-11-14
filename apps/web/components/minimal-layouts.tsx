@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AltitudeChart } from "./altitude-chart";
 import { BortlePanel } from "./bortle-panel";
 import { DatePanel } from "./date-panel";
 import { FramingPreview } from "./framing-preview";
 import { LocationPanel } from "./location-panel";
-import { ObjectCard, Shortlist } from "./target-panels";
+import { ObjectDetails, Shortlist } from "./target-panels";
 import { RigPanel } from "./rig-panel";
 import { WeatherPanel } from "./weather-panel";
 import { usePlannerState } from "./planner-context";
@@ -17,13 +17,18 @@ type SettingsPanel = "location" | "date" | "telescope" | "camera";
 export function TonightPage() {
   const planner = usePlannerState();
   const [panel, setPanel] = useState<SettingsPanel | null>(null);
-  const place = planner.site.name;
+  const place = planner.locationReady ? planner.site.name : planner.placeStatus === "detecting" ? "Detecting…" : "Set location";
   const day = formatDay(planner.date);
-  const scope = trimGear(planner.telescope?.name) ?? "None";
-  const camera = cameraLabel(planner.camera?.name, planner.filterIds.length);
+  const scope = trimGear(planner.telescope?.name) ?? "Choose…";
+  const camera = cameraLabel(planner.camera?.name, planner.filterIds.length, true);
   function toggle(next: SettingsPanel) {
     setPanel((current) => (current === next ? null : next));
   }
+
+  useEffect(() => {
+    if (planner.placeStatus === "needed") setPanel("location");
+  }, [planner.placeStatus]);
+
   return (
     <div className="minimal tonight">
       <a className="skip" href="#targets">
@@ -32,13 +37,6 @@ export function TonightPage() {
       <header className="app-head">
         <div className="min-bar">
           <div className="brand">
-            <img
-              className="brand-lockup brand-lockup-light"
-              src="/deepskymate-logo-light.svg"
-              alt="DeepSkyMate"
-              width={300}
-              height={71}
-            />
             <img
               className="brand-lockup brand-lockup-dark"
               src="/deepskymate-logo-dark.svg"
@@ -55,7 +53,7 @@ export function TonightPage() {
               icon={<PinIcon />}
               prefix="Location"
               value={place}
-              label={`Location, ${place}, ${planner.bortleLoading ? "Bortle updating" : `Bortle ${planner.bortle}`}`}
+              label={`Location, ${place}${planner.locationReady ? `, ${planner.bortleLoading ? "Bortle updating" : `Bortle ${planner.bortle}`}` : ""}`}
               open={panel === "location"}
               onToggle={() => toggle("location")}
             />
@@ -92,27 +90,39 @@ export function TonightPage() {
         </div>
       </header>
       <section className="hero">
-        <h1>Tonight from {planner.site.name}</h1>
+        <h1>{planner.locationReady ? `Tonight from ${planner.site.name}` : "Tonight’s sky"}</h1>
         <div className="sky-meta">
-          <WeatherPanel plain />
-          <span className="bortle-line" title="Sky brightness class estimated for this site.">
-            {planner.bortleLoading ? "Bortle…" : `Bortle ${planner.bortle}`}
-          </span>
-          <LookUpNote />
+          {planner.locationReady ? (
+            <>
+              <WeatherPanel plain />
+              <span className="bortle-line" title="Sky brightness class estimated for this site.">
+                {planner.bortleLoading ? "Bortle…" : `Bortle ${planner.bortle}`}
+              </span>
+              <LookUpNote />
+            </>
+          ) : (
+            <span className="setup-hint">
+              {planner.placeStatus === "detecting"
+                ? "Detecting your location…"
+                : "Set a location to begin, then pick a telescope and camera."}
+            </span>
+          )}
         </div>
       </section>
       <div id="targets">
-        <Shortlist
-          detail={
-            <>
-              <ObjectCard />
+        {planner.setupReady ? (
+          <Shortlist
+            detail={
               <div className="detail-viz">
-                <AltitudeChart />
+                <div className="detail-col">
+                  <ObjectDetails />
+                  <AltitudeChart compact />
+                </div>
                 <FramingPreview />
               </div>
-            </>
-          }
-        />
+            }
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -253,13 +263,6 @@ function ThemeToggle() {
 
 function ThemeIcon({ theme }: { theme: ThemeName }) {
   switch (theme) {
-    case "light":
-      return (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-        </svg>
-      );
     case "dark":
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -282,12 +285,10 @@ function ThemeIcon({ theme }: { theme: ThemeName }) {
 
 function nextTheme(theme: ThemeName): ThemeName {
   switch (theme) {
-    case "light":
-      return "dark";
     case "dark":
       return "night";
     case "night":
-      return "light";
+      return "dark";
     default: {
       const unexpected: never = theme;
       return unexpected;
@@ -297,8 +298,6 @@ function nextTheme(theme: ThemeName): ThemeName {
 
 function themeLabel(theme: ThemeName): string {
   switch (theme) {
-    case "light":
-      return "Light";
     case "dark":
       return "Dark";
     case "night":
@@ -336,8 +335,9 @@ function trimGear(name: string | undefined): string | undefined {
   return name.replace(/^(Sky-Watcher|ZWO)\s+/, "");
 }
 
-function cameraLabel(name: string | undefined, filters: number): string {
-  const camera = trimGear(name) ?? "None";
+function cameraLabel(name: string | undefined, filters: number, emptyHint = false): string {
+  const camera = trimGear(name) ?? (emptyHint ? "Choose…" : "None");
+  if (!name) return camera;
   if (filters <= 1) return camera;
   return `${camera} · ${filters} filters`;
 }

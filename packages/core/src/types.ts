@@ -88,12 +88,31 @@ export const EMPTY_TARGET_QUERY: TargetQuery = {
 
 export type SensorKind = "mono" | "colour";
 
+/** Focal / aperture mode for all-in-one smart telescopes (tele, wide, etc.). */
+export type TelescopeMode = {
+  id: string;
+  label: string;
+  apertureMm: number;
+  focalLengthMm: number;
+};
+
+export type SmartTelescope = {
+  /** Paired camera id in the seed camera list. */
+  cameraId: string;
+  /** Built-in filter ids the user can pick from. Empty means no built-in filter list. */
+  filterIds: string[];
+  /** When set, the user picks one mode instead of a separate reducer. */
+  modes?: TelescopeMode[];
+};
+
 export type Telescope = {
   id: string;
   name: string;
   apertureMm: number;
   focalLengthMm: number;
   custom?: boolean;
+  /** All-in-one unit: selecting it also selects the paired camera. */
+  smart?: SmartTelescope;
 };
 
 export type Camera = {

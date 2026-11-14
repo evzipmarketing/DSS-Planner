@@ -81,19 +81,25 @@ export function LocationPanel() {
       : placeStatus === "gps"
         ? "Using this browser’s location."
         : placeStatus === "saved"
-          ? "Geolocation was unavailable, so this is the last place you used."
-          : "Geolocation was unavailable, so this is Hyderabad.";
+          ? "Using the place you chose."
+          : "Location access was denied or unavailable. Search for a place or enter coordinates.";
+
+  const showSite = placeStatus === "gps" || placeStatus === "saved";
 
   return (
     <Section index="01" title="Location">
       <p className="note">{status}</p>
-      <p className="coords">
-        <strong>{site.name}</strong>
-      </p>
-      <p className="coords">
-        {formatCoord(site.latitude, "N", "S")}, {formatCoord(site.longitude, "E", "W")}
-      </p>
-      <p className="note">{site.timezone}</p>
+      {showSite ? (
+        <>
+          <p className="coords">
+            <strong>{site.name}</strong>
+          </p>
+          <p className="coords">
+            {formatCoord(site.latitude, "N", "S")}, {formatCoord(site.longitude, "E", "W")}
+          </p>
+          <p className="note">{site.timezone}</p>
+        </>
+      ) : null}
       <label className="field">
         Search for a place
         <input

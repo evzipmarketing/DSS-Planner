@@ -22,7 +22,6 @@ import {
   formatImageableHours,
   formatRightAscension,
   formatSignedDegrees,
-  imageableCrossing,
   listFilterLabel,
   targetSortLabel,
   type SortDirection,
@@ -732,94 +731,101 @@ function delay(ms: number): Promise<void> {
   });
 }
 
-export function ObjectCard() {
+export function ObjectDetails() {
   const { selected, track, site } = usePlannerState();
-  const crossing = track
-    ? imageableCrossing(
-        track.samples.map((sample) => ({
-          time: sample.time,
-          altitude: sample.targetAltitude,
-          sunAltitude: sample.sunAltitude,
-        })),
-      )
-    : null;
+  if (!selected) return null;
   return (
-    <Section index="07" title="Object">
-      {!selected ? (
-        <p className="note">Search a catalogue id or a common name, or take one from the shortlist.</p>
-      ) : (
-        <>
-          <h3 style={{ margin: "0 0 10px", fontFamily: "var(--font-display)", fontWeight: 520 }}>
-            {objectTitle(selected)} <span className="tag">{primaryDesignation(selected)}</span>
-          </h3>
-          <dl className="facts">
-            <div>
-              <dt>Catalogue</dt>
-              <dd>{primaryDesignation(selected)}</dd>
-            </div>
-            <div>
-              <dt>Type</dt>
-              <dd>{objectTypeLabel(selected.type)}</dd>
-            </div>
-            <div>
-              <dt>RA J2000</dt>
-              <dd>{formatRightAscension(selected.raDeg)}</dd>
-            </div>
-            <div>
-              <dt>Dec J2000</dt>
-              <dd>{formatDeclination(selected.decDeg)}</dd>
-            </div>
-            <div>
-              <dt>Constellation</dt>
-              <dd>{constellationName(selected.constellation)}</dd>
-            </div>
-            <div>
-              <dt>Size</dt>
-              <dd>{sizeText(selected.majorArcmin, selected.minorArcmin, selected.positionAngleDeg)}</dd>
-            </div>
-            <div>
-              <dt>Magnitude</dt>
-              <dd>{selected.magnitude == null ? "Not listed" : selected.magnitude.toFixed(2)}</dd>
-            </div>
-            <div>
-              <dt>Also known as</dt>
-              <dd>{selected.aliases.map((alias) => formatCatalogueId(alias)).join(" · ")}</dd>
-            </div>
-            <div>
-              <dt>Catalogues</dt>
-              <dd>{selected.catalogues.map((catalogue) => catalogueLabel(catalogue)).join(", ")}</dd>
-            </div>
-            {selected.opacity != null ? (
-              <div>
-                <dt>Opacity</dt>
-                <dd>Class {selected.opacity}</dd>
-              </div>
-            ) : null}
-            {track ? (
-              <div>
-                <dt>Imageable tonight</dt>
-                <dd>{formatImageableHours(track.usableHours)}</dd>
-              </div>
-            ) : null}
-            {crossing ? (
-              <div>
-                <dt>Rises above {IMAGEABLE_MIN_ALTITUDE_DEG}°</dt>
-                <dd>
-                  {crossing.atDusk
-                    ? "Already up at dusk"
-                    : crossing.rise
-                      ? formatClock(crossing.rise, site.timezone)
-                      : `Does not reach ${IMAGEABLE_MIN_ALTITUDE_DEG}°`}
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-          {selected.names.length > 1 ? <p className="note">Also called {selected.names.slice(1).join(", ")}.</p> : null}
-          {selected.note ? <p className="note">{selected.note}</p> : null}
-        </>
-      )}
+    <Section index="07" title="Object" hideHeading>
+      <dl className="facts facts-identity">
+        <div>
+          <dt>Known as</dt>
+          <dd>{knownAsText(selected)}</dd>
+        </div>
+        <div>
+          <dt>Catalogues</dt>
+          <dd>{selected.catalogues.map((catalogue) => catalogueLabel(catalogue)).join(", ")}</dd>
+        </div>
+        <div>
+          <dt>Constellation</dt>
+          <dd>{selected.constellation ? constellationName(selected.constellation) : "—"}</dd>
+        </div>
+        <div>
+          <dt>Type</dt>
+          <dd>{objectTypeLabel(selected.type)}</dd>
+        </div>
+        <div>
+          <dt>Magnitude</dt>
+          <dd>{selected.magnitude == null ? "Not listed" : selected.magnitude.toFixed(2)}</dd>
+        </div>
+        <div>
+          <dt>RA J2000</dt>
+          <dd>{formatRightAscension(selected.raDeg)}</dd>
+        </div>
+        <div>
+          <dt>Dec J2000</dt>
+          <dd>{formatDeclination(selected.decDeg)}</dd>
+        </div>
+        <div>
+          <dt>Size</dt>
+          <dd>{sizeText(selected.majorArcmin, selected.minorArcmin, selected.positionAngleDeg)}</dd>
+        </div>
+        <div>
+          <dt>Imageable tonight</dt>
+          <dd>{track ? formatImageableHours(track.usableHours) : "—"}</dd>
+        </div>
+        <div>
+          <dt>Rise / set</dt>
+          <dd>{riseSetText(track, site.timezone)}</dd>
+        </div>
+      </dl>
     </Section>
   );
+}
+
+/** @deprecated Prefer ObjectDetails in the expanded target layout. */
+export function ObjectIdentity() {
+  return <ObjectDetails />;
+}
+
+/** @deprecated Prefer ObjectDetails in the expanded target layout. */
+export function ObjectObserving() {
+  return null;
+}
+
+/** @deprecated Prefer ObjectDetails in the expanded target layout. */
+export function ObjectCard() {
+  return <ObjectDetails />;
+}
+
+function riseSetText(
+  track: { usableIntervals: { start: Date; end: Date }[] } | null,
+  timezone: string,
+): string {
+  if (!track) return "—";
+  if (track.usableIntervals.length === 0) {
+    return `Does not stay above ${IMAGEABLE_MIN_ALTITUDE_DEG}° while dark`;
+  }
+  return track.usableIntervals
+    .map((interval) => `${formatClock(interval.start, timezone)}–${formatClock(interval.end, timezone)}`)
+    .join(", ");
+}
+
+function knownAsText(object: DeepSkyObject): string {
+  const seen = new Set<string>();
+  const parts: string[] = [];
+  function add(label: string) {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    parts.push(trimmed);
+  }
+  for (const name of object.names) add(name);
+  add(primaryDesignation(object));
+  add(formatCatalogueId(object.id));
+  for (const alias of object.aliases) add(formatCatalogueId(alias));
+  return parts.length ? parts.join(" · ") : "—";
 }
 
 function sizeText(major: number | null, minor: number | null, angle: number | null): string {

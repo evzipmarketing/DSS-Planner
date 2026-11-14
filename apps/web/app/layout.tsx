@@ -38,11 +38,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html:
-              '(function(){try{var raw=localStorage.getItem("dss-planner.session.v1");if(!raw)return;var data=JSON.parse(raw);var theme=data&&data.theme;if(theme!=="light"&&theme!=="dark"&&theme!=="night")theme=data&&data.vision==="red"?"night":"dark";document.documentElement.dataset.theme=theme;}catch(e){}})();',
+              '(function(){try{var raw=localStorage.getItem("dss-planner.session.v1");if(!raw)return;var data=JSON.parse(raw);var theme=data&&data.theme;if(theme==="night"||data&&data.vision==="red")theme="night";else theme="dark";document.documentElement.dataset.theme=theme;}catch(e){}})();',
           }}
         />
       </head>
-      <body>{children}</body>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

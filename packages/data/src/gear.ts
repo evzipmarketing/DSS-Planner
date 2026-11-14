@@ -9,6 +9,74 @@ import type { Camera, ImagingFilter, Telescope } from "@dss/core";
  * those brands publish. It is not scraped from AstroBin.
  */
 export const telescopes: Telescope[] = [
+  {
+    id: "zwo-seestar-s50",
+    name: "ZWO Seestar S50",
+    apertureMm: 50,
+    focalLengthMm: 250,
+    smart: {
+      cameraId: "zwo-seestar-s50-cam",
+      filterIds: ["seestar-uv-ir", "seestar-dual-lp"],
+    },
+  },
+  {
+    id: "zwo-seestar-s30",
+    name: "ZWO Seestar S30",
+    apertureMm: 30,
+    focalLengthMm: 150,
+    smart: {
+      cameraId: "zwo-seestar-s30-cam",
+      filterIds: ["seestar-uv-ir", "seestar-dual-lp"],
+    },
+  },
+  {
+    id: "dwarflab-dwarf-ii",
+    name: "Dwarflab Dwarf II",
+    apertureMm: 24,
+    focalLengthMm: 100,
+    smart: {
+      cameraId: "dwarflab-dwarf-ii-cam",
+      filterIds: ["dwarf-vis", "dwarf-astro", "dwarf-dual-band"],
+      modes: [
+        { id: "tele", label: "Tele 100 mm", apertureMm: 24, focalLengthMm: 100 },
+        { id: "wide", label: "Wide ~50°", apertureMm: 2.5, focalLengthMm: 3.4 },
+      ],
+    },
+  },
+  {
+    id: "dwarflab-dwarf-3",
+    name: "Dwarflab Dwarf 3",
+    apertureMm: 35,
+    focalLengthMm: 150,
+    smart: {
+      cameraId: "dwarflab-dwarf-3-cam",
+      filterIds: ["dwarf-vis", "dwarf-astro", "dwarf-dual-band"],
+      modes: [
+        { id: "tele", label: "Tele 150 mm", apertureMm: 35, focalLengthMm: 150 },
+        { id: "wide", label: "Wide 114°", apertureMm: 6.7, focalLengthMm: 6.7 },
+      ],
+    },
+  },
+  {
+    id: "vaonis-vespera-ii",
+    name: "Vaonis Vespera II",
+    apertureMm: 50,
+    focalLengthMm: 250,
+    smart: {
+      cameraId: "vaonis-vespera-ii-cam",
+      filterIds: ["vespera-uv-ir", "vespera-dual-band"],
+    },
+  },
+  {
+    id: "celestron-origin",
+    name: "Celestron Origin",
+    apertureMm: 152,
+    focalLengthMm: 335,
+    smart: {
+      cameraId: "celestron-origin-cam",
+      filterIds: ["origin-lrgb"],
+    },
+  },
   { id: "sw-evostar-72ed", name: "Sky-Watcher Evostar 72ED", apertureMm: 72, focalLengthMm: 420 },
   { id: "sw-evostar-80ed", name: "Sky-Watcher Evostar 80ED", apertureMm: 80, focalLengthMm: 600 },
   { id: "sw-evostar-100ed", name: "Sky-Watcher Evostar 100ED", apertureMm: 100, focalLengthMm: 900 },
@@ -164,6 +232,72 @@ export const telescopes: Telescope[] = [
 ];
 
 export const cameras: Camera[] = [
+  {
+    id: "zwo-seestar-s50-cam",
+    name: "Seestar S50 (IMX462)",
+    sensorWidthMm: 5.57,
+    sensorHeightMm: 3.13,
+    pixelSizeUm: 2.9,
+    widthPx: 1920,
+    heightPx: 1080,
+    sensor: "colour",
+    readNoiseE: 0.7,
+  },
+  {
+    id: "zwo-seestar-s30-cam",
+    name: "Seestar S30 (IMX462)",
+    sensorWidthMm: 5.57,
+    sensorHeightMm: 3.13,
+    pixelSizeUm: 2.9,
+    widthPx: 1920,
+    heightPx: 1080,
+    sensor: "colour",
+    readNoiseE: 0.7,
+  },
+  {
+    id: "dwarflab-dwarf-ii-cam",
+    name: "Dwarf II (IMX415)",
+    sensorWidthMm: 5.57,
+    sensorHeightMm: 3.13,
+    pixelSizeUm: 1.45,
+    widthPx: 3840,
+    heightPx: 2160,
+    sensor: "colour",
+    readNoiseE: 1.0,
+  },
+  {
+    id: "dwarflab-dwarf-3-cam",
+    name: "Dwarf 3 (IMX678)",
+    sensorWidthMm: 7.68,
+    sensorHeightMm: 4.32,
+    pixelSizeUm: 2.0,
+    widthPx: 3840,
+    heightPx: 2160,
+    sensor: "colour",
+    readNoiseE: 0.8,
+  },
+  {
+    id: "vaonis-vespera-ii-cam",
+    name: "Vespera II (IMX676)",
+    sensorWidthMm: 7.4,
+    sensorHeightMm: 7.4,
+    pixelSizeUm: 2.0,
+    widthPx: 3536,
+    heightPx: 3536,
+    sensor: "colour",
+    readNoiseE: 1.0,
+  },
+  {
+    id: "celestron-origin-cam",
+    name: "Celestron Origin (IMX178)",
+    sensorWidthMm: 7.4,
+    sensorHeightMm: 4.9,
+    pixelSizeUm: 2.4,
+    widthPx: 3096,
+    heightPx: 2080,
+    sensor: "colour",
+    readNoiseE: 1.4,
+  },
   {
     id: "asi533mc",
     name: "ZWO ASI533MC Pro",
@@ -1663,6 +1797,14 @@ export const cameras: Camera[] = [
 ];
 
 export const filters: ImagingFilter[] = [
+  { id: "seestar-uv-ir", name: "Seestar UV/IR cut", kind: "uv_ir_cut", bandpassNm: 300, transmission: 0.95 },
+  { id: "seestar-dual-lp", name: "Seestar dual-band LP", kind: "dual_narrowband", bandpassNm: 30, transmission: 0.85 },
+  { id: "dwarf-vis", name: "Dwarf VIS", kind: "broadband", bandpassNm: 300, transmission: 0.95 },
+  { id: "dwarf-astro", name: "Dwarf Astro", kind: "uv_ir_cut", bandpassNm: 280, transmission: 0.92 },
+  { id: "dwarf-dual-band", name: "Dwarf dual-band", kind: "dual_narrowband", bandpassNm: 20, transmission: 0.85 },
+  { id: "vespera-uv-ir", name: "Vespera UV/IR cut", kind: "uv_ir_cut", bandpassNm: 300, transmission: 0.95 },
+  { id: "vespera-dual-band", name: "Vespera dual-band", kind: "dual_narrowband", bandpassNm: 20, transmission: 0.85 },
+  { id: "origin-lrgb", name: "Origin built-in colour", kind: "broadband", bandpassNm: 300, transmission: 0.95 },
   { id: "astronomik-l2", name: "Astronomik L-2 UV/IR cut", kind: "uv_ir_cut", bandpassNm: 320, transmission: 0.97 },
   { id: "astronomik-l3", name: "Astronomik L-3 UV/IR cut", kind: "uv_ir_cut", bandpassNm: 300, transmission: 0.96 },
   { id: "svbony-uv-ir", name: "SVBony UV/IR cut", kind: "uv_ir_cut", bandpassNm: 300, transmission: 0.95 },
