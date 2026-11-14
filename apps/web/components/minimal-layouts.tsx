@@ -34,14 +34,14 @@ export function TonightPage() {
           <div className="brand">
             <img
               className="brand-lockup brand-lockup-light"
-              src="/deepskymate-logo-light.png"
+              src="/deepskymate-logo-light.svg"
               alt="DeepSkyMate"
               width={300}
               height={71}
             />
             <img
               className="brand-lockup brand-lockup-dark"
-              src="/deepskymate-logo-dark.png"
+              src="/deepskymate-logo-dark.svg"
               alt="DeepSkyMate"
               width={300}
               height={71}
