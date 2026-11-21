@@ -5,7 +5,7 @@ import { isValidTimeZone, type Site } from "@dss/core";
 import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
-export function LocationPanel() {
+export function LocationPanel({ onDone }: { onDone?: () => void }) {
   const { site, chooseSite, placeStatus } = usePlannerState();
   const [text, setText] = useState("");
   const [results, setResults] = useState<Site[]>([]);
@@ -63,6 +63,7 @@ export function LocationPanel() {
         longitude,
         timezone,
       });
+      onDone?.();
     } catch {
       chooseSite({
         id: "custom",
@@ -72,6 +73,7 @@ export function LocationPanel() {
         timezone: "UTC",
       });
       setManualError("The place name could not be resolved. Coordinates are saved in UTC.");
+      onDone?.();
     }
   }
 
@@ -110,25 +112,31 @@ export function LocationPanel() {
       </label>
       {searchError ? <p className="note">{searchError}</p> : null}
       <div className="rows" style={{ marginTop: 8 }}>
-        {results.map((result) => (
-          <button
-            key={`${result.latitude}-${result.longitude}-${result.name}`}
-            type="button"
-            className="row"
-            onClick={() => {
-              chooseSite(result);
-              setText("");
-              setResults([]);
-            }}
-          >
-            <span>
-              <strong>{result.name}</strong>
-              <small>
-                {result.latitude.toFixed(3)}°, {result.longitude.toFixed(3)}° · {result.timezone}
-              </small>
-            </span>
-          </button>
-        ))}
+        {results.map((result) => {
+          const selected =
+            Math.abs(site.latitude - result.latitude) < 1e-4 && Math.abs(site.longitude - result.longitude) < 1e-4;
+          return (
+            <button
+              key={`${result.latitude}-${result.longitude}-${result.name}`}
+              type="button"
+              className={`row${selected ? " is-selected" : ""}`}
+              aria-selected={selected}
+              onClick={() => {
+                chooseSite(result);
+                setText("");
+                setResults([]);
+                onDone?.();
+              }}
+            >
+              <span>
+                <strong>{result.name}</strong>
+                <small>
+                  {result.latitude.toFixed(3)}°, {result.longitude.toFixed(3)}° · {result.timezone}
+                </small>
+              </span>
+            </button>
+          );
+        })}
       </div>
       <details className="drawer">
         <summary>Enter latitude and longitude</summary>

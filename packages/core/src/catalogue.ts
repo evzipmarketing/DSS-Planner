@@ -122,10 +122,10 @@ export function objectTitle(object: DeepSkyObject): string {
 
 const DESIGNATION_ORDER: Array<[RegExp, number]> = [
   [/^M\d+$/, 0],
-  [/^C\d+$/, 1],
-  [/^NGC\d/, 2],
-  [/^IC\d/, 3],
-  [/^Sh2-\d/, 4],
+  [/^NGC\d/, 1],
+  [/^IC\d/, 2],
+  [/^Sh2-\d/, 3],
+  [/^C\d+$/, 4],
   [/^B\d/, 5],
   [/^LDN\d/, 6],
   [/^LBN\d/, 7],
@@ -143,6 +143,31 @@ const DESIGNATION_ORDER: Array<[RegExp, number]> = [
   [/^PGC\d/, 18],
 ];
 
+const CATALOGUE_POPULARITY: CatalogueId[] = [
+  "messier",
+  "ngc",
+  "ic",
+  "sharpless",
+  "caldwell",
+  "barnard",
+  "herschel",
+  "collinder",
+  "melotte",
+  "lbn",
+  "vdb",
+  "rcw",
+  "gum",
+  "arp",
+  "abell-pn",
+  "abell-gc",
+  "trumpler",
+  "stock",
+  "cederblad",
+  "ldn",
+  "ugc",
+  "pgc",
+];
+
 function designationRank(id: string): number | null {
   for (const [pattern, rank] of DESIGNATION_ORDER) {
     if (pattern.test(id)) return rank;
@@ -150,7 +175,61 @@ function designationRank(id: string): number | null {
   return null;
 }
 
-/** Messier, then Caldwell, NGC, IC, and the other catalogues in that order. */
+/** Lower is more popular — Messier, then NGC, IC, Sharpless, then the rest. */
+export function cataloguePopularityRank(object: DeepSkyObject): number {
+  if (object.messier != null) return 0;
+  let best = CATALOGUE_POPULARITY.length + 1;
+  for (const catalogue of object.catalogues) {
+    const index = CATALOGUE_POPULARITY.indexOf(catalogue);
+    if (index >= 0 && index < best) best = index;
+  }
+  return best;
+}
+
+const POPULAR_SHORTLIST_CATALOGUES = new Set<CatalogueId>([
+  "messier",
+  "ngc",
+  "ic",
+  "sharpless",
+  "caldwell",
+  "herschel",
+  "collinder",
+  "melotte",
+  "barnard",
+  "arp",
+  "vdb",
+  "rcw",
+  "gum",
+  "abell-pn",
+  "cederblad",
+]);
+
+/**
+ * Anonymous Lynds / UGC / PGC patches with no Messier/NGC/IC/Sharpless (etc.) cross-id
+ * and no common name. Large LBN rows otherwise flood the shortlist.
+ */
+export function isObscureCatalogueOnly(object: DeepSkyObject): boolean {
+  if (object.messier != null || object.names.length > 0) return false;
+  return !object.catalogues.some((catalogue) => POPULAR_SHORTLIST_CATALOGUES.has(catalogue));
+}
+
+/** Multiplier for recommended ranking — Messier ~1.2, LBN-tier ~0.7. */
+export function cataloguePrestigeWeight(rank: number | undefined): number {
+  if (rank == null || !Number.isFinite(rank)) return 0.65;
+  return Math.min(1.25, Math.max(0.55, 1.2 - rank * 0.055));
+}
+
+/**
+ * Component / fragment ids such as NGC4676A or IC1318B — usually pieces of a better-known host.
+ * Hidden from the default shortlist unless the user opts in.
+ */
+export function isComponentObject(object: DeepSkyObject): boolean {
+  if (object.type === "Dup") return true;
+  const ids = [object.id, ...object.aliases];
+  return ids.some((id) => /^(NGC|IC)\d+[A-Za-z]$/.test(id) || /^B\d+[a-z]$/.test(id));
+}
+
+/** Messier, then NGC, IC, Sharpless, Caldwell, and the other catalogues in that order. */
 export function primaryDesignation(object: DeepSkyObject): string {
   const ids = [object.id, ...object.aliases];
   if (object.messier != null) ids.push(`M${object.messier}`);

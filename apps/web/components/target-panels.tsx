@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
@@ -35,6 +35,7 @@ import {
   type RankedTarget,
 } from "@dss/core";
 import { constellationName } from "@dss/data";
+import { useLists } from "@/lib/use-lists";
 import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
 
@@ -71,6 +72,7 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
             usableHours: a.usableHours,
             moonScore: a.moonScore,
             visibility: a.visibility,
+            catalogueRank: a.catalogueRank,
             frameFillPercent: a.frameFillPercent,
             imageableAtDusk: a.imageableAtDusk,
             imageableRise: a.imageableRise,
@@ -81,6 +83,7 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
             usableHours: b.usableHours,
             moonScore: b.moonScore,
             visibility: b.visibility,
+            catalogueRank: b.catalogueRank,
             frameFillPercent: b.frameFillPercent,
             imageableAtDusk: b.imageableAtDusk,
             imageableRise: b.imageableRise,
@@ -111,69 +114,40 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
 
   return (
     <Section index="06" title="Tonight's targets" hideHeading>
-      <div className="list-tools">
-      <div className="target-tools">
-        <div className="tabs" aria-label="Target filters">
-          {TARGET_LIST_FILTERS.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              className="tab"
-              aria-pressed={listFilter === filter}
-              onClick={() => {
-                setListFilter(filter);
-                setShown(20);
-              }}
-            >
-              {listFilterLabel(filter)}
-            </button>
-          ))}
-          <CustomFilters />
-        </div>
-        <label className="field search-field">
-          <span className="visually-hidden">Name or catalogue id</span>
-          <span className="search-input">
-            <input
-              value={query}
-              placeholder="e.g. M42, NGC 224"
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPinnedId(null);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !pinnedId && results[0]) {
-                  event.preventDefault();
-                  selectResult(results[0]);
-                }
-                if (event.key === "Escape" && (query || pinnedId)) {
-                  event.preventDefault();
-                  clearSearch();
-                }
-              }}
-            />
-            {query || pinnedId ? (
-              <button type="button" className="search-clear" aria-label="Clear search and show all targets" onClick={clearSearch}>
-                <svg viewBox="0 0 16 16" aria-hidden="true">
-                  <path d="M4 4l8 8M12 4l-8 8" />
-                </svg>
-              </button>
-            ) : null}
-          </span>
-        </label>
-      </div>
-      <ListSort
-        sortKey={listSort}
-        direction={listSortDirection}
-        onKey={(next) => {
-          setListSort(next);
-          setListSortDirection(defaultSortDirection(next));
-          setShown(20);
-        }}
-        onDirection={(next) => {
-          setListSortDirection(next);
-          setShown(20);
-        }}
-      />
+      <div className="list-tools list-tools-compact">
+        <ListFilter
+          filter={listFilter}
+          onFilter={(next) => {
+            setListFilter(next);
+            setShown(20);
+          }}
+        />
+        <CustomFilters />
+        <ListSort
+          sortKey={listSort}
+          direction={listSortDirection}
+          onKey={(next) => {
+            setListSort(next);
+            setListSortDirection(defaultSortDirection(next));
+            setShown(20);
+          }}
+          onDirection={(next) => {
+            setListSortDirection(next);
+            setShown(20);
+          }}
+        />
+        <ListSearch
+          query={query}
+          pinned={Boolean(pinnedId)}
+          onQuery={(next) => {
+            setQuery(next);
+            setPinnedId(null);
+          }}
+          onClear={clearSearch}
+          onSubmit={() => {
+            if (!pinnedId && results[0]) selectResult(results[0]);
+          }}
+        />
       </div>
       {pinnedId ? (
         <button type="button" className="show-all" onClick={clearSearch}>
@@ -307,11 +281,158 @@ function TargetRow({
           <Fact
             label="Imageable"
             value={formatImageableHours(item.usableHours)}
-            tip={`Hours tonight when the object is at least ${IMAGEABLE_MIN_ALTITUDE_DEG}° up and the sun is below −${Math.abs(ASTRONOMICAL_SUN_ALTITUDE_DEG)}°.`}
+            tip={`Hours tonight when the object is at least ${IMAGEABLE_MIN_ALTITUDE_DEG}° up, the sun is below −${Math.abs(ASTRONOMICAL_SUN_ALTITUDE_DEG)}°, and the Moon is acceptable for this target’s band (broadband skips bright-Moon time).`}
           />
         </span>
       </div>
       {expanded && detail ? <div className="inline-detail">{detail}</div> : null}
+    </div>
+  );
+}
+
+function useMenuDismiss(open: boolean, host: RefObject<HTMLElement | null>, setOpen: (open: boolean) => void) {
+  useEffect(() => {
+    if (!open) return;
+    function onPointer(event: PointerEvent) {
+      if (!host.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, host, setOpen]);
+}
+
+function ListFilter({
+  filter,
+  onFilter,
+}: {
+  filter: (typeof TARGET_LIST_FILTERS)[number];
+  onFilter: (filter: (typeof TARGET_LIST_FILTERS)[number]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
+  useMenuDismiss(open, host, setOpen);
+
+  return (
+    <div className={`sort-menu filter-menu${open ? " open" : ""}`} ref={host}>
+      <button
+        type="button"
+        className="tab sort-tab"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-controls="target-filter"
+        onClick={() => setOpen((current) => !current)}
+      >
+        {listFilterLabel(filter)}
+        <svg className="custom-chevron" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3.5 6l4.5 4.5L12.5 6" />
+        </svg>
+      </button>
+      {open ? (
+        <div className="sort-panel sort-panel-left" id="target-filter" role="listbox" aria-label="Filter targets">
+          {TARGET_LIST_FILTERS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              className="sort-option"
+              role="option"
+              aria-selected={key === filter}
+              onClick={() => {
+                onFilter(key);
+                setOpen(false);
+              }}
+            >
+              {listFilterLabel(key)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ListSearch({
+  query,
+  pinned,
+  onQuery,
+  onClear,
+  onSubmit,
+}: {
+  query: string;
+  pinned: boolean;
+  onQuery: (value: string) => void;
+  onClear: () => void;
+  onSubmit: () => void;
+}) {
+  const [open, setOpen] = useState(() => Boolean(query) || pinned);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (query || pinned) setOpen(true);
+  }, [query, pinned]);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  return (
+    <div className={`list-search${open ? " open" : ""}`}>
+      {open ? (
+        <label className="field search-field list-search-field">
+          <span className="visually-hidden">Name or catalogue id</span>
+          <span className="search-input">
+            <input
+              ref={inputRef}
+              value={query}
+              placeholder="e.g. M42, NGC 224"
+              onChange={(event) => onQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  onSubmit();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  if (query || pinned) onClear();
+                  else setOpen(false);
+                }
+              }}
+            />
+            {query || pinned ? (
+              <button type="button" className="search-clear" aria-label="Clear search and show all targets" onClick={onClear}>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M4 4l8 8M12 4l-8 8" />
+                </svg>
+              </button>
+            ) : (
+              <button type="button" className="search-clear" aria-label="Hide search" onClick={() => setOpen(false)}>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M4 4l8 8M12 4l-8 8" />
+                </svg>
+              </button>
+            )}
+          </span>
+        </label>
+      ) : (
+        <button
+          type="button"
+          className="tab search-toggle"
+          aria-label="Search targets"
+          title="Search"
+          onClick={() => setOpen(true)}
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="7" cy="7" r="4.2" />
+            <path d="M10.2 10.2L13.5 13.5" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -329,22 +450,7 @@ function ListSort({
 }) {
   const [open, setOpen] = useState(false);
   const host = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointer(event: PointerEvent) {
-      if (!host.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("pointerdown", onPointer);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointer);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  useMenuDismiss(open, host, setOpen);
 
   return (
     <div className="list-sort">
@@ -553,8 +659,14 @@ function releaseThumb(): void {
   thumbWaiters.shift()?.();
 }
 
-function skySrc(raDeg: number, decDeg: number, majorArcmin: number | null, size: number): string {
-  const fov = Math.min(6, Math.max(0.15, ((majorArcmin ?? 15) / 60) * 1.8));
+function skySrc(
+  raDeg: number,
+  decDeg: number,
+  majorArcmin: number | null,
+  size: number,
+  padding = 1.8,
+): string {
+  const fov = Math.min(6, Math.max(0.12, ((majorArcmin ?? 15) / 60) * padding));
   return `/api/sky?ra=${raDeg.toFixed(4)}&dec=${decDeg.toFixed(4)}&fov=${fov.toFixed(3)}&size=${size}`;
 }
 
@@ -623,9 +735,12 @@ function TargetThumb({
         type="button"
         className="thumb-open"
         ref={host}
-        aria-label={`Preview ${name}`}
+        aria-label={`Enlarge ${name}`}
+        title={`Enlarge ${name}`}
         onPointerDown={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
+          event.preventDefault();
           event.stopPropagation();
           setPreview(true);
         }}
@@ -638,7 +753,7 @@ function TargetThumb({
       </button>
       {preview ? (
         <SkyPreview
-          src={skySrc(raDeg, decDeg, majorArcmin, 560)}
+          src={skySrc(raDeg, decDeg, majorArcmin, 640, 1.25)}
           name={name}
           typeLabel={typeLabel}
           magnitude={magnitude}
@@ -733,17 +848,136 @@ function delay(ms: number): Promise<void> {
 
 export function ObjectDetails() {
   const { selected, track, site } = usePlannerState();
+  const lists = useLists();
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const infoHost = useRef<HTMLDivElement>(null);
+  const listHost = useRef<HTMLDivElement>(null);
+  useMenuDismiss(infoOpen, infoHost, setInfoOpen);
+  useMenuDismiss(listOpen, listHost, setListOpen);
+
   if (!selected) return null;
+
+  const favorited = lists.favorites.includes(selected.id);
+
   return (
     <Section index="07" title="Object" hideHeading>
+      <div className="object-heading">
+        <div className="object-title-row">
+          <h3 className="object-name">{objectTitle(selected)}</h3>
+          <div className="info-menu" ref={infoHost}>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="More object information"
+              aria-expanded={infoOpen}
+              onClick={() => setInfoOpen((open) => !open)}
+            >
+              i
+            </button>
+            {infoOpen ? (
+              <div className="info-popover" role="dialog" aria-label={`More about ${objectTitle(selected)}`}>
+                <p>
+                  <span>Known as</span>
+                  {knownAsText(selected)}
+                </p>
+                <p>
+                  <span>Catalogues</span>
+                  {selected.catalogues.map((catalogue) => catalogueLabel(catalogue)).join(", ")}
+                </p>
+                <p>
+                  <span>RA J2000</span>
+                  {formatRightAscension(selected.raDeg)}
+                </p>
+                <p>
+                  <span>Dec J2000</span>
+                  {formatDeclination(selected.decDeg)}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="object-actions">
+          <button
+            type="button"
+            className={`icon-btn${favorited ? " active" : ""}`}
+            aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+            aria-pressed={favorited}
+            onClick={() => lists.toggleFavorite(selected.id)}
+          >
+            {favorited ? "♥" : "♡"}
+          </button>
+          <div className="list-add-menu" ref={listHost}>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Add to list"
+              aria-expanded={listOpen}
+              onClick={() => setListOpen((open) => !open)}
+            >
+              +
+            </button>
+            {listOpen ? (
+              <div className="list-popover" role="dialog" aria-label={`Add ${objectTitle(selected)} to a list`}>
+                <p className="list-popover-title">Add to list</p>
+                {lists.lists.length === 0 ? <p className="list-popover-empty">No lists yet. Create one below.</p> : null}
+                {lists.lists.map((list) => {
+                  const already = list.items.some((item) => item.objectId === selected.id);
+                  return (
+                    <button
+                      key={list.id}
+                      type="button"
+                      className={`list-option${already ? " added" : ""}`}
+                      onClick={() => {
+                        if (!already) lists.addToList(list.id, selected.id);
+                        setListOpen(false);
+                      }}
+                    >
+                      {already ? "✓ " : ""}
+                      {list.name}
+                    </button>
+                  );
+                })}
+                <label className="field list-new-field">
+                  <span className="visually-hidden">New list name</span>
+                  <input
+                    value={newListName}
+                    placeholder="New list name"
+                    onChange={(event) => setNewListName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      const listId = lists.createList(newListName);
+                      if (!listId) return;
+                      lists.addToList(listId, selected.id);
+                      setNewListName("");
+                      setListOpen(false);
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    const listId = lists.createList(newListName);
+                    if (!listId) return;
+                    lists.addToList(listId, selected.id);
+                    setNewListName("");
+                    setListOpen(false);
+                  }}
+                >
+                  Create list and add
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
       <dl className="facts facts-identity">
         <div>
-          <dt>Known as</dt>
-          <dd>{knownAsText(selected)}</dd>
-        </div>
-        <div>
-          <dt>Catalogues</dt>
-          <dd>{selected.catalogues.map((catalogue) => catalogueLabel(catalogue)).join(", ")}</dd>
+          <dt>Code</dt>
+          <dd>{primaryDesignation(selected)}</dd>
         </div>
         <div>
           <dt>Constellation</dt>
@@ -758,19 +992,11 @@ export function ObjectDetails() {
           <dd>{selected.magnitude == null ? "Not listed" : selected.magnitude.toFixed(2)}</dd>
         </div>
         <div>
-          <dt>RA J2000</dt>
-          <dd>{formatRightAscension(selected.raDeg)}</dd>
-        </div>
-        <div>
-          <dt>Dec J2000</dt>
-          <dd>{formatDeclination(selected.decDeg)}</dd>
-        </div>
-        <div>
           <dt>Size</dt>
           <dd>{sizeText(selected.majorArcmin, selected.minorArcmin, selected.positionAngleDeg)}</dd>
         </div>
         <div>
-          <dt>Imageable tonight</dt>
+          <dt>Imageable</dt>
           <dd>{track ? formatImageableHours(track.usableHours) : "—"}</dd>
         </div>
         <div>
@@ -803,7 +1029,7 @@ function riseSetText(
 ): string {
   if (!track) return "—";
   if (track.usableIntervals.length === 0) {
-    return `Does not stay above ${IMAGEABLE_MIN_ALTITUDE_DEG}° while dark`;
+    return `No good imaging window tonight (altitude, darkness, or Moon)`;
   }
   return track.usableIntervals
     .map((interval) => `${formatClock(interval.start, timezone)}–${formatClock(interval.end, timezone)}`)

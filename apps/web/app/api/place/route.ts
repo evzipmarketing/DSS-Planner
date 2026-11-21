@@ -1,7 +1,12 @@
 import { isValidTimeZone } from "@dss/core";
+import { corsPreflight, withCors } from "@/lib/cors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export function OPTIONS(): Response {
+  return corsPreflight();
+}
 
 type CacheEntry = { at: number; name: string; timezone: string };
 const cache = new Map<string, CacheEntry>();
@@ -12,22 +17,22 @@ export async function GET(request: Request): Promise<Response> {
   const latitude = Number(url.searchParams.get("lat"));
   const longitude = Number(url.searchParams.get("lon"));
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
-    return Response.json({ error: "Latitude is out of range." }, { status: 400 });
+    return withCors(Response.json({ error: "Latitude is out of range." }, { status: 400 }));
   }
   if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-    return Response.json({ error: "Longitude is out of range." }, { status: 400 });
+    return withCors(Response.json({ error: "Longitude is out of range." }, { status: 400 }));
   }
 
   const key = `${latitude.toFixed(2)}|${longitude.toFixed(2)}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < HOUR) {
-    return Response.json({ name: hit.name, latitude, longitude, timezone: hit.timezone });
+    return withCors(Response.json({ name: hit.name, latitude, longitude, timezone: hit.timezone }));
   }
 
   const timezone = await timezoneFromMeteo(latitude, longitude);
   const name = (await nameFromNominatim(latitude, longitude)) ?? `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`;
   cache.set(key, { at: Date.now(), name, timezone });
-  return Response.json({ name, latitude, longitude, timezone });
+  return withCors(Response.json({ name, latitude, longitude, timezone }));
 }
 
 async function timezoneFromMeteo(latitude: number, longitude: number): Promise<string> {

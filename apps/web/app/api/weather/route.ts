@@ -1,7 +1,12 @@
 import { parseOpenMeteo, type ForecastHour } from "@dss/core";
+import { corsPreflight, withCors } from "@/lib/cors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export function OPTIONS(): Response {
+  return corsPreflight();
+}
 
 type CacheEntry = { at: number; hours: ForecastHour[] };
 
@@ -14,19 +19,19 @@ export async function GET(request: Request): Promise<Response> {
   const longitude = Number(url.searchParams.get("lon"));
   const timeZone = url.searchParams.get("tz") ?? "";
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
-    return Response.json({ error: "Latitude is out of range." }, { status: 400 });
+    return withCors(Response.json({ error: "Latitude is out of range." }, { status: 400 }));
   }
   if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-    return Response.json({ error: "Longitude is out of range." }, { status: 400 });
+    return withCors(Response.json({ error: "Longitude is out of range." }, { status: 400 }));
   }
   if (!isZone(timeZone)) {
-    return Response.json({ error: "Timezone is not recognised." }, { status: 400 });
+    return withCors(Response.json({ error: "Timezone is not recognised." }, { status: 400 }));
   }
 
   const key = `${latitude.toFixed(2)}|${longitude.toFixed(2)}|${timeZone}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TEN_MINUTES) {
-    return Response.json({ hours: hit.hours, cached: true }, { headers: cacheHeaders() });
+    return withCors(Response.json({ hours: hit.hours, cached: true }, { headers: cacheHeaders() }));
   }
 
   const endpoint = new URL("https://api.open-meteo.com/v1/forecast");
@@ -43,13 +48,13 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const response = await fetch(endpoint, { signal: AbortSignal.timeout(12_000) });
     if (!response.ok) {
-      return Response.json({ error: "Open-Meteo did not answer." }, { status: 502 });
+      return withCors(Response.json({ error: "Open-Meteo did not answer." }, { status: 502 }));
     }
     const hours = parseOpenMeteo(await response.json());
     cache.set(key, { at: Date.now(), hours });
-    return Response.json({ hours, cached: false }, { headers: cacheHeaders() });
+    return withCors(Response.json({ hours, cached: false }, { headers: cacheHeaders() }));
   } catch {
-    return Response.json({ error: "Weather request failed." }, { status: 502 });
+    return withCors(Response.json({ error: "Weather request failed." }, { status: 502 }));
   }
 }
 

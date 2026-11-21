@@ -25,6 +25,15 @@ describe("committed catalogue", () => {
     expect(deepSkyExtended.length).toBeGreaterThan(deepSkyCore.length);
   });
 
+  it("has a magnitude on every object for ranking", () => {
+    const missing = all.filter((object) => object.magnitude == null).map((object) => object.id);
+    expect(missing).toEqual([]);
+    const ic353 = all.find((object) => object.id === "IC353");
+    expect(ic353?.magnitude).toBeGreaterThanOrEqual(12.5);
+    const m42 = all.find((object) => object.messier === 42);
+    expect(m42?.magnitude).toBeLessThan(6);
+  });
+
   it("adds widely accepted common names and makes them searchable", () => {
     expect(coreCommonNamesAdded + extendedCommonNamesAdded).toBe(42);
     const heart = searchCatalogue(all, "heart")[0];

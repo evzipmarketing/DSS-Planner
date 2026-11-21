@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
   IMAGEABLE_MIN_ALTITUDE_DEG,
   formatClock,
   formatImageableHours,
   objectTitle,
+  type NightTrack,
 } from "@dss/core";
 import { usePlannerState } from "./planner-context";
 import { Section } from "./section";
@@ -20,13 +22,13 @@ const ALTITUDE_MARKS = [0, IMAGEABLE_MIN_ALTITUDE_DEG, 60, 90];
 export function AltitudeChart({ compact = false }: { compact?: boolean }) {
   const { selected, track, site, theme } = usePlannerState();
   const horizon = theme === "night" ? "var(--sage)" : "var(--moon)";
-  const samples = track?.samples ?? [];
+  const samples = useMemo(() => darkSamples(track), [track]);
   const start = samples[0]?.time.getTime() ?? 0;
   const end = samples[samples.length - 1]?.time.getTime() ?? 1;
 
   const target = samples.map((sample) => `${xAt(sample.time.getTime(), start, end)},${yAt(sample.targetAltitude)}`).join(" ");
   const moon = samples.map((sample) => `${xAt(sample.time.getTime(), start, end)},${yAt(sample.moonAltitude)}`).join(" ");
-  const labels = samples.filter((_, index) => index % 18 === 0);
+  const labels = pickLabels(samples);
 
   const summary = !selected
     ? "Choose a target to plot altitude."
@@ -47,8 +49,11 @@ export function AltitudeChart({ compact = false }: { compact?: boolean }) {
         <div className="chart-wrap">
           <svg className="chart" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={summary}>
             {track.usableIntervals.map((interval) => {
-              const x = xAt(interval.start.getTime(), start, end);
-              const width = Math.max(0, xAt(interval.end.getTime(), start, end) - x);
+              const x0 = Math.max(start, interval.start.getTime());
+              const x1 = Math.min(end, interval.end.getTime());
+              if (x1 <= x0) return null;
+              const x = xAt(x0, start, end);
+              const width = Math.max(0, xAt(x1, start, end) - x);
               return <rect key={interval.start.toISOString()} x={x} y={PAD.top} width={width} height={HEIGHT - PAD.top - PAD.bottom} fill="var(--usable)" />;
             })}
             {ALTITUDE_MARKS.map((altitude) => (
@@ -82,19 +87,39 @@ export function AltitudeChart({ compact = false }: { compact?: boolean }) {
               </text>
             ))}
           </svg>
-          <div className="legend">
-            <span className="swatch"><i style={{ background: "var(--accent-text)" }} /> Target</span>
-            <span className="swatch">
-              <MoonGlyph />
-              Moon
-            </span>
-            <span className="swatch"><i style={{ background: horizon }} /> Horizon</span>
-            <span className="swatch"><i style={{ background: "var(--usable)", height: 10 }} /> Imageable, above {IMAGEABLE_MIN_ALTITUDE_DEG}° and sun below −{Math.abs(ASTRONOMICAL_SUN_ALTITUDE_DEG)}°</span>
-          </div>
+          {compact ? null : (
+            <div className="legend">
+              <span className="swatch"><i style={{ background: "var(--accent-text)" }} /> Target</span>
+              <span className="swatch">
+                <MoonGlyph />
+                Moon
+              </span>
+              <span className="swatch"><i style={{ background: horizon }} /> Horizon</span>
+              <span className="swatch"><i style={{ background: "var(--usable)", height: 10 }} /> Imageable (altitude, dark, Moon OK for this band)</span>
+            </div>
+          )}
         </div>
       ) : null}
     </Section>
   );
+}
+
+function darkSamples(track: NightTrack | null) {
+  const samples = track?.samples ?? [];
+  const dark = samples.filter((sample) => sample.sunAltitude <= 0);
+  return dark.length >= 2 ? dark : samples;
+}
+
+function pickLabels(samples: { time: Date }[]) {
+  if (samples.length <= 5) return samples;
+  const step = Math.max(1, Math.floor(samples.length / 4));
+  const labels = [];
+  for (let index = 0; index < samples.length; index += step) {
+    labels.push(samples[index]!);
+  }
+  const last = samples[samples.length - 1]!;
+  if (labels[labels.length - 1] !== last) labels.push(last);
+  return labels;
 }
 
 function MoonMark({

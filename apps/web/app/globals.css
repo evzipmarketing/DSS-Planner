@@ -468,7 +468,7 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
   border: 1.5px solid var(--accent-text);
   transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot));
   cursor: grab;
-  background: color-mix(in srgb, var(--saffron) 8%, transparent);
+  background: transparent;
 }
 
 .sensor:active { cursor: grabbing; }
@@ -649,6 +649,17 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
 
 .combo-option:hover, .combo-option[aria-selected="true"] {
   background: color-mix(in srgb, var(--saffron) 16%, var(--bg-sunken));
+}
+
+.combo-option[aria-selected="true"] {
+  border: 1px solid color-mix(in srgb, var(--accent-text) 55%, var(--line-strong));
+  color: var(--accent-text);
+}
+
+.rows .row.is-selected {
+  border-color: color-mix(in srgb, var(--accent-text) 55%, var(--line-strong));
+  background: color-mix(in srgb, var(--saffron) 16%, var(--bg-sunken));
+  color: var(--accent-text);
 }
 
 .target {
@@ -1108,6 +1119,84 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
 
 .bortle-line { color: var(--muted); }
 
+.tonight .hero-with-settings {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.tonight .hero-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.tonight .hero-kicker {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tonight .hero-with-settings h1 {
+  margin: 0 0 6px;
+  font-size: clamp(1.15rem, 2.4vw, 1.35rem);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-weight: 560;
+}
+
+.tonight .hero-place {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.tonight .hero-with-settings .sky-meta {
+  margin-bottom: 0;
+}
+
+.tonight .settings-toggle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  margin-top: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--bg-raised);
+  color: var(--accent-text);
+  box-shadow: var(--shadow);
+}
+
+.tonight .settings-toggle:hover,
+.tonight .settings-toggle.is-open {
+  border-color: var(--accent-text);
+  background: color-mix(in srgb, var(--saffron) 16%, var(--bg-raised));
+}
+
+.tonight .settings-toggle svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.tonight .settings-toggle svg * {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tonight .settings-bar {
+  margin-bottom: 22px;
+}
+
 .tonight .settings-bar {
   display: flex;
   flex-direction: column;
@@ -1159,6 +1248,60 @@ input[type="date"] {
 input[type="date"]::-webkit-datetime-edit,
 input[type="date"]::-webkit-date-and-time-value {
   min-width: 0;
+}
+
+.date-field-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-field-control > input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 44px;
+}
+
+.date-picker-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--accent-text);
+}
+
+.date-picker-btn:hover {
+  background: color-mix(in srgb, var(--saffron) 16%, transparent);
+}
+
+.date-picker-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.date-picker-btn svg * {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.date-picker-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .tonight .settings-bar .pop { min-width: 0; }
@@ -1237,6 +1380,74 @@ input[type="date"]::-webkit-date-and-time-value {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.list-tools-compact {
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.list-tools-compact .list-sort {
+  margin-left: 0;
+}
+
+.list-tools-compact .sort-tab {
+  max-width: 150px;
+}
+
+.list-tools-compact .sort-tab .setting-value,
+.list-tools-compact .sort-tab {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-search {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.list-search.open {
+  flex: 1 1 auto;
+}
+
+.list-search-field {
+  width: 100%;
+  margin: 0;
+}
+
+.list-search-field .search-input {
+  width: min(100%, 280px);
+  margin-left: auto;
+}
+
+.search-toggle {
+  width: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.search-toggle svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.search-toggle svg * {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sort-panel-left {
+  left: 0;
+  right: auto;
 }
 
 .list-sort {
@@ -1548,6 +1759,141 @@ html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
   min-width: 0;
 }
 
+.object-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.object-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.object-name {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.object-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-sunken);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.icon-btn.active,
+.icon-btn[aria-expanded="true"] {
+  color: var(--accent-text);
+  border-color: var(--accent-text);
+}
+
+.info-menu,
+.list-add-menu {
+  position: relative;
+}
+
+.info-popover,
+.list-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 30;
+  min-width: 220px;
+  max-width: min(320px, 70vw);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  box-shadow: 0 12px 28px color-mix(in srgb, #000 35%, transparent);
+  display: grid;
+  gap: 8px;
+}
+
+.info-popover {
+  left: 0;
+}
+
+.list-popover {
+  right: 0;
+}
+
+.info-popover p {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  font-size: 0.92rem;
+}
+
+.info-popover span {
+  color: var(--faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.list-popover-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.list-popover-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.list-option {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.list-option.added {
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+}
+
+.list-new-field {
+  width: 100%;
+  margin: 0;
+}
+
+.rotate-steps {
+  justify-content: center;
+}
+
+.rotate-steps .ghost {
+  min-width: 48px;
+}
+
 .detail-col .facts-identity {
   gap: 8px 12px;
   grid-template-columns: 1fr 1fr;
@@ -1611,6 +1957,9 @@ html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
   border-radius: 8px;
   background: transparent;
   min-height: 0;
+  cursor: zoom-in;
+  position: relative;
+  z-index: 1;
 }
 
 .thumb-open:hover,
@@ -1628,13 +1977,15 @@ html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
 
 .preview-dialog {
   position: relative;
-  width: min(560px, 100%);
+  width: min(820px, 100%);
+  max-height: min(92vh, 920px);
   padding: 16px;
   background: var(--bg-raised);
   color: var(--text);
   border: 1px solid var(--line-strong);
   border-radius: 16px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  overflow: auto;
 }
 
 .preview-close {
@@ -1669,12 +2020,19 @@ html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
   display: grid;
   place-items: center;
   aspect-ratio: 1;
+  max-height: min(78vh, 780px);
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bg-sunken);
+  background: #000;
 }
 
-.preview-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.preview-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  image-rendering: auto;
+}
 
 .preview-status { margin: 0; color: var(--muted); }
 

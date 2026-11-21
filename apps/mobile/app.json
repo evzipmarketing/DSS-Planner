@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "DeepSkyMate",
+    "slug": "deepskymate",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "deepskymate",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.darkskyscapes.deepskymate",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "DeepSkyMate uses your location to plan tonight's sky from where you are.",
+        "NSMotionUsageDescription": "DeepSkyMate uses the compass to point you toward selected targets."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#141616"
+      },
+      "icon": "./assets/images/icon.png",
+      "package": "com.darkskyscapes.deepskymate",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow DeepSkyMate to use your location for planning."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "backgroundColor": "#141616",
+          "resizeMode": "contain",
+          "imageWidth": 200
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

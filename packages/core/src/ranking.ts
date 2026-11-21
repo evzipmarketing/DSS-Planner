@@ -1,11 +1,13 @@
 import {
-  bandAdvice,
+  bandAdviceForObject,
   compareTargetPriority,
   frameFillPercent,
   brightnessHint,
   frameFit,
   horizonStory,
   imageableCrossing,
+  isDarkObject,
+  isImageableSample,
   moonPlan,
   passesListFilter,
   visibilityScore,
@@ -14,11 +16,10 @@ import {
   type FrameFit,
   type TargetListFilter,
 } from "./planning";
+import { cataloguePopularityRank, isObscureCatalogueOnly } from "./catalogue";
 import { angularSeparationDeg, equatorialUnit, geometricAltitude, imageableWindowHours, nightHorizonGrid, type HorizonRotation } from "./altitude";
 import {
-  ASTRONOMICAL_SUN_ALTITUDE_DEG,
   EMPTY_TARGET_QUERY,
-  IMAGEABLE_MIN_ALTITUDE_DEG,
   IMAGEABLE_SAMPLE_MINUTES,
   type DeepSkyObject,
   type Site,
@@ -44,10 +45,14 @@ export type RankedTarget = {
   minMoonSeparationDeg: number | null;
   visibility: number;
   brightness: BrightnessHint;
+  catalogueRank: number;
 };
 
 export function isShortlistCandidate(object: DeepSkyObject): boolean {
   if (object.type === "NonEx" || object.type === "Nova" || object.type === "Dup" || object.type === "*") return false;
+  if (isObscureCatalogueOnly(object)) return false;
+  // Ced / LDN / Barnard patches without a common name — faint fluff around clusters, not tonight leads.
+  if (isDarkObject(object) && object.names.length === 0) return false;
   if (
     (object.type === "DrkN" || object.type === "**" || object.type === "ClG") &&
     object.names.length === 0 &&
@@ -58,7 +63,10 @@ export function isShortlistCandidate(object: DeepSkyObject): boolean {
   if (object.messier != null) return true;
   if (object.names.length > 0 && (object.magnitude == null || object.magnitude <= 12.5)) return true;
   if (object.magnitude != null && object.magnitude <= 10 && object.type !== "ClG") return true;
+  // Size alone is not enough when magnitude is unknown — giant null-mag IC patches flooded the list.
   if (
+    object.magnitude != null &&
+    object.magnitude <= 12 &&
     object.type !== "G" &&
     object.type !== "GPair" &&
     object.type !== "GTrpl" &&
@@ -103,20 +111,27 @@ function scoreObject(
   let aboveSteps = 0;
   let minSeparation: number | null = null;
   let moonUp = false;
-  const band = bandAdvice(object.type);
+  const band = bandAdviceForObject(object);
   const altitudes: { time: Date; altitude: number; sunAltitude: number }[] = [];
   const usableSamples: { time: Date; usable: boolean }[] = [];
   for (const cell of grid) {
     const altitude = geometricAltitude(vector, cell.matrix);
     altitudes.push({ time: cell.time, altitude, sunAltitude: cell.sunAltitude });
     if (altitude > maxAltitude) maxAltitude = altitude;
-    const usable = cell.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG && altitude >= IMAGEABLE_MIN_ALTITUDE_DEG;
+    const separation = angularSeparationDeg(vector, cell.moonVector);
+    const usable = isImageableSample({
+      band,
+      targetAltitudeDeg: altitude,
+      sunAltitudeDeg: cell.sunAltitude,
+      moonAltitudeDeg: cell.moonAltitude,
+      illuminatedFraction: cell.moonIlluminatedFraction,
+      moonSeparationDeg: separation,
+    });
     usableSamples.push({ time: cell.time, usable });
     if (altitude >= 0) {
       aboveSteps += 1;
       if (cell.moonAltitude >= 0) {
         moonUp = true;
-        const separation = angularSeparationDeg(vector, cell.moonVector);
         if (minSeparation == null || separation < minSeparation) minSeparation = separation;
       }
     }
@@ -147,7 +162,63 @@ function scoreObject(
     minMoonSeparationDeg: minSeparation,
     visibility,
     brightness: brightnessHint(visibility),
+    catalogueRank: cataloguePopularityRank(object),
   };
+}
+
+/**
+ * True when two catalogue entries describe essentially the same patch of sky
+ * (e.g. Fish Head Nebula / IC 1795 vs LBN 647), or share a common name.
+ */
+export function isSameSkyPatch(a: DeepSkyObject, b: DeepSkyObject): boolean {
+  if (sharesCommonName(a, b)) return true;
+  const sep = angularSeparationDeg(equatorialUnit(a.raDeg, a.decDeg), equatorialUnit(b.raDeg, b.decDeg));
+  const radiusA = halfSizeDeg(a.majorArcmin);
+  const radiusB = halfSizeDeg(b.majorArcmin);
+  if (sep <= (radiusA + radiusB) * 0.75) return true;
+  if (sep + Math.min(radiusA, radiusB) <= Math.max(radiusA, radiusB) * 1.05) return true;
+  return false;
+}
+
+function halfSizeDeg(majorArcmin: number | null): number {
+  return Math.max(majorArcmin ?? 8, 4) / 120;
+}
+
+function sharesCommonName(a: DeepSkyObject, b: DeepSkyObject): boolean {
+  const names = new Set(a.names.map((name) => name.trim().toLowerCase()).filter((name) => name.length >= 4));
+  if (names.size === 0) return false;
+  return b.names.some((name) => names.has(name.trim().toLowerCase()));
+}
+
+/** Prefer Messier (then named) hosts when two rows cover the same patch of sky. */
+function preferCanonicalHost(candidate: DeepSkyObject, incumbent: DeepSkyObject): boolean {
+  const candidateMessier = candidate.messier != null;
+  const incumbentMessier = incumbent.messier != null;
+  if (candidateMessier !== incumbentMessier) return candidateMessier;
+  const candidateNamed = candidate.names.length > 0;
+  const incumbentNamed = incumbent.names.length > 0;
+  if (candidateNamed !== incumbentNamed) return candidateNamed;
+  return false;
+}
+
+/**
+ * Keep one row per sky patch. Items are expected best-score-first; a later Messier
+ * or named host still replaces an anonymous neighbour (e.g. NGC 1980 vs M42).
+ */
+export function dedupeOverlappingTargets(items: RankedTarget[]): RankedTarget[] {
+  const kept: RankedTarget[] = [];
+  for (const item of items) {
+    const overlapAt = kept.findIndex((prior) => isSameSkyPatch(prior.object, item.object));
+    if (overlapAt < 0) {
+      kept.push(item);
+      continue;
+    }
+    const prior = kept[overlapAt]!;
+    if (preferCanonicalHost(item.object, prior.object)) {
+      kept[overlapAt] = item;
+    }
+  }
+  return kept;
 }
 
 export function rankTargets(
@@ -173,5 +244,5 @@ export function rankTargets(
       ),
     )
     .sort(compareTargetPriority);
-  return scored.slice(0, limit);
+  return dedupeOverlappingTargets(scored).slice(0, limit);
 }

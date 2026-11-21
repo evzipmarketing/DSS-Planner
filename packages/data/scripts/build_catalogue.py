@@ -731,11 +731,24 @@ def main() -> None:
             continue
         (core_rows if is_core(obj) else extended_rows).append(row(obj))
 
+    # Measured V/B mags are sparse for nebulae; fill remaining nulls for ranking.
+    import importlib.util
+
+    fill_path = here / "fill_magnitudes.py"
+    fill_spec = importlib.util.spec_from_file_location("fill_magnitudes", fill_path)
+    if fill_spec is None or fill_spec.loader is None:
+        raise RuntimeError(f"Cannot load {fill_path}")
+    fill_mod = importlib.util.module_from_spec(fill_spec)
+    fill_spec.loader.exec_module(fill_mod)
+    filled_core, core_rows = fill_mod.fill_rows(core_rows)
+    filled_ext, extended_rows = fill_mod.fill_rows(extended_rows)
+
     args.out.mkdir(parents=True, exist_ok=True)
     core_path = args.out / "core.json"
     extended_path = args.out / "extended.json"
     core_path.write_text(json.dumps(core_rows, separators=(",", ":"), ensure_ascii=False))
     extended_path.write_text(json.dumps(extended_rows, separators=(",", ":"), ensure_ascii=False))
+    print(f"estimated magnitudes core {filled_core} extended {filled_ext}")
 
     def has(prefix_pattern: str, rows: list[list[object]]) -> int:
         pattern = re.compile(prefix_pattern)

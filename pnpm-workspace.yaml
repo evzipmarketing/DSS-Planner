@@ -1,3 +1,6 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Hoisted installs avoid Metro readlink/EINVAL issues with pnpm junctions on Windows/Dropbox
+nodeLinker: hoisted

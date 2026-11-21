@@ -22,22 +22,26 @@ Phase 1 is a web app. Later phases add accounts, a private Panchang engine, and 
 ## Repository
 
 ```
-apps/web          Next.js App Router UI
+apps/web          Next.js App Router UI (+ APIs for sky/weather/place)
+apps/mobile       Expo Router iOS/Android app
 packages/core     Astronomy, optics, catalogue search, weather parsing, Panchang interface
 packages/data     Catalogue JSON, seed gear, site presets
-supabase          Phase 2 notes only
+supabase          Auth + lists/gear migrations
 ```
 
-`apps/mobile` is reserved for phase 4 (Expo). It is not in the tree yet. `@dss/core` and `@dss/data` have no DOM dependency, so a React Native app can import them directly.
+`@dss/core` and `@dss/data` have no DOM dependency; the Expo app imports them directly for offline planning.
 
 ```
 pnpm install
-pnpm dev          # http://localhost:3000
+pnpm --filter @dss/web dev       # http://localhost:3000
+pnpm --filter @dss/mobile start  # Expo
 pnpm test
 pnpm typecheck
 pnpm lint
 pnpm build
 ```
+
+See [`apps/mobile/README.md`](apps/mobile/README.md) for mobile env vars and Supabase setup.
 
 Node 20 or newer. The repo pins pnpm through the `packageManager` field.
 

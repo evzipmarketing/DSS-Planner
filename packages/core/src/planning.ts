@@ -1,3 +1,4 @@
+import { cataloguePrestigeWeight } from "./catalogue";
 import { roundHours } from "./format";
 import { assertNever } from "./never";
 import { ASTRONOMICAL_SUN_ALTITUDE_DEG, IMAGEABLE_MIN_ALTITUDE_DEG, type DeepSkyType } from "./types";
@@ -19,8 +20,10 @@ export const TARGET_LIST_FILTERS = [
 
 export type TargetListFilter = (typeof TARGET_LIST_FILTERS)[number];
 
-const MOON_BRIGHT = 0.35;
-const MOON_NEAR_DEG = 35;
+/** Moon fraction at or above this counts as bright enough to hurt broadband. */
+export const MOON_BRIGHT_FRACTION = 0.35;
+/** Separation below this with a bright Moon is a poor window for any band. */
+export const MOON_NEAR_DEG = 35;
 
 export function bandAdvice(type: DeepSkyType): BandAdvice {
   switch (type) {
@@ -54,6 +57,21 @@ export function bandAdvice(type: DeepSkyType): BandAdvice {
     default:
       return assertNever(type, "object type");
   }
+}
+
+/**
+ * Cederblad reflection patches are often typed as Neb in OpenNGC but image as broadband.
+ * Using narrowband for them incorrectly keeps moonlit hours in the window.
+ */
+export function bandAdviceForObject(object: {
+  type: DeepSkyType;
+  id: string;
+  aliases: string[];
+  magnitude: number | null;
+  messier: number | null;
+}): BandAdvice {
+  if (isCederbladReflection(object)) return "broadband";
+  return bandAdvice(object.type);
 }
 
 export function bandLabel(band: BandAdvice): string {
@@ -145,7 +163,7 @@ export function moonPlan(input: {
   moonUp: boolean;
   minSeparationDeg: number | null;
 }): { score: number; hint: string | null } {
-  const bright = input.illuminatedFraction >= MOON_BRIGHT;
+  const bright = input.illuminatedFraction >= MOON_BRIGHT_FRACTION;
   const near =
     input.moonUp && bright && input.minSeparationDeg != null && input.minSeparationDeg < MOON_NEAR_DEG;
   if (!input.moonUp || !bright) return { score: 1, hint: null };
@@ -161,6 +179,50 @@ export function moonPlan(input: {
   return { score: 0.9, hint: null };
 }
 
+/**
+ * Whether this moment is worth counting toward imageable hours for the target's band.
+ * Broadband needs the Moon down (or thin). Narrowband tolerates a bright Moon unless it is close.
+ */
+export function imagingOkWithMoon(input: {
+  band: BandAdvice;
+  moonAltitudeDeg: number;
+  illuminatedFraction: number;
+  moonSeparationDeg: number | null;
+}): boolean {
+  const moonUp = input.moonAltitudeDeg >= 0;
+  const bright = input.illuminatedFraction >= MOON_BRIGHT_FRACTION;
+  if (!moonUp || !bright) return true;
+  const near = input.moonSeparationDeg != null && input.moonSeparationDeg < MOON_NEAR_DEG;
+  switch (input.band) {
+    case "broadband":
+      return false;
+    case "both":
+      return !near;
+    case "narrowband":
+      return !near;
+    default:
+      return assertNever(input.band, "band");
+  }
+}
+
+export function isImageableSample(input: {
+  band: BandAdvice;
+  targetAltitudeDeg: number;
+  sunAltitudeDeg: number;
+  moonAltitudeDeg: number;
+  illuminatedFraction: number;
+  moonSeparationDeg: number | null;
+}): boolean {
+  if (input.targetAltitudeDeg < IMAGEABLE_MIN_ALTITUDE_DEG) return false;
+  if (input.sunAltitudeDeg > ASTRONOMICAL_SUN_ALTITUDE_DEG) return false;
+  return imagingOkWithMoon({
+    band: input.band,
+    moonAltitudeDeg: input.moonAltitudeDeg,
+    illuminatedFraction: input.illuminatedFraction,
+    moonSeparationDeg: input.moonSeparationDeg,
+  });
+}
+
 export const MIN_USABLE_HOURS = 1;
 
 export type BrightnessHint = "bright" | "moderate" | "faint";
@@ -170,6 +232,8 @@ export type PriorityFields = {
   usableHours: number;
   moonScore: number;
   visibility: number;
+  /** Lower is more popular (Messier first). Missing treated as least popular. */
+  catalogueRank?: number;
 };
 
 /** Mag per square arcsecond. Missing surface brightness is estimated from magnitude and size. */
@@ -184,13 +248,36 @@ export function surfaceBrightness(object: {
   return object.magnitude + 2.5 * Math.log10(Math.max(area, 1));
 }
 
-function isDarkObject(object: { type: DeepSkyType; id: string; aliases: string[]; magnitude: number | null; messier: number | null }): boolean {
+function hasCederbladId(object: { id: string; aliases: string[] }): boolean {
+  return [object.id, ...object.aliases].some((id) => /^Ced/i.test(id));
+}
+
+function isCederbladReflection(object: {
+  type: DeepSkyType;
+  id: string;
+  aliases: string[];
+  magnitude: number | null;
+  messier: number | null;
+}): boolean {
+  if (object.messier != null) return false;
+  if (!hasCederbladId(object)) return false;
+  return object.type === "RfN" || object.magnitude == null;
+}
+
+/** Dark / very low-surface patches that should not lead a default shortlist. */
+export function isDarkObject(object: {
+  type: DeepSkyType;
+  id: string;
+  aliases: string[];
+  magnitude: number | null;
+  messier: number | null;
+}): boolean {
   if (object.messier != null) return false;
   if (object.magnitude != null && object.magnitude <= 6) return false;
   if (object.type === "DrkN") return true;
   const ids = [object.id, ...object.aliases];
   if (ids.some((id) => /^LDN\d/.test(id) || /^B\d/.test(id))) return true;
-  return ids.some((id) => /^Ced/i.test(id)) && (object.type === "RfN" || object.magnitude == null);
+  return isCederbladReflection(object);
 }
 
 /**
@@ -216,10 +303,14 @@ export function visibilityScore(
   const surfaceScore = surface == null ? 0.35 : clamp((25.5 - surface) / 8, 0, 1);
   let score = 0.7 * integrated + 0.3 * surfaceScore;
   score *= 1 - 0.62 * sky * (1 - integrated);
-  const emission = bandAdvice(object.type) === "narrowband" || bandAdvice(object.type) === "both";
+  const band = bandAdviceForObject(object);
+  const emission = band === "narrowband" || band === "both";
   if (emission && !isDarkObject(object)) score += 0.22 * sky;
-  if (object.magnitude == null) score *= bortle >= 6 ? 0.22 : 0.45;
-  if (isDarkObject(object)) score *= bortle >= 6 ? 0.12 : 0.35;
+  if (object.magnitude == null) score *= bortle >= 6 ? 0.18 : 0.38;
+  if (isDarkObject(object)) score *= bortle >= 6 ? 0.1 : 0.28;
+  // Very faint known magnitudes (IC fluff, distant galaxies) stay low even under dark skies.
+  if (object.magnitude != null && object.magnitude >= 11) score *= 0.55;
+  else if (object.magnitude != null && object.magnitude >= 9.5) score *= 0.78;
   return clamp(score, 0, 1.25);
 }
 
@@ -259,10 +350,16 @@ function frameFitWeight(fit: FrameFit): number {
   }
 }
 
-/** Frame fit gates the score. Imageable hours and visibility share the rest. */
+/**
+ * Frame fit gates the score. Magnitude/visibility outweighs hours; moon proximity
+ * soft-multiplies so a bright nearby Moon cannot leave faint IC fluff at the top.
+ */
 export function observationScore(item: PriorityFields): number {
-  const hours = Math.min(item.usableHours, 8) / 5;
-  return frameFitWeight(item.frameFit) * (0.42 * hours + item.visibility);
+  const hours = Math.min(Math.max(item.usableHours, 0), 8) / 8;
+  const visibility = Math.max(item.visibility, 0);
+  const moon = 0.28 + 0.72 * clamp(item.moonScore, 0, 1);
+  const base = frameFitWeight(item.frameFit) * (0.62 * visibility + 0.2 * hours) * moon;
+  return base * cataloguePrestigeWeight(item.catalogueRank);
 }
 
 /** Objects with under an hour of imageable darkness sort after everything that has a real window. */
@@ -271,7 +368,11 @@ export function compareTargetPriority(a: PriorityFields, b: PriorityFields): num
   if (demoted !== 0) return demoted;
   const score = observationScore(b) - observationScore(a);
   if (Math.abs(score) > 1e-9) return score;
-  return b.moonScore - a.moonScore;
+  const moon = b.moonScore - a.moonScore;
+  if (Math.abs(moon) > 1e-9) return moon;
+  const aRank = a.catalogueRank ?? Number.POSITIVE_INFINITY;
+  const bRank = b.catalogueRank ?? Number.POSITIVE_INFINITY;
+  return aRank - bRank;
 }
 
 export const TARGET_SORT_KEYS = ["recommended", "frame", "imageable", "rise"] as const;

@@ -1,15 +1,18 @@
-# Supabase (phase 2)
+# Supabase (phase 2+)
 
-Phase 1 stores the visitor’s gear, site, Bortle class, and night-vision preference in `localStorage` only. There is no auth and no database client in the app yet.
+Phase 1 stores the visitor’s gear, site, Bortle class, and night-vision preference in `localStorage` only on web. The Expo app mirrors that locally (AsyncStorage) and can sync when Auth is configured.
 
-Phase 2 is expected to add:
+## Mobile schema
 
-- Supabase Auth (email or a provider the owner chooses).
-- A `profiles` row keyed by the auth user.
-- `gear_profiles`: named rigs belonging to a user, including site, timezone, and Bortle class.
-- Child rows for telescopes, cameras, and filters on a profile, using the same fields as `@dss/core` (`Telescope`, `Camera`, `ImagingFilter`).
-- Row-level security so a user can read and write only their own profiles.
+Apply [`migrations/20261121_mobile_accounts_lists.sql`](migrations/20261121_mobile_accounts_lists.sql):
 
-The browser can keep `localStorage` as a cache and sync a chosen profile when a session exists. The Panchang client in `@dss/core` (`PanchangClient`) is the other phase-2 seam: implement it against the owner’s engine and pass the same date, coordinates, and timezone the planner already collects.
+- Supabase Auth (email magic link from the mobile **You** tab).
+- `profiles` keyed by auth user.
+- `gear_profiles` plus child telescope/camera/filter rows.
+- `target_lists` / `target_list_items` for named observing lists.
+- `saved_targets` for favorites.
+- RLS so a user can read and write only their own rows.
 
-Do not commit service-role keys. The web app should use the anon key and RLS.
+Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in `apps/mobile/.env`. Do not commit service-role keys.
+
+The Panchang client in `@dss/core` (`PanchangClient`) remains a later seam for the owner’s engine.

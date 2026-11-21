@@ -93,3 +93,9 @@ export function formatClock(date: Date, timeZone: string): string {
     hourCycle: "h23",
   }).format(date);
 }
+
+/** Prefer the city/locality from a geocoded place label like "Hyderabad, Telangana, India". */
+export function shortPlaceName(name: string): string {
+  const city = name.split(",")[0]?.trim();
+  return city || name.trim();
+}

@@ -43,6 +43,17 @@ The JPEG is a stretched visualisation, not a calibrated radiance or SQM map. Bri
 
 Forward search uses the Open-Meteo Geocoding API (CC BY 4.0). Reverse names for a browser location use OpenStreetMap Nominatim. Time zones come from Open-Meteo.
 
+## Estimated magnitudes
+
+Many nebulae, dark clouds, and clusters have no measured V/B magnitude in OpenNGC
+or the VizieR extracts. `scripts/fill_magnitudes.py` (also run from
+`build_catalogue.py`) fills those gaps with a planning estimate from a
+type-typical surface brightness and major-axis size. Large diffuse patches are
+floored so they cannot outrank bright Messier objects on integrated magnitude
+alone. Measured catalogue magnitudes are never overwritten. Dark-nebula values
+use Lynds opacity when present. These estimates are for ranking and exposure
+hints, not photometric citations.
+
 ## Not included
 
 - The full HyperLEDA/PGC galaxy database.

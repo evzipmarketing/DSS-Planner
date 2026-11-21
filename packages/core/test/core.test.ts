@@ -5,9 +5,19 @@ import {
   ang2pixNest,
   assumedSeeingArcsec,
   IMAGEABLE_SAMPLE_MINUTES,
+  bandAdvice,
   buildNightTrack,
+  cataloguePopularityRank,
+  horizontalCoords,
   formatImageableHours,
+  imagingOkWithMoon,
+  isComponentObject,
+  isObscureCatalogueOnly,
+  isSameSkyPatch,
+  isShortlistCandidate,
+  primaryDesignation,
   roundHours,
+  shortPlaceName,
   centerAfterSensorDrag,
   chooseHipsOrder,
   civilDate,
@@ -19,7 +29,6 @@ import {
   hipsPixelScaleDeg,
   hipsTilePixel,
   isNarrowband,
-  isShortlistCandidate,
   moonPhaseName,
   parseCatalogue,
   parseOpenMeteo,
@@ -305,14 +314,157 @@ describe("catalogue search", () => {
   });
 });
 
+describe("catalogue popularity and components", () => {
+  it("treats Fish Head / LBN 647 as the same sky patch", () => {
+    const fishHead: DeepSkyObject = {
+      ...ANDROMEDA,
+      id: "IC1795",
+      type: "HII",
+      raDeg: 36.63317,
+      decDeg: 62.04164,
+      majorArcmin: 12,
+      minorArcmin: 12,
+      magnitude: null,
+      messier: null,
+      names: ["Fish Head Nebula"],
+      aliases: ["IC1795", "LBN645"],
+      catalogues: ["ic", "lbn"],
+    };
+    const lbn647: DeepSkyObject = {
+      ...fishHead,
+      id: "LBN647",
+      type: "Neb",
+      raDeg: 36.9511,
+      decDeg: 62.0571,
+      majorArcmin: 20,
+      names: [],
+      aliases: ["LBN647"],
+      catalogues: ["lbn"],
+    };
+    const ngc896: DeepSkyObject = {
+      ...fishHead,
+      id: "NGC896",
+      type: "Neb",
+      raDeg: 36.36592,
+      decDeg: 62.01936,
+      majorArcmin: 10,
+      names: ["Fish Head Nebula"],
+      aliases: ["NGC896"],
+      catalogues: ["ngc"],
+    };
+    expect(isSameSkyPatch(fishHead, lbn647)).toBe(true);
+    expect(isSameSkyPatch(fishHead, ngc896)).toBe(true);
+    expect(isSameSkyPatch(fishHead, ANDROMEDA)).toBe(false);
+  });
+
+  it("keeps unnamed LBN-only patches out of the default shortlist", () => {
+    const lbnOnly: DeepSkyObject = {
+      ...ANDROMEDA,
+      id: "LBN16",
+      type: "Neb",
+      raDeg: 40,
+      decDeg: 60,
+      majorArcmin: 150,
+      magnitude: null,
+      messier: null,
+      names: [],
+      aliases: ["LBN16"],
+      catalogues: ["lbn"],
+    };
+    const sh2: DeepSkyObject = {
+      ...lbnOnly,
+      id: "Sh2-190",
+      aliases: ["Sh2-190", "IC1805"],
+      catalogues: ["sharpless", "ic"],
+      names: ["Heart Nebula"],
+    };
+    expect(isObscureCatalogueOnly(lbnOnly)).toBe(true);
+    expect(isShortlistCandidate(lbnOnly)).toBe(false);
+    expect(isObscureCatalogueOnly(sh2)).toBe(false);
+    expect(isShortlistCandidate(sh2)).toBe(true);
+  });
+
+  it("keeps unnamed Cederblad / Pleiades fluff out of the default shortlist", () => {
+    const ic353: DeepSkyObject = {
+      ...ANDROMEDA,
+      id: "IC353",
+      type: "Neb",
+      raDeg: 58.25,
+      decDeg: 25.85,
+      majorArcmin: 182,
+      minorArcmin: 30,
+      magnitude: null,
+      messier: null,
+      names: [],
+      aliases: ["IC353", "Ced24"],
+      catalogues: ["ic", "cederblad"],
+    };
+    const meropes: DeepSkyObject = {
+      ...ic353,
+      id: "NGC1435",
+      aliases: ["NGC1435", "Ced19j"],
+      catalogues: ["ngc", "cederblad"],
+      names: ["Merope Nebula"],
+      magnitude: null,
+      majorArcmin: 30,
+    };
+    expect(isShortlistCandidate(ic353)).toBe(false);
+    expect(isShortlistCandidate(meropes)).toBe(true);
+  });
+
+  it("ranks Messier ahead of NGC-only and treats letter-suffix ids as components", () => {
+    const ngcOnly: DeepSkyObject = {
+      ...ANDROMEDA,
+      id: "NGC891",
+      messier: null,
+      aliases: ["NGC891"],
+      catalogues: ["ngc"],
+      names: [],
+    };
+    const icOnly: DeepSkyObject = {
+      ...ANDROMEDA,
+      id: "IC405",
+      messier: null,
+      aliases: ["IC405"],
+      catalogues: ["ic"],
+      names: ["Flaming Star Nebula"],
+    };
+    const component: DeepSkyObject = {
+      ...ANDROMEDA,
+      id: "NGC4676A",
+      messier: null,
+      aliases: ["NGC4676A"],
+      catalogues: ["ngc"],
+      names: [],
+    };
+    expect(cataloguePopularityRank(ANDROMEDA)).toBeLessThan(cataloguePopularityRank(ngcOnly));
+    expect(cataloguePopularityRank(ngcOnly)).toBeLessThan(cataloguePopularityRank(icOnly));
+    expect(primaryDesignation(ANDROMEDA)).toMatch(/^M\s*31$/i);
+    expect(isComponentObject(component)).toBe(true);
+    expect(isComponentObject(ANDROMEDA)).toBe(false);
+  });
+});
+
+describe("horizontal coordinates", () => {
+  it("returns altitude and azimuth for Orion from Hyderabad", () => {
+    const coords = horizontalCoords(M42.raDeg, M42.decDeg, new Date("2026-01-15T16:00:00Z"), HYDERABAD);
+    expect(coords.altitudeDeg).toBeGreaterThan(-90);
+    expect(coords.altitudeDeg).toBeLessThanOrEqual(90);
+    expect(coords.azimuthDeg).toBeGreaterThanOrEqual(0);
+    expect(coords.azimuthDeg).toBeLessThan(360);
+  });
+});
+
 describe("night track and shortlist", () => {
   it("puts the Orion Nebula high on a January night from Hyderabad", () => {
+    const band = bandAdvice(M42.type);
     const track = buildNightTrack({
       raDeg: M42.raDeg,
       decDeg: M42.decDeg,
       site: HYDERABAD,
       dateIso: "2026-01-15",
       stepMinutes: IMAGEABLE_SAMPLE_MINUTES,
+      band,
     });
     const geometric = 90 - Math.abs(HYDERABAD.latitude - M42.decDeg);
     expect(track.maxTargetAltitude).toBeGreaterThan(60);
@@ -325,7 +477,20 @@ describe("night track and shortlist", () => {
     expect(roundHours(listed?.usableHours ?? -1)).toBe(roundHours(track.usableHours));
     expect(formatImageableHours(listed?.usableHours ?? 0)).toBe(formatImageableHours(track.usableHours));
     const dark = track.samples.filter((sample) => sample.sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG);
-    expect(dark.filter((sample) => sample.targetAltitude >= IMAGEABLE_MIN_ALTITUDE_DEG).every((sample) => sample.usable)).toBe(true);
+    expect(
+      dark
+        .filter((sample) => sample.targetAltitude >= IMAGEABLE_MIN_ALTITUDE_DEG)
+        .every(
+          (sample) =>
+            sample.usable ===
+            imagingOkWithMoon({
+              band,
+              moonAltitudeDeg: sample.moonAltitude,
+              illuminatedFraction: track.moonIlluminatedFraction,
+              moonSeparationDeg: sample.moonSeparationDeg,
+            }),
+        ),
+    ).toBe(true);
     expect(dark.filter((sample) => sample.targetAltitude < IMAGEABLE_MIN_ALTITUDE_DEG).every((sample) => !sample.usable)).toBe(true);
     expect(track.samples.some((sample) => sample.sunAltitude < ASTRONOMICAL_SUN_ALTITUDE_DEG)).toBe(true);
     expect(moonPhaseName(0)).toBe("New");
@@ -379,5 +544,12 @@ describe("weather and panchang", () => {
         timeZone: "Asia/Kolkata",
       }),
     ).rejects.toThrow(/not configured/);
+  });
+});
+
+describe("shortPlaceName", () => {
+  it("keeps only the city from a full geocoded label", () => {
+    expect(shortPlaceName("Hyderabad, Telangana, India")).toBe("Hyderabad");
+    expect(shortPlaceName("Hyderabad")).toBe("Hyderabad");
   });
 });

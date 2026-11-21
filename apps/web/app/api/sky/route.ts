@@ -1,7 +1,12 @@
+import { corsPreflight, withCors } from "@/lib/cors";
 import { renderSkyPlate } from "@/lib/plate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export function OPTIONS(): Response {
+  return corsPreflight();
+}
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -10,22 +15,24 @@ export async function GET(request: Request): Promise<Response> {
   const fovDeg = readNumber(url, "fov", 0.05, 20);
   const sizeRaw = readNumber(url, "size", 64, 640);
   if (raDeg == null || decDeg == null || fovDeg == null || sizeRaw == null) {
-    return Response.json({ error: "Invalid plate request." }, { status: 400 });
+    return withCors(Response.json({ error: "Invalid plate request." }, { status: 400 }));
   }
   const size = Math.round(sizeRaw);
 
   try {
     const plate = await renderSkyPlate({ raDeg, decDeg, fovDeg, size });
-    return new Response(Buffer.from(plate.bytes), {
-      headers: {
-        "content-type": "image/jpeg",
-        "x-sky-source": plate.source,
-        "cache-control": "public, max-age=86400",
-      },
-    });
+    return withCors(
+      new Response(Buffer.from(plate.bytes), {
+        headers: {
+          "content-type": "image/jpeg",
+          "x-sky-source": plate.source,
+          "cache-control": "public, max-age=86400",
+        },
+      }),
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Sky plate failed.";
-    return Response.json({ error: message }, { status: 502 });
+    return withCors(Response.json({ error: message }, { status: 502 }));
   }
 }
 

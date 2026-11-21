@@ -47,7 +47,7 @@ describe("city shortlist", () => {
     const catalogue = [...deepSkyCore, ...deepSkyExtended];
     const dates = ["2026-11-12", "2026-12-01", "2027-01-15"];
     const fills = dates.map((date) => {
-      const ranked = rankTargets(catalogue, defaultSite, date, 40, undefined, {
+      const ranked = rankTargets(catalogue, defaultSite, date, 120, undefined, {
         widthArcmin: shortField.widthArcmin,
         heightArcmin: shortField.heightArcmin,
       });
@@ -58,7 +58,7 @@ describe("city shortlist", () => {
     expect(fills[0]).toBeCloseTo(fills[1]!, 8);
     expect(fills[0]).toBeCloseTo(fills[2]!, 8);
 
-    const withLong = rankTargets(catalogue, defaultSite, dates[0]!, 40, undefined, {
+    const withLong = rankTargets(catalogue, defaultSite, dates[0]!, 120, undefined, {
       widthArcmin: longField.widthArcmin,
       heightArcmin: longField.heightArcmin,
     });

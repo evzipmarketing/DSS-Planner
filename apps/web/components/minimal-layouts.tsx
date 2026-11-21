@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { shortPlaceName } from "@dss/core";
 import { AltitudeChart } from "./altitude-chart";
 import { BortlePanel } from "./bortle-panel";
 import { DatePanel } from "./date-panel";
@@ -12,21 +13,38 @@ import { WeatherPanel } from "./weather-panel";
 import { usePlannerState } from "./planner-context";
 import type { ThemeName } from "@/lib/storage";
 
-type SettingsPanel = "location" | "date" | "telescope" | "camera";
+type SettingsPanel = "location" | "date" | "telescope" | "camera" | "catalogue";
 
 export function TonightPage() {
   const planner = usePlannerState();
+  const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<SettingsPanel | null>(null);
   const place = planner.locationReady ? planner.site.name : planner.placeStatus === "detecting" ? "Detecting…" : "Set location";
   const day = formatDay(planner.date);
   const scope = trimGear(planner.telescope?.name) ?? "Choose…";
   const camera = cameraLabel(planner.camera?.name, planner.filterIds.length, true);
-  function toggle(next: SettingsPanel) {
+  const catalogueSummary = [
+    planner.includeExtendedCatalogue ? "Extended" : "Core",
+    planner.includeComponentObjects ? "components" : "hosts",
+  ].join(" · ");
+
+  function toggleSettings() {
+    setOpen((current) => {
+      const next = !current;
+      if (!next) setPanel(null);
+      return next;
+    });
+  }
+
+  function choose(next: SettingsPanel) {
     setPanel((current) => (current === next ? null : next));
   }
 
   useEffect(() => {
-    if (planner.placeStatus === "needed") setPanel("location");
+    if (planner.placeStatus === "needed") {
+      setOpen(true);
+      setPanel("location");
+    }
   }, [planner.placeStatus]);
 
   return (
@@ -47,7 +65,41 @@ export function TonightPage() {
           </div>
           <ThemeToggle />
         </div>
-        <div className={`settings-bar${panel ? " settings-open" : ""}`}>
+      </header>
+      <section className="hero hero-with-settings">
+        <div className="hero-copy">
+          <p className="hero-kicker">DeepSkyMate / Observatory</p>
+          <p className="hero-place">
+            {planner.locationReady
+              ? `${shortPlaceName(planner.site.name)} · ${formatDayLong(planner.date)}`
+              : planner.placeStatus === "detecting"
+                ? "Detecting location…"
+                : "Set location and date in settings"}
+          </p>
+          {planner.locationReady ? (
+            <div className="sky-meta">
+              <WeatherPanel plain />
+              <span className="bortle-line" title="Sky brightness class estimated for this site.">
+                {planner.bortleLoading ? "Bortle…" : `Bortle ${planner.bortle}`}
+              </span>
+              <LookUpNote />
+            </div>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className={`settings-toggle${open ? " is-open" : ""}`}
+          aria-label="Observatory settings"
+          aria-expanded={open}
+          aria-controls={open ? "settings-panel" : undefined}
+          title="Location, date, telescope, and camera"
+          onClick={toggleSettings}
+        >
+          <SlidersIcon />
+        </button>
+      </section>
+      {open ? (
+        <div className={`settings-bar settings-open`}>
           <div className="settings-row">
             <Control
               icon={<PinIcon />}
@@ -55,7 +107,7 @@ export function TonightPage() {
               value={place}
               label={`Location, ${place}${planner.locationReady ? `, ${planner.bortleLoading ? "Bortle updating" : `Bortle ${planner.bortle}`}` : ""}`}
               open={panel === "location"}
-              onToggle={() => toggle("location")}
+              onToggle={() => choose("location")}
             />
             <Control
               icon={<CalendarIcon />}
@@ -63,7 +115,7 @@ export function TonightPage() {
               value={day}
               label={`Date, ${day}`}
               open={panel === "date"}
-              onToggle={() => toggle("date")}
+              onToggle={() => choose("date")}
             />
             <Control
               icon={<TelescopeIcon />}
@@ -71,7 +123,7 @@ export function TonightPage() {
               value={scope}
               label={`Telescope, ${scope}`}
               open={panel === "telescope"}
-              onToggle={() => toggle("telescope")}
+              onToggle={() => choose("telescope")}
             />
             <Control
               icon={<CameraIcon />}
@@ -79,36 +131,24 @@ export function TonightPage() {
               value={camera}
               label={`Camera, ${camera}`}
               open={panel === "camera"}
-              onToggle={() => toggle("camera")}
+              onToggle={() => choose("camera")}
+            />
+            <Control
+              icon={<CatalogueIcon />}
+              prefix="Catalogue"
+              value={catalogueSummary}
+              label={`Catalogue, ${catalogueSummary}`}
+              open={panel === "catalogue"}
+              onToggle={() => choose("catalogue")}
             />
           </div>
           {panel ? (
             <div className="settings-panel" id="settings-panel" role="region" aria-label={panelLabel(panel)}>
-              <PanelBody panel={panel} />
+              <PanelBody panel={panel} onDone={() => setPanel(null)} />
             </div>
           ) : null}
         </div>
-      </header>
-      <section className="hero">
-        <h1>{planner.locationReady ? `Tonight from ${planner.site.name}` : "Tonight’s sky"}</h1>
-        <div className="sky-meta">
-          {planner.locationReady ? (
-            <>
-              <WeatherPanel plain />
-              <span className="bortle-line" title="Sky brightness class estimated for this site.">
-                {planner.bortleLoading ? "Bortle…" : `Bortle ${planner.bortle}`}
-              </span>
-              <LookUpNote />
-            </>
-          ) : (
-            <span className="setup-hint">
-              {planner.placeStatus === "detecting"
-                ? "Detecting your location…"
-                : "Set a location to begin, then pick a telescope and camera."}
-            </span>
-          )}
-        </div>
-      </section>
+      ) : null}
       <div id="targets">
         {planner.setupReady ? (
           <Shortlist
@@ -169,21 +209,39 @@ function Control({
   );
 }
 
-function PanelBody({ panel }: { panel: SettingsPanel }) {
+function SlidersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7h9" />
+      <path d="M17 7h3" />
+      <circle cx="15" cy="7" r="2" />
+      <path d="M4 12h3" />
+      <path d="M11 12h9" />
+      <circle cx="9" cy="12" r="2" />
+      <path d="M4 17h11" />
+      <path d="M19 17h1" />
+      <circle cx="17" cy="17" r="2" />
+    </svg>
+  );
+}
+
+function PanelBody({ panel, onDone }: { panel: SettingsPanel; onDone: () => void }) {
   switch (panel) {
     case "location":
       return (
         <>
-          <LocationPanel />
+          <LocationPanel onDone={onDone} />
           <BortlePanel />
         </>
       );
     case "date":
-      return <DatePanel />;
+      return <DatePanel onDone={onDone} />;
     case "telescope":
-      return <RigPanel part="telescope" />;
+      return <RigPanel part="telescope" onDone={onDone} />;
     case "camera":
-      return <RigPanel part="camera" />;
+      return <RigPanel part="camera" onDone={onDone} />;
+    case "catalogue":
+      return <CataloguePrefsPanel onDone={onDone} />;
     default: {
       const unexpected: never = panel;
       return unexpected;
@@ -201,11 +259,49 @@ function panelLabel(panel: SettingsPanel): string {
       return "Telescope";
     case "camera":
       return "Camera";
+    case "catalogue":
+      return "Catalogue";
     default: {
       const unexpected: never = panel;
       return unexpected;
     }
   }
+}
+
+function CataloguePrefsPanel({ onDone }: { onDone: () => void }) {
+  const planner = usePlannerState();
+  return (
+    <div className="block" style={{ display: "grid", gap: 12 }}>
+      <p className="note" style={{ display: "block", margin: 0 }}>
+        Tonight defaults to the popular core list and hides letter-suffix components of larger objects. Ranking prefers Messier, then NGC, IC, Sharpless when nights are otherwise similar.
+      </p>
+      <label className="field" style={{ display: "flex", alignItems: "center", gap: 10, width: "auto" }}>
+        <input
+          type="checkbox"
+          checked={planner.includeExtendedCatalogue}
+          onChange={(event) => planner.setIncludeExtendedCatalogue(event.target.checked)}
+        />
+        <span>
+          Include extended catalogue
+          <small style={{ display: "block", color: "var(--muted)" }}>Adds ~19k fainter objects</small>
+        </span>
+      </label>
+      <label className="field" style={{ display: "flex", alignItems: "center", gap: 10, width: "auto" }}>
+        <input
+          type="checkbox"
+          checked={planner.includeComponentObjects}
+          onChange={(event) => planner.setIncludeComponentObjects(event.target.checked)}
+        />
+        <span>
+          Include component objects
+          <small style={{ display: "block", color: "var(--muted)" }}>Shows pieces such as NGC4676A</small>
+        </span>
+      </label>
+      <button type="button" className="ghost" onClick={onDone}>
+        Done
+      </button>
+    </div>
+  );
 }
 
 function PinIcon() {
@@ -241,6 +337,16 @@ function CameraIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 8h3.2L8.8 6h6.4l1.6 2H20v11H4z" />
       <circle cx="12" cy="13" r="3" />
+    </svg>
+  );
+}
+
+function CatalogueIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 0-2 2V4z" />
+      <path d="M7 4v16" />
+      <path d="M10 8h6M10 12h6M10 16h4" />
     </svg>
   );
 }
@@ -326,6 +432,27 @@ function formatDay(iso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!match?.[1] || !match[2] || !match[3]) return iso;
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[Number(match[2]) - 1] ?? match[2];
+  return `${Number(match[3])} ${month} ${match[1]}`;
+}
+
+function formatDayLong(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match?.[1] || !match[2] || !match[3]) return iso;
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
   const month = months[Number(match[2]) - 1] ?? match[2];
   return `${Number(match[3])} ${month} ${match[1]}`;
 }

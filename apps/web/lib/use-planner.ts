@@ -15,7 +15,9 @@ import {
   searchCatalogue,
   sensorDisagreement,
   IMAGEABLE_SAMPLE_MINUTES,
+  bandAdvice,
   buildNightTrack,
+  isComponentObject,
   EMPTY_TARGET_QUERY,
   type Camera,
   type DeepSkyObject,
@@ -96,6 +98,8 @@ export function usePlanner() {
   const [pointingFor, setPointingFor] = useState<string | null>(null);
   const [bortle, setBortle] = useState(() => estimateBortle(defaultSite.latitude, defaultSite.longitude));
   const [bortleLoading, setBortleLoading] = useState(false);
+  const [includeExtendedCatalogue, setIncludeExtendedCatalogue] = useState(false);
+  const [includeComponentObjects, setIncludeComponentObjects] = useState(false);
   const hadStoredSite = useRef(false);
   const siteLocked = useRef(false);
   const bortleRequest = useRef(0);
@@ -129,6 +133,8 @@ export function usePlanner() {
       setCustomTelescopes(stored.customTelescopes);
       setCustomCameras(stored.customCameras);
       setCustomFilters(stored.customFilters);
+      setIncludeExtendedCatalogue(stored.includeExtendedCatalogue);
+      setIncludeComponentObjects(stored.includeComponentObjects);
     } else {
       setPlaceStatus("detecting");
       setDate(localDateIso());
@@ -207,20 +213,31 @@ export function usePlanner() {
     void import("@dss/data/catalogue").then((module) => {
       if (!cancelled) setCoreCatalogue(module.deepSkyCore);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!includeExtendedCatalogue) {
+      setExtendedCatalogue(null);
+      return;
+    }
+    let cancelled = false;
     void import("@dss/data/catalogue-extended").then((module) => {
       if (!cancelled) setExtendedCatalogue(module.deepSkyExtended);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [includeExtendedCatalogue]);
 
   const locationReady = placeStatus === "gps" || placeStatus === "saved";
 
   useEffect(() => {
     if (!hydrated) return;
     saveSession({
-      version: 4,
+      version: 5,
       theme,
       locationId: locationReady ? site.id : "",
       customSite: locationReady && site.id === "custom" ? site : undefined,
@@ -235,6 +252,8 @@ export function usePlanner() {
       customTelescopes,
       customCameras,
       customFilters,
+      includeExtendedCatalogue,
+      includeComponentObjects,
     });
   }, [
     hydrated,
@@ -252,6 +271,8 @@ export function usePlanner() {
     customTelescopes,
     customCameras,
     customFilters,
+    includeExtendedCatalogue,
+    includeComponentObjects,
   ]);
 
   useLayoutEffect(() => {
@@ -296,8 +317,10 @@ export function usePlanner() {
 
   const catalogue = useMemo(() => {
     if (!coreCatalogue) return null;
-    return extendedCatalogue ? [...coreCatalogue, ...extendedCatalogue] : coreCatalogue;
-  }, [coreCatalogue, extendedCatalogue]);
+    const merged =
+      includeExtendedCatalogue && extendedCatalogue ? [...coreCatalogue, ...extendedCatalogue] : coreCatalogue;
+    return includeComponentObjects ? merged : merged.filter((object) => !isComponentObject(object));
+  }, [coreCatalogue, extendedCatalogue, includeExtendedCatalogue, includeComponentObjects]);
 
   const field = useMemo(
     () => (optics ? { widthArcmin: optics.field.widthArcmin, heightArcmin: optics.field.heightArcmin } : null),
@@ -307,7 +330,7 @@ export function usePlanner() {
   // Displayed frame % is always recomputed from live optics so it tracks gear immediately
   // and cannot drift with date, location, or time.
   const fieldKey = field ? `${field.widthArcmin.toFixed(4)}x${field.heightArcmin.toFixed(4)}` : "none";
-  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${fieldKey}|${listFilter}|${bortle}|${extendedCatalogue ? "extended" : "core"}`;
+  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${fieldKey}|${listFilter}|${bortle}|${includeExtendedCatalogue ? "extended" : "core"}|${includeComponentObjects ? "components" : "hosts"}`;
   const setupReady = locationReady && Boolean(date) && Boolean(telescope) && Boolean(camera);
   const shortlist = useMemo(() => {
     if (!setupReady || ranked?.key !== shortlistKey) return [];
@@ -356,6 +379,7 @@ export function usePlanner() {
       site,
       dateIso: date,
       stepMinutes: IMAGEABLE_SAMPLE_MINUTES,
+      band: bandAdvice(selected.type),
     });
   }, [selected, site, date, setupReady]);
 
@@ -469,7 +493,11 @@ export function usePlanner() {
 
   return {
     catalogue,
-    extendedReady: extendedCatalogue != null,
+    extendedReady: !includeExtendedCatalogue || extendedCatalogue != null,
+    includeExtendedCatalogue,
+    setIncludeExtendedCatalogue,
+    includeComponentObjects,
+    setIncludeComponentObjects,
     targetQuery,
     setTargetQuery,
     listFilter,

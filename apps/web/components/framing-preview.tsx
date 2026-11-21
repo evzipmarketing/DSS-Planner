@@ -211,31 +211,24 @@ export function FramingPreview() {
           />
         </div>
       </div>
-      <div className="tools">
-        <button type="button" className="ghost" onClick={() => setPointing({ ...pointing, rotationDeg: pointing.rotationDeg - 5 })}>
-          Rotate −5°
-        </button>
-        <button type="button" className="ghost" onClick={() => setPointing({ ...pointing, rotationDeg: pointing.rotationDeg + 5 })}>
-          Rotate +5°
-        </button>
-        <label className="field" style={{ width: "auto" }}>
-          Angle
-          <input
-            type="number"
-            value={Math.round(pointing.rotationDeg)}
-            onChange={(event) => {
-              const rotationDeg = Number(event.target.value);
-              if (Number.isFinite(rotationDeg)) setPointing({ ...pointing, rotationDeg });
+      <div className="tools rotate-steps">
+        {([-45, -5, 0, 5, 45] as const).map((step) => (
+          <button
+            key={step}
+            type="button"
+            className="ghost"
+            aria-label={step === 0 ? "Reset frame rotation" : `Rotate ${step > 0 ? "+" : ""}${step} degrees`}
+            onClick={() => {
+              if (step === 0) {
+                setPointing({ ...pointing, rotationDeg: 0 });
+                return;
+              }
+              setPointing({ ...pointing, rotationDeg: pointing.rotationDeg + step });
             }}
-          />
-        </label>
-        <button
-          type="button"
-          className="ghost"
-          onClick={() => setPointing({ raDeg: selected.raDeg, decDeg: selected.decDeg, rotationDeg: 0 })}
-        >
-          Centre on target
-        </button>
+          >
+            {step > 0 ? `+${step}` : String(step)}
+          </button>
+        ))}
       </div>
     </Section>
   );

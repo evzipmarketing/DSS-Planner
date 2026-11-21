@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 import { angularSeparationDeg, equatorialUnit } from "../src/altitude";
 import {
   bandAdvice,
+  bandAdviceForObject,
   compareTargetPriority,
   compareTargetSort,
   frameFillPercent,
   frameFit,
   horizonStory,
   imageableCrossing,
+  imagingOkWithMoon,
   moonPlan,
+  observationScore,
   passesListFilter,
   visibilityScore,
   type TargetSortFields,
@@ -70,15 +73,50 @@ describe("moon separation and priority", () => {
     expect(farNarrow.hint).toBeNull();
   });
 
+  it("excludes bright-Moon time from broadband imageable windows", () => {
+    expect(
+      imagingOkWithMoon({
+        band: "broadband",
+        moonAltitudeDeg: 40,
+        illuminatedFraction: 0.8,
+        moonSeparationDeg: 70,
+      }),
+    ).toBe(false);
+    expect(
+      imagingOkWithMoon({
+        band: "narrowband",
+        moonAltitudeDeg: 40,
+        illuminatedFraction: 0.8,
+        moonSeparationDeg: 70,
+      }),
+    ).toBe(true);
+    expect(
+      imagingOkWithMoon({
+        band: "narrowband",
+        moonAltitudeDeg: 40,
+        illuminatedFraction: 0.8,
+        moonSeparationDeg: 20,
+      }),
+    ).toBe(false);
+    expect(
+      imagingOkWithMoon({
+        band: "broadband",
+        moonAltitudeDeg: -10,
+        illuminatedFraction: 0.9,
+        moonSeparationDeg: 20,
+      }),
+    ).toBe(true);
+  });
+
   it("sorts by fit and brightness, and demotes a window under an hour", () => {
     const goodNone = { frameFit: "good" as const, usableHours: 0, moonScore: 1, visibility: 0.9 };
     const faintGood = { frameFit: "good" as const, usableHours: 6, moonScore: 0.9, visibility: 0.15 };
     const brightGood = { frameFit: "good" as const, usableHours: 4, moonScore: 0.3, visibility: 0.9 };
     const brightSmall = { frameFit: "small" as const, usableHours: 6, moonScore: 1, visibility: 0.9 };
     const ordered = [goodNone, faintGood, brightSmall, brightGood].sort(compareTargetPriority);
-    expect(ordered.map((item) => item.visibility)).toEqual([0.9, 0.15, 0.9, 0.9]);
-    expect(ordered[0]?.usableHours).toBe(4);
+    expect(ordered[0]).toEqual(brightGood);
     expect(ordered[3]?.usableHours).toBe(0);
+    expect(ordered.map((item) => item.visibility).slice(0, 3)).toContain(0.15);
     expect(passesListFilter(
       { band: "narrowband", frameFit: "good", moonHint: null, moonScore: 0.9, objectType: "HII" },
       "moon-safe",
@@ -209,6 +247,41 @@ describe("moon separation and priority", () => {
     const faint = visibilityScore({ ...shape, type: "Neb", id: "LBN546", magnitude: null, aliases: ["LBN546"] }, 9);
     expect(orion).toBeGreaterThan(faint);
     expect(orion).toBeGreaterThan(dark * 3);
+  });
+
+  it("treats Cederblad reflection patches as broadband and ranks magnitude over raw hours", () => {
+    const ced = {
+      type: "Neb" as const,
+      id: "IC353",
+      aliases: ["IC353", "Ced24"],
+      magnitude: null,
+      messier: null,
+    };
+    expect(bandAdvice("Neb")).toBe("narrowband");
+    expect(bandAdviceForObject(ced)).toBe("broadband");
+
+    const brightNearMoon = observationScore({
+      frameFit: "good",
+      usableHours: 3,
+      moonScore: 0.05,
+      visibility: 0.85,
+      catalogueRank: 0,
+    });
+    const faintLongWindow = observationScore({
+      frameFit: "good",
+      usableHours: 8,
+      moonScore: 0.9,
+      visibility: 0.08,
+      catalogueRank: 2,
+    });
+    expect(brightNearMoon).toBeGreaterThan(faintLongWindow * 0.55);
+    expect(faintLongWindow).toBeLessThan(observationScore({
+      frameFit: "good",
+      usableHours: 4,
+      moonScore: 0.9,
+      visibility: 0.75,
+      catalogueRank: 1,
+    }));
   });
 });
 

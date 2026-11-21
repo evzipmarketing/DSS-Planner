@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint src test",
-    "build:catalogue": "python3 scripts/build_catalogue.py"
+    "build:catalogue": "python3 scripts/build_catalogue.py",
+    "fill:magnitudes": "python3 scripts/fill_magnitudes.py"
   },
   "dependencies": {
     "@dss/core": "workspace:*"

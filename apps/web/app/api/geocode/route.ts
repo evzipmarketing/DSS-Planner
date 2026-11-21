@@ -1,7 +1,12 @@
 import { isValidTimeZone, type Site } from "@dss/core";
+import { corsPreflight, withCors } from "@/lib/cors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export function OPTIONS(): Response {
+  return corsPreflight();
+}
 
 type GeocodeResult = {
   name?: string;
@@ -14,7 +19,7 @@ type GeocodeResult = {
 
 export async function GET(request: Request): Promise<Response> {
   const query = new URL(request.url).searchParams.get("q")?.trim() ?? "";
-  if (query.length < 2 || query.length > 80) return Response.json({ results: [] });
+  if (query.length < 2 || query.length > 80) return withCors(Response.json({ results: [] }));
 
   const endpoint = new URL("https://geocoding-api.open-meteo.com/v1/search");
   endpoint.searchParams.set("name", query);
@@ -24,14 +29,14 @@ export async function GET(request: Request): Promise<Response> {
 
   try {
     const response = await fetch(endpoint, { signal: AbortSignal.timeout(8000) });
-    if (!response.ok) return Response.json({ error: "The place search did not answer." }, { status: 502 });
+    if (!response.ok) return withCors(Response.json({ error: "The place search did not answer." }, { status: 502 }));
     const body = (await response.json()) as { results?: GeocodeResult[] };
     const results = (body.results ?? [])
       .map((item) => toPlace(item))
       .filter((item): item is Site => item != null);
-    return Response.json({ results });
+    return withCors(Response.json({ results }));
   } catch {
-    return Response.json({ error: "The place search failed." }, { status: 502 });
+    return withCors(Response.json({ error: "The place search failed." }, { status: 502 }));
   }
 }
 

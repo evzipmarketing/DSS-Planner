@@ -39,7 +39,13 @@ const KINDS: FilterKind[] = [
   "blue",
 ];
 
-export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camera" }) {
+export function RigPanel({
+  part = "all",
+  onDone,
+}: {
+  part?: "all" | "telescope" | "camera";
+  onDone?: () => void;
+}) {
   const planner = usePlannerState();
   const { telescope, camera, optics } = planner;
   const showScope = part !== "camera";
@@ -98,7 +104,10 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
                   ? `Smart · ${item.apertureMm} mm · ${item.focalLengthMm} mm`
                   : `${item.apertureMm} mm · ${item.focalLengthMm} mm`,
               }))}
-              onChange={planner.setTelescopeId}
+              onChange={(id) => {
+                planner.setTelescopeId(id);
+                onDone?.();
+              }}
             />
             {telescope ? (
               <p className="note">
@@ -163,7 +172,10 @@ export function RigPanel({ part = "all" }: { part?: "all" | "telescope" | "camer
                     label: item.name,
                     hint: `${item.sensor} · ${item.widthPx}×${item.heightPx}`,
                   }))}
-                onChange={planner.setCameraId}
+                onChange={(id) => {
+                  planner.setCameraId(id);
+                  onDone?.();
+                }}
               />
             )}
             <Combobox

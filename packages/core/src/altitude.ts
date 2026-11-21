@@ -1,9 +1,6 @@
 import * as Astronomy from "astronomy-engine";
-import {
-  ASTRONOMICAL_SUN_ALTITUDE_DEG,
-  IMAGEABLE_MIN_ALTITUDE_DEG,
-  type Site,
-} from "./types";
+import { isImageableSample, type BandAdvice } from "./planning";
+import { type Site } from "./types";
 import { nightInstants, parseIsoDate, zonedDateTimeToUtc } from "./time";
 
 export type TrackSample = {
@@ -56,6 +53,29 @@ function unitVector(raDeg: number, decDeg: number, time: Astronomy.AstroTime): A
   return new Astronomy.Vector(cosDec * Math.cos(ra), cosDec * Math.sin(ra), Math.sin(dec), time);
 }
 
+export type HorizontalCoords = {
+  altitudeDeg: number;
+  /** Degrees from north toward east, 0–360. */
+  azimuthDeg: number;
+};
+
+export function horizontalCoords(
+  raDeg: number,
+  decDeg: number,
+  time: Date,
+  site: Site,
+): HorizontalCoords {
+  const observer = observerFor(site);
+  const astroTime = Astronomy.MakeTime(time);
+  const rotation = Astronomy.Rotation_EQJ_HOR(astroTime, observer);
+  const horizontal = Astronomy.RotateVector(rotation, unitVector(raDeg, decDeg, astroTime));
+  const horizon = Astronomy.HorizonFromVector(horizontal, "normal");
+  return {
+    altitudeDeg: horizon.lat,
+    azimuthDeg: ((horizon.lon % 360) + 360) % 360,
+  };
+}
+
 export function apparentAltitude(
   raDeg: number,
   decDeg: number,
@@ -87,13 +107,21 @@ export function buildNightTrack(input: {
   site: Site;
   dateIso: string;
   stepMinutes?: number;
+  /** Target band — broadband windows exclude bright-Moon time. */
+  band?: BandAdvice;
 }): NightTrack {
   const step = input.stepMinutes ?? 5;
+  const band = input.band ?? "broadband";
   const instants = nightInstants(input.dateIso, input.site.timezone, step);
   const observer = observerFor(input.site);
   const samples: TrackSample[] = [];
   let maxTargetAltitude = -90;
   let maxTargetTime: Date | null = null;
+
+  const midnight = localMidnight(input.dateIso, input.site.timezone);
+  const phaseAngle = Astronomy.MoonPhase(midnight);
+  const illumination = Astronomy.Illumination(Astronomy.Body.Moon, midnight);
+  const illuminatedFraction = illumination.phase_fraction;
 
   const targetVector = equatorialUnit(input.raDeg, input.decDeg);
   for (const time of instants) {
@@ -105,8 +133,14 @@ export function buildNightTrack(input: {
     const sunAltitude = bodyAltitude(Astronomy.Body.Sun, time, observer);
     const moonSeparationDeg = angularSeparationDeg(targetVector, moonVector);
     const geometric = geometricAltitude(targetVector, Astronomy.Rotation_EQJ_HOR(astroTime, observer).rot);
-    const usable =
-      geometric >= IMAGEABLE_MIN_ALTITUDE_DEG && sunAltitude <= ASTRONOMICAL_SUN_ALTITUDE_DEG;
+    const usable = isImageableSample({
+      band,
+      targetAltitudeDeg: geometric,
+      sunAltitudeDeg: sunAltitude,
+      moonAltitudeDeg: moonAltitude,
+      illuminatedFraction,
+      moonSeparationDeg,
+    });
     samples.push({ time, targetAltitude, moonAltitude, sunAltitude, moonSeparationDeg, usable });
     if (targetAltitude > maxTargetAltitude) {
       maxTargetAltitude = targetAltitude;
@@ -116,9 +150,6 @@ export function buildNightTrack(input: {
 
   const usableIntervals = mergeUsable(samples, step);
   const usableHours = hoursInIntervals(usableIntervals);
-  const midnight = localMidnight(input.dateIso, input.site.timezone);
-  const phaseAngle = Astronomy.MoonPhase(midnight);
-  const illumination = Astronomy.Illumination(Astronomy.Body.Moon, midnight);
 
   return {
     samples,
@@ -127,7 +158,7 @@ export function buildNightTrack(input: {
     maxTargetAltitude,
     maxTargetTime,
     moonPhaseAngle: phaseAngle,
-    moonIlluminatedFraction: illumination.phase_fraction,
+    moonIlluminatedFraction: illuminatedFraction,
     moonPhaseName: moonPhaseName(phaseAngle),
   };
 }

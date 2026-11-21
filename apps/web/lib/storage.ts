@@ -5,7 +5,7 @@ import { defaultSite, locations } from "@dss/data";
 export type ThemeName = "dark" | "night";
 
 export type StoredSession = {
-  version: 4;
+  version: 5;
   theme: ThemeName;
   locationId: string;
   customSite?: Site;
@@ -20,6 +20,10 @@ export type StoredSession = {
   customFilters: ImagingFilter[];
   listSort: TargetSortKey;
   listSortDirection: SortDirection;
+  /** Include the large extended catalogue in Tonight / search. Off by default. */
+  includeExtendedCatalogue: boolean;
+  /** Include NGC/IC letter-suffix components (e.g. NGC4676A). Off by default. */
+  includeComponentObjects: boolean;
 };
 
 const KEY = "dss-planner.session.v1";
@@ -46,9 +50,17 @@ export function loadSession(): StoredSession | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Omit<Partial<StoredSession>, "version"> & { version?: number };
     const bag = parsed as { theme?: unknown; vision?: unknown };
-    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== 4) return null;
+    if (
+      parsed.version !== 1 &&
+      parsed.version !== 2 &&
+      parsed.version !== 3 &&
+      parsed.version !== 4 &&
+      parsed.version !== 5
+    ) {
+      return null;
+    }
     return {
-      version: 4,
+      version: 5,
       theme: parseTheme(bag.theme, bag.vision),
       locationId: typeof parsed.locationId === "string" ? parsed.locationId : "",
       customSite: parseSite(parsed.customSite),
@@ -67,6 +79,8 @@ export function loadSession(): StoredSession | null {
       customFilters: arrayOf(parsed.customFilters, isFilter),
       listSort: parseSortKey(parsed.listSort),
       listSortDirection: parsed.listSortDirection === "asc" || parsed.listSortDirection === "desc" ? parsed.listSortDirection : "desc",
+      includeExtendedCatalogue: parsed.includeExtendedCatalogue === true,
+      includeComponentObjects: parsed.includeComponentObjects === true,
     };
   } catch {
     return null;

@@ -27,12 +27,13 @@ export const DEEP_SKY_TYPES = [
 
 export type DeepSkyType = (typeof DEEP_SKY_TYPES)[number];
 
+/** Popular catalogues first (Messier → NGC → IC → Sharpless), then the rest. */
 export const CATALOGUE_IDS = [
   "messier",
   "ngc",
   "ic",
-  "caldwell",
   "sharpless",
+  "caldwell",
   "barnard",
   "ldn",
   "lbn",
