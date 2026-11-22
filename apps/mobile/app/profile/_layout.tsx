@@ -19,6 +19,7 @@ export default function ProfileStackLayout() {
       <Stack.Screen name="locations" options={{ title: "Locations" }} />
       <Stack.Screen name="catalogue" options={{ title: "Catalogue" }} />
       <Stack.Screen name="subscription" options={{ title: "Subscription" }} />
+      <Stack.Screen name="about" options={{ title: "About" }} />
     </Stack>
   );
 }

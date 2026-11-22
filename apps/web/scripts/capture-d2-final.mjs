@@ -67,8 +67,8 @@ await page.evaluate(() => window.scrollTo(0, 0));
 await page.screenshot({ path: `${outDir}/mobile-top.png` });
 
 await page.locator(".target").first().click();
+await page.locator(".target-dialog").waitFor({ timeout: 15000 });
 await page.locator(".moon-mark").waitFor({ timeout: 15000 });
-await page.locator(".inline-detail").scrollIntoViewIfNeeded();
 await page.screenshot({ path: `${outDir}/mobile-expanded.png`, fullPage: true });
 
 const loaded = await page.evaluate(() => {

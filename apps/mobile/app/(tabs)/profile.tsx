@@ -6,6 +6,7 @@ import { HubRow } from "@/components/hub-row";
 import { Field, GhostButton, OfflineBanner, PrimaryButton, useThemeStyles } from "@/components/ui";
 import { useNetworkOnline } from "@/hooks/use-network";
 import { getApiBase } from "@/lib/api";
+import { APP_NAME, APP_TAGLINE, APP_VERSION, COMPANY_SHORT_NAME } from "@/lib/app-meta";
 import { EMPTY_PROFILE, loadProfile, saveProfile, type LocalProfile } from "@/lib/storage";
 import { useAuth } from "@/state/auth-context";
 import { usePlannerState } from "@/state/planner-context";
@@ -145,6 +146,48 @@ export default function ProfileScreen() {
           <Text style={[styles.body, { fontWeight: "600" }]}>Offline & API</Text>
           <Text style={styles.muted}>Network: {online ? "Online" : "Offline"}</Text>
           <Text style={styles.muted}>API: {getApiBase()}</Text>
+        </View>
+
+        <View style={{ gap: 10 }}>
+          <Text style={[styles.body, { fontWeight: "600", fontSize: 18 }]}>About</Text>
+          <Text style={styles.muted}>
+            {APP_NAME} · v{APP_VERSION}. {APP_TAGLINE}
+          </Text>
+          <View style={[styles.card, { paddingVertical: 4, paddingHorizontal: 12 }]}>
+            <Text style={[styles.muted, { paddingVertical: 10, paddingHorizontal: 4 }]}>
+              Published by {COMPANY_SHORT_NAME}
+            </Text>
+            <HubRow
+              theme={planner.theme}
+              title="About DeepSkyMate"
+              detail="Version and product details"
+              onPress={() => router.push({ pathname: "/profile/about", params: { page: "about" } })}
+            />
+            <HubRow
+              theme={planner.theme}
+              title="Terms of use"
+              detail="How you may use the app"
+              onPress={() => router.push({ pathname: "/profile/about", params: { page: "terms" } })}
+            />
+            <HubRow
+              theme={planner.theme}
+              title="Privacy"
+              detail="What stays local and what we request"
+              onPress={() => router.push({ pathname: "/profile/about", params: { page: "privacy" } })}
+            />
+            <HubRow
+              theme={planner.theme}
+              title="Acknowledgements"
+              detail="Catalogue, sky, weather, and place data credits"
+              onPress={() => router.push({ pathname: "/profile/about", params: { page: "acknowledgements" } })}
+            />
+            <HubRow
+              theme={planner.theme}
+              title="Contact"
+              detail="Email and registered office"
+              onPress={() => router.push({ pathname: "/profile/about", params: { page: "contact" } })}
+            />
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

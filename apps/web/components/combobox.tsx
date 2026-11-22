@@ -10,12 +10,15 @@ export function Combobox({
   options,
   onChange,
   placeholder,
+  preserveOrder = false,
 }: {
   label: string;
   value: string;
   options: ComboOption[];
   onChange: (id: string) => void;
   placeholder?: string;
+  /** Keep the incoming options order (e.g. library-first). */
+  preserveOrder?: boolean;
 }) {
   const selected = options.find((option) => option.id === value);
   const [text, setText] = useState("");
@@ -24,10 +27,13 @@ export function Combobox({
   const matches = useMemo(() => {
     const query = text.trim().toLowerCase();
     const pool = query
-      ? options.filter((option) => `${option.label} ${option.hint ?? ""}`.toLowerCase().includes(query))
+      ? options.filter((option) =>
+          `${option.label} ${option.hint ?? ""} ${option.id}`.toLowerCase().includes(query),
+        )
       : options;
+    if (preserveOrder) return pool;
     return [...pool].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
-  }, [options, text]);
+  }, [options, text, preserveOrder]);
 
   return (
     <div className="combo">

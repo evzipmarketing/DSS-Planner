@@ -51,9 +51,26 @@ export function RigPanel({
   const showScope = part !== "camera";
   const showCamera = part !== "telescope";
   const title = part === "telescope" ? "Telescope" : part === "camera" ? "Camera" : "Rig";
+  const rigLocked = Boolean(planner.activeRigId);
   const smartCameraIds = new Set(
     planner.telescopes.flatMap((item) => (item.smart ? [item.smart.cameraId] : [])),
   );
+  const libraryScopes = new Set(planner.libraryTelescopeIds);
+  const libraryCameras = new Set(planner.libraryCameraIds);
+  const scopeOptions = [...planner.telescopes].sort((a, b) => {
+    const aLib = libraryScopes.has(a.id) ? 0 : 1;
+    const bLib = libraryScopes.has(b.id) ? 0 : 1;
+    if (aLib !== bLib) return aLib - bLib;
+    return a.name.localeCompare(b.name);
+  });
+  const cameraOptions = planner.cameraList
+    .filter((item) => item.custom || !smartCameraIds.has(item.id))
+    .sort((a, b) => {
+      const aLib = libraryCameras.has(a.id) ? 0 : 1;
+      const bLib = libraryCameras.has(b.id) ? 0 : 1;
+      if (aLib !== bLib) return aLib - bLib;
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <Section index="05" title={title}>
@@ -90,25 +107,39 @@ export function RigPanel({
         </>
       ) : null}
 
+      {rigLocked && part !== "all" ? (
+        <p className="note">
+          Locked by the selected rig. Switch to Manual under Rig to change {part === "telescope" ? "scope" : "camera"} separately.
+          Focal length can still be overridden below.
+        </p>
+      ) : null}
+
       <div className="fields">
         {showScope ? (
           <>
-            <Combobox
-              label="Telescope"
-              value={telescope?.id ?? ""}
-              placeholder="e.g. Seestar S50, Evostar 72ED"
-              options={planner.telescopes.map((item) => ({
-                id: item.id,
-                label: item.name,
-                hint: item.smart
-                  ? `Smart · ${item.apertureMm} mm · ${item.focalLengthMm} mm`
-                  : `${item.apertureMm} mm · ${item.focalLengthMm} mm`,
-              }))}
+            {rigLocked ? (
+              <p className="stat">
+                <span>Telescope</span>
+                <strong>{telescope?.name ?? "From rig"}</strong>
+              </p>
+            ) : (
+              <Combobox
+                label="Telescope"
+                value={telescope?.id ?? ""}
+                placeholder="e.g. Seestar S50, Evostar 72ED"
+                preserveOrder
+                options={scopeOptions.map((item) => ({
+                  id: item.id,
+                  label: item.name,
+                  hint: item.smart
+                    ? `Smart · ${item.apertureMm} mm · ${item.focalLengthMm} mm`
+                    : `${item.apertureMm} mm · ${item.focalLengthMm} mm`,
+                }))}
               onChange={(id) => {
                 planner.setTelescopeId(id);
-                onDone?.();
               }}
-            />
+              />
+            )}
             {telescope ? (
               <p className="note">
                 {telescope.smart
@@ -132,22 +163,30 @@ export function RigPanel({
               </label>
             ) : telescope && !telescope.smart ? (
               <>
-                <label className="field">
-                  Flattener, reducer, or Barlow
-                  <select
-                    value={String(planner.reducer)}
-                    onChange={(event) => planner.setReducer(Number(event.target.value))}
-                  >
-                    {REDUCERS.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                    {REDUCERS.some((item) => item.value === planner.reducer) ? null : (
-                      <option value={String(planner.reducer)}>{planner.reducer}×</option>
-                    )}
-                  </select>
-                </label>
+                {part === "all" ? (
+                  <label className="field">
+                    Flattener, reducer, or Barlow
+                    <select
+                      value={String(planner.reducer)}
+                      onChange={(event) => {
+                        const next = Number(event.target.value);
+                        planner.setReducer(next);
+                        planner.setTelescopePreferredReducer(telescope.id, next);
+                      }}
+                    >
+                      {REDUCERS.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                      {REDUCERS.some((item) => item.value === planner.reducer) ? null : (
+                        <option value={String(planner.reducer)}>{planner.reducer}×</option>
+                      )}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="note">Flattener / reducer is set in the Flattener setting ({planner.reducer}×).</p>
+                )}
                 <FocalLength telescope={telescope} />
               </>
             ) : null}
@@ -160,18 +199,22 @@ export function RigPanel({
                 Camera is paired with this smart telescope
                 {camera ? `: ${camera.name}` : ""}.
               </p>
+            ) : rigLocked ? (
+              <p className="stat">
+                <span>Camera</span>
+                <strong>{camera?.name ?? "From rig"}</strong>
+              </p>
             ) : (
               <Combobox
                 label="Camera"
                 value={camera?.id ?? ""}
                 placeholder="e.g. ASI533"
-                options={planner.cameraList
-                  .filter((item) => item.custom || !smartCameraIds.has(item.id))
-                  .map((item) => ({
-                    id: item.id,
-                    label: item.name,
-                    hint: `${item.sensor} · ${item.widthPx}×${item.heightPx}`,
-                  }))}
+                preserveOrder
+                options={cameraOptions.map((item) => ({
+                  id: item.id,
+                  label: item.name,
+                  hint: `${item.sensor} · ${item.widthPx}×${item.heightPx}`,
+                }))}
                 onChange={(id) => {
                   planner.setCameraId(id);
                   onDone?.();
@@ -182,9 +225,15 @@ export function RigPanel({
               label={telescope?.smart ? "Built-in filter" : "Add a filter"}
               value=""
               placeholder={telescope?.smart ? "e.g. dual-band" : "e.g. Astronomik"}
+              preserveOrder
               options={(telescope?.smart
                 ? planner.filterList.filter((item) => telescope.smart?.filterIds.includes(item.id))
-                : planner.filterList
+                : [...planner.filterList].sort((a, b) => {
+                    const aLib = planner.libraryFilterIds.includes(a.id) ? 0 : 1;
+                    const bLib = planner.libraryFilterIds.includes(b.id) ? 0 : 1;
+                    if (aLib !== bLib) return aLib - bLib;
+                    return a.name.localeCompare(b.name);
+                  })
               ).map((item) => ({
                 id: item.id,
                 label: item.name,
@@ -208,7 +257,7 @@ export function RigPanel({
         ) : null}
       </div>
 
-      <CustomGear part={part} />
+      {rigLocked ? null : <CustomGear part={part} onDone={onDone} />}
     </Section>
   );
 }
@@ -219,7 +268,10 @@ function FocalLength({ telescope }: { telescope: Telescope }) {
   const active = planner.focalOverrideMm ?? computed;
   return (
     <>
-      <p className="focal-readout">Focal length {active} mm</p>
+      <p className="focal-readout">
+        Focal length {active} mm
+        {planner.focalOverrideMm != null ? " (custom)" : ""}
+      </p>
       {planner.focalOverrideMm != null ? (
         <p className="focal-hint">Using the number you enter. The scope and corrector give {computed} mm.</p>
       ) : null}
@@ -233,6 +285,7 @@ function FocalLength({ telescope }: { telescope: Telescope }) {
         inputMode="numeric"
         placeholder="e.g. 800"
         allowEmpty
+        commitOnChange
         onCommit={(next) => {
           if (next == null) {
             planner.setFocalOverrideMm(null);
@@ -245,7 +298,13 @@ function FocalLength({ telescope }: { telescope: Telescope }) {
   );
 }
 
-function CustomGear({ part }: { part: "all" | "telescope" | "camera" }) {
+function CustomGear({
+  part,
+  onDone,
+}: {
+  part: "all" | "telescope" | "camera";
+  onDone?: () => void;
+}) {
   const planner = usePlannerState();
   return (
     <>
@@ -255,6 +314,7 @@ function CustomGear({ part }: { part: "all" | "telescope" | "camera" }) {
           <ScopeForm
             onSave={(scope) => {
               planner.addTelescope(scope);
+              onDone?.();
             }}
           />
         </details>
@@ -263,7 +323,12 @@ function CustomGear({ part }: { part: "all" | "telescope" | "camera" }) {
         <>
           <details className="drawer">
             <summary>Custom camera</summary>
-            <CameraForm onSave={(camera) => planner.addCamera(camera)} />
+            <CameraForm
+              onSave={(camera) => {
+                planner.addCamera(camera);
+                onDone?.();
+              }}
+            />
           </details>
           <details className="drawer">
             <summary>Custom filter</summary>
@@ -314,8 +379,8 @@ function ScopeForm({ onSave }: { onSave: (scope: Telescope) => void }) {
       }}
     >
       <label className="field">Name<input value={name} placeholder="e.g. My 80 mm refractor" onChange={(event) => setName(event.target.value)} /></label>
-      <NumericField label="Aperture (mm)" value={aperture} fallback={80} min={1} max={2000} placeholder="e.g. 80" allowEmpty={false} onCommit={setAperture} />
-      <NumericField label="Focal length (mm)" value={focal} fallback={480} min={1} max={20000} placeholder="e.g. 480" allowEmpty={false} onCommit={setFocal} />
+      <NumericField label="Aperture (mm)" value={aperture} fallback={80} min={1} max={2000} placeholder="e.g. 80" allowEmpty={false} commitOnChange onCommit={setAperture} />
+      <NumericField label="Focal length (mm)" value={focal} fallback={480} min={1} max={20000} placeholder="e.g. 480" allowEmpty={false} commitOnChange onCommit={setFocal} />
       {error ? <p className="warn">{error}</p> : null}
       <button type="submit" className="vision">Save telescope</button>
     </form>
@@ -380,11 +445,11 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
       }}
     >
       <label className="field">Name<input value={name} placeholder="e.g. My camera" onChange={(event) => setName(event.target.value)} /></label>
-      <NumericField label="Sensor width (mm)" value={width} fallback={11.31} min={0.1} max={100} placeholder="e.g. 11.31" allowEmpty={false} onCommit={setWidth} />
-      <NumericField label="Sensor height (mm)" value={height} fallback={11.31} min={0.1} max={100} placeholder="e.g. 11.31" allowEmpty={false} onCommit={setHeight} />
-      <NumericField label="Pixel size (µm, optional if resolution is set)" value={pixel} fallback={3.76} min={0.1} max={50} placeholder="e.g. 3.76" allowEmpty onCommit={setPixel} />
-      <NumericField label="Width (px)" value={cols} fallback={3008} min={1} max={30000} inputMode="numeric" placeholder="e.g. 3008" allowEmpty={false} onCommit={(next) => setCols(next == null ? null : Math.round(next))} />
-      <NumericField label="Height (px)" value={rows} fallback={3008} min={1} max={30000} inputMode="numeric" placeholder="e.g. 3008" allowEmpty={false} onCommit={(next) => setRows(next == null ? null : Math.round(next))} />
+      <NumericField label="Sensor width (mm)" value={width} fallback={11.31} min={0.1} max={100} placeholder="e.g. 11.31" allowEmpty={false} commitOnChange onCommit={setWidth} />
+      <NumericField label="Sensor height (mm)" value={height} fallback={11.31} min={0.1} max={100} placeholder="e.g. 11.31" allowEmpty={false} commitOnChange onCommit={setHeight} />
+      <NumericField label="Pixel size (µm, optional if resolution is set)" value={pixel} fallback={3.76} min={0.1} max={50} placeholder="e.g. 3.76" allowEmpty commitOnChange onCommit={setPixel} />
+      <NumericField label="Width (px)" value={cols} fallback={3008} min={1} max={30000} inputMode="numeric" placeholder="e.g. 3008" allowEmpty={false} commitOnChange onCommit={(next) => setCols(next == null ? null : Math.round(next))} />
+      <NumericField label="Height (px)" value={rows} fallback={3008} min={1} max={30000} inputMode="numeric" placeholder="e.g. 3008" allowEmpty={false} commitOnChange onCommit={(next) => setRows(next == null ? null : Math.round(next))} />
       <label className="field">
         Sensor
         <select value={sensor} onChange={(event) => setSensor(event.target.value as SensorKind)}>
@@ -392,7 +457,7 @@ function CameraForm({ onSave }: { onSave: (camera: Camera) => void }) {
           <option value="mono">Mono</option>
         </select>
       </label>
-      <NumericField label="Read noise (e−, nominal)" value={noise} fallback={1.5} min={0.01} max={50} placeholder="e.g. 1.5" allowEmpty={false} onCommit={setNoise} />
+      <NumericField label="Read noise (e−, nominal)" value={noise} fallback={1.5} min={0.01} max={50} placeholder="e.g. 1.5" allowEmpty={false} commitOnChange onCommit={setNoise} />
       {error ? <p className="warn">{error}</p> : null}
       <button type="submit" className="vision">Save camera</button>
     </form>

@@ -64,6 +64,10 @@ function localDateIso(timeZone?: string): string {
   }).format(new Date());
 }
 
+function uniqueNonEmpty(ids: string[]): string[] {
+  return [...new Set(ids.filter((id) => id.length > 0))];
+}
+
 export function usePlanner() {
   const [coreCatalogue, setCoreCatalogue] = useState<DeepSkyObject[] | null>(null);
   const [extendedCatalogue, setExtendedCatalogue] = useState<DeepSkyObject[] | null>(null);
@@ -89,6 +93,8 @@ export function usePlanner() {
   const [customFilters, setCustomFilters] = useState<ImagingFilter[]>([]);
   const [libraryTelescopeIds, setLibraryTelescopeIds] = useState<string[]>([]);
   const [libraryCameraIds, setLibraryCameraIds] = useState<string[]>([]);
+  const [libraryFilterIds, setLibraryFilterIds] = useState<string[]>([]);
+  const [telescopeReducers, setTelescopeReducers] = useState<Record<string, number>>({});
   const [rigs, setRigs] = useState<GearRig[]>([]);
   const [activeRigId, setActiveRigId] = useState<string | null>(null);
   const [savedSites, setSavedSites] = useState<Site[]>([]);
@@ -138,6 +144,8 @@ export function usePlanner() {
         setCustomFilters(stored.customFilters);
         setLibraryTelescopeIds(stored.libraryTelescopeIds);
         setLibraryCameraIds(stored.libraryCameraIds);
+        setLibraryFilterIds(stored.libraryFilterIds);
+        setTelescopeReducers(stored.telescopeReducers);
         setRigs(stored.rigs);
         setActiveRigId(stored.activeRigId);
         setIncludeExtendedCatalogue(stored.includeExtendedCatalogue);
@@ -232,7 +240,7 @@ export function usePlanner() {
   useEffect(() => {
     if (!hydrated) return;
     void saveSession({
-      version: 4,
+      version: 5,
       theme,
       locationId: locationReady ? site.id : "",
       customSite: locationReady ? site : undefined,
@@ -251,6 +259,8 @@ export function usePlanner() {
       customFilters,
       libraryTelescopeIds,
       libraryCameraIds,
+      libraryFilterIds,
+      telescopeReducers,
       rigs,
       activeRigId,
       includeExtendedCatalogue,
@@ -276,6 +286,8 @@ export function usePlanner() {
     customFilters,
     libraryTelescopeIds,
     libraryCameraIds,
+    libraryFilterIds,
+    telescopeReducers,
     rigs,
     activeRigId,
     includeExtendedCatalogue,
@@ -383,6 +395,7 @@ export function usePlanner() {
   }
 
   function setTelescopeId(id: string) {
+    setActiveRigId(null);
     setTelescopeIdState(id);
     const scope = [...seedTelescopes, ...customTelescopes].find((item) => item.id === id);
     if (scope?.smart) {
@@ -399,6 +412,7 @@ export function usePlanner() {
   }
 
   function setCameraId(id: string) {
+    setActiveRigId(null);
     setCameraIdState(id);
     if (telescope?.smart && telescope.smart.cameraId !== id) {
       setTelescopeIdState("");
@@ -494,17 +508,39 @@ export function usePlanner() {
     setLibraryCameraIds((current) => (current.includes(id) ? current : [...current, id]));
   }
 
-  function addTelescopeToLibrary(id: string) {
+  function ensureLibraryFilter(id: string) {
+    setLibraryFilterIds((current) => (current.includes(id) ? current : [...current, id]));
+  }
+
+  function addTelescopeToLibrary(id: string, preferredReducer?: number) {
     ensureLibraryTelescope(id);
+    if (preferredReducer && preferredReducer > 0) {
+      setTelescopeReducers((current) => ({ ...current, [id]: preferredReducer }));
+    }
   }
 
   function addCameraToLibrary(id: string) {
     ensureLibraryCamera(id);
   }
 
+  function addFilterToLibrary(id: string) {
+    ensureLibraryFilter(id);
+  }
+
+  function setTelescopePreferredReducer(id: string, factor: number) {
+    if (!(factor > 0)) return;
+    setTelescopeReducers((current) => ({ ...current, [id]: factor }));
+  }
+
   function deleteTelescopeFromLibrary(id: string) {
     setLibraryTelescopeIds((current) => current.filter((item) => item !== id));
     setCustomTelescopes((current) => current.filter((item) => item.id !== id));
+    setTelescopeReducers((current) => {
+      if (!(id in current)) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
     setRigs((current) => {
       const next = current.filter((rig) => rig.telescopeId !== id);
       setActiveRigId((active) => (active && next.some((rig) => rig.id === active) ? active : null));
@@ -524,7 +560,24 @@ export function usePlanner() {
     if (cameraId === id) setCameraIdState("");
   }
 
-  function addCustomTelescope(input: { name: string; apertureMm: number; focalLengthMm: number }): Telescope {
+  function deleteFilterFromLibrary(id: string) {
+    setLibraryFilterIds((current) => current.filter((item) => item !== id));
+    setCustomFilters((current) => current.filter((item) => item.id !== id));
+    setFilterIds((current) => current.filter((item) => item !== id));
+    setRigs((current) =>
+      current.map((rig) => ({
+        ...rig,
+        filterIds: rig.filterIds.filter((filterId) => filterId !== id),
+      })),
+    );
+  }
+
+  function addCustomTelescope(input: {
+    name: string;
+    apertureMm: number;
+    focalLengthMm: number;
+    preferredReducer?: number;
+  }): Telescope {
     const created: Telescope = {
       id: `custom-scope-${Date.now()}`,
       name: input.name.trim(),
@@ -534,6 +587,15 @@ export function usePlanner() {
     };
     setCustomTelescopes((current) => [...current, created]);
     ensureLibraryTelescope(created.id);
+    if (input.preferredReducer && input.preferredReducer > 0) {
+      setTelescopeReducers((current) => ({ ...current, [created.id]: input.preferredReducer! }));
+      setReducer(input.preferredReducer);
+    }
+    // Select immediately from the created object — customTelescopes is stale until next render.
+    setActiveRigId(null);
+    setTelescopeIdState(created.id);
+    setSmartModeId(null);
+    setFocalOverrideMmState(null);
     return created;
   }
 
@@ -561,23 +623,62 @@ export function usePlanner() {
     };
     setCustomCameras((current) => [...current, created]);
     ensureLibraryCamera(created.id);
+    setActiveRigId(null);
+    setCameraIdState(created.id);
+    if (telescope?.smart && telescope.smart.cameraId !== created.id) {
+      setTelescopeIdState("");
+      setSmartModeId(null);
+      setFocalOverrideMmState(null);
+    }
     return created;
   }
 
-  function createRig(input: { name: string; telescopeId: string; cameraId: string; reducer?: number }): GearRig | null {
+  function addCustomFilter(input: {
+    name: string;
+    kind: ImagingFilter["kind"];
+    bandpassNm: number;
+    transmission: number;
+  }): ImagingFilter {
+    const created: ImagingFilter = {
+      id: `custom-filter-${Date.now()}`,
+      name: input.name.trim(),
+      kind: input.kind,
+      bandpassNm: input.bandpassNm,
+      transmission: input.transmission,
+      custom: true,
+    };
+    setCustomFilters((current) => [...current, created]);
+    ensureLibraryFilter(created.id);
+    return created;
+  }
+
+  function createRig(input: {
+    name: string;
+    telescopeId: string;
+    cameraId: string;
+    reducer?: number;
+    filterIds?: string[];
+  }): GearRig | null {
     const scope = [...seedTelescopes, ...customTelescopes].find((item) => item.id === input.telescopeId);
     const cam = [...seedCameras, ...customCameras].find((item) => item.id === input.cameraId);
     if (!scope || !cam) return null;
     const cameraForRig = scope.smart ? scope.smart.cameraId : input.cameraId;
+    const filtersForRig = uniqueNonEmpty(
+      scope.smart?.filterIds?.length
+        ? (input.filterIds ?? []).filter((id) => scope.smart?.filterIds.includes(id))
+        : (input.filterIds ?? []),
+    );
     const rig: GearRig = {
       id: `rig-${Date.now()}`,
       name: input.name.trim() || `${scope.name} + ${cam.name}`,
       telescopeId: input.telescopeId,
       cameraId: cameraForRig,
       reducer: input.reducer && input.reducer > 0 ? input.reducer : 1,
+      filterIds: filtersForRig,
     };
     ensureLibraryTelescope(rig.telescopeId);
     ensureLibraryCamera(rig.cameraId);
+    for (const filterId of rig.filterIds) ensureLibraryFilter(filterId);
     setRigs((current) => [...current, rig]);
     return rig;
   }
@@ -590,10 +691,24 @@ export function usePlanner() {
   function selectRig(id: string) {
     const rig = rigs.find((item) => item.id === id);
     if (!rig) return;
+    const scope = [...seedTelescopes, ...customTelescopes].find((item) => item.id === rig.telescopeId);
     setActiveRigId(id);
-    setTelescopeId(rig.telescopeId);
-    setCameraId(rig.cameraId);
+    setTelescopeIdState(rig.telescopeId);
+    setCameraIdState(rig.cameraId);
     setReducer(rig.reducer);
+    setFilterIds(rig.filterIds);
+    if (scope?.smart) {
+      const mode = scope.smart.modes?.[0] ?? null;
+      setSmartModeId(mode?.id ?? null);
+      setFocalOverrideMmState(mode?.focalLengthMm ?? null);
+    } else {
+      setSmartModeId(null);
+      setFocalOverrideMmState(null);
+    }
+  }
+
+  function clearActiveRig() {
+    setActiveRigId(null);
   }
 
   return {
@@ -656,17 +771,24 @@ export function usePlanner() {
     hydrated,
     libraryTelescopeIds,
     libraryCameraIds,
+    libraryFilterIds,
+    telescopeReducers,
     rigs,
     activeRigId,
     addTelescopeToLibrary,
     addCameraToLibrary,
+    addFilterToLibrary,
+    setTelescopePreferredReducer,
     deleteTelescopeFromLibrary,
     deleteCameraFromLibrary,
+    deleteFilterFromLibrary,
     addCustomTelescope,
     addCustomCamera,
+    addCustomFilter,
     createRig,
     deleteRig,
     selectRig,
+    clearActiveRig,
   };
 }
 

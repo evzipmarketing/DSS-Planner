@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type NumericFieldProps = {
   label: string;
@@ -14,6 +14,8 @@ export type NumericFieldProps = {
   inputMode?: "decimal" | "numeric";
   allowEmpty?: boolean;
   hint?: string;
+  /** Commit valid numbers while typing so closed settings chips stay in sync. */
+  commitOnChange?: boolean;
 };
 
 /**
@@ -32,10 +34,15 @@ export function NumericField({
   inputMode = "decimal",
   allowEmpty = true,
   hint,
+  commitOnChange = false,
 }: NumericFieldProps) {
   const [text, setText] = useState(() => formatValue(value));
   const [syncedValue, setSyncedValue] = useState(value);
   const [revertHint, setRevertHint] = useState(false);
+  const textRef = useRef(text);
+  const onCommitRef = useRef(onCommit);
+  textRef.current = text;
+  onCommitRef.current = onCommit;
 
   if (value !== syncedValue) {
     setSyncedValue(value);
@@ -43,35 +50,61 @@ export function NumericField({
     setRevertHint(false);
   }
 
-  function commit() {
-    const trimmed = text.trim();
+  function commit(raw = text, soft = false) {
+    const trimmed = raw.trim();
     if (trimmed === "") {
       if (allowEmpty) {
         onCommit(null);
-        setText("");
+        if (!soft) setText("");
         setRevertHint(false);
         return;
       }
+      if (soft) return;
       const restore = value ?? fallback;
       setText(formatValue(restore));
       setRevertHint(true);
       return;
     }
+    if (soft && trimmed.endsWith(".")) return;
     const parsed = Number(trimmed);
     if (!Number.isFinite(parsed) || parsed <= 0) {
+      if (soft) return;
       const restore = value ?? fallback;
       setText(formatValue(restore));
       setRevertHint(true);
       return;
     }
     let next = parsed;
-    if (min != null && next < min) next = min;
-    if (max != null && next > max) next = max;
-    if (next !== parsed) setRevertHint(true);
+    if (min != null && next < min) {
+      if (soft) return;
+      next = min;
+    }
+    if (max != null && next > max) {
+      if (soft) return;
+      next = max;
+    }
+    if (!soft && next !== parsed) setRevertHint(true);
     else setRevertHint(false);
     onCommit(next);
-    setText(formatValue(next));
+    if (!soft) setText(formatValue(next));
   }
+
+  useEffect(() => {
+    if (!commitOnChange) return;
+    return () => {
+      const trimmed = textRef.current.trim();
+      if (trimmed === "") {
+        if (allowEmpty) onCommitRef.current(null);
+        return;
+      }
+      if (trimmed.endsWith(".")) return;
+      const parsed = Number(trimmed);
+      if (!Number.isFinite(parsed) || parsed <= 0) return;
+      if (min != null && parsed < min) return;
+      if (max != null && parsed > max) return;
+      onCommitRef.current(parsed);
+    };
+  }, [allowEmpty, commitOnChange, max, min]);
 
   return (
     <label className="field">
@@ -82,10 +115,12 @@ export function NumericField({
         inputMode={inputMode}
         step={step}
         onChange={(event) => {
-          setText(event.target.value);
+          const next = event.target.value;
+          setText(next);
           setRevertHint(false);
+          if (commitOnChange) commit(next, true);
         }}
-        onBlur={commit}
+        onBlur={() => commit()}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();

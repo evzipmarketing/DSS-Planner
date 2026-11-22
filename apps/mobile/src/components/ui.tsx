@@ -115,6 +115,7 @@ export function Field({
   keyboardType,
   autoCapitalize = "none",
   editable = true,
+  autoFocus = false,
 }: {
   theme: ThemeName;
   label: string;
@@ -124,6 +125,7 @@ export function Field({
   keyboardType?: "default" | "email-address" | "numeric" | "decimal-pad" | "phone-pad";
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   editable?: boolean;
+  autoFocus?: boolean;
 }) {
   const styles = useThemeStyles(theme);
   return (
@@ -138,6 +140,7 @@ export function Field({
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         editable={editable}
+        autoFocus={autoFocus}
       />
     </View>
   );

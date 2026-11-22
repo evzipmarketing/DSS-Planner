@@ -55,7 +55,7 @@ await page.locator(".search-clear").waitFor();
 await page.locator(".moon-mark").waitFor({ timeout: 15000 });
 const slots = await page.locator(".target-slot").count();
 if (slots !== 1) throw new Error(`Expected one target row, saw ${slots}`);
-if ((await page.locator(".inline-detail").count()) !== 1) throw new Error("Selected object is not expanded");
+if ((await page.locator(".target-dialog").count()) !== 1) throw new Error("Selected object dialog is not open");
 await page.screenshot({ path: `${outDir}/desktop-search.png`, fullPage: true });
 await page.locator(".search-field").screenshot({ path: `${outDir}/search-clear.png` });
 
@@ -72,8 +72,8 @@ await page.locator(".thumb-open").first().waitFor({ timeout: 30000 });
 await page.locator(".thumb-open").first().click();
 await page.locator(".preview-dialog").waitFor();
 await page.locator(".preview-frame img").waitFor({ state: "visible", timeout: 90000 });
-const stillClosed = await page.locator(".inline-detail").count();
-if (stillClosed !== 0) throw new Error("Thumbnail click expanded the row");
+const stillClosed = await page.locator(".target-dialog").count();
+if (stillClosed !== 0) throw new Error("Thumbnail click opened the target dialog");
 await page.screenshot({ path: `${outDir}/preview-desktop.png` });
 
 await page.setViewportSize({ width: 390, height: 844 });

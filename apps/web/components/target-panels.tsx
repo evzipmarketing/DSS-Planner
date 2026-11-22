@@ -4,8 +4,6 @@ import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } 
 import { createPortal } from "react-dom";
 import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
-  CATALOGUE_IDS,
-  DEEP_SKY_TYPES,
   IMAGEABLE_MIN_ALTITUDE_DEG,
   TARGET_LIST_FILTERS,
   TARGET_SORT_KEYS,
@@ -29,9 +27,7 @@ import {
   objectTitle,
   primaryDesignation,
   objectTypeLabel,
-  type CatalogueId,
   type DeepSkyObject,
-  type DeepSkyType,
   type RankedTarget,
 } from "@dss/core";
 import { constellationName } from "@dss/data";
@@ -62,6 +58,12 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
   } = usePlannerState();
   const [shown, setShown] = useState(20);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
+  const [toolsHost, setToolsHost] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setToolsHost(document.getElementById("tonight-list-tools"));
+  }, []);
+
   const ordered = useMemo(
     () =>
       [...shortlist].sort((a, b) =>
@@ -112,43 +114,46 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
     focusTarget(null);
   }
 
+  const tools = (
+    <div className="list-tools list-tools-compact">
+      <ListSearch
+        query={query}
+        pinned={Boolean(pinnedId)}
+        onQuery={(next) => {
+          setQuery(next);
+          setPinnedId(null);
+        }}
+        onClear={clearSearch}
+        onSubmit={() => {
+          if (!pinnedId && results[0]) selectResult(results[0]);
+        }}
+      />
+      <ListFilter
+        filter={listFilter}
+        onFilter={(next) => {
+          setListFilter(next);
+          setShown(20);
+        }}
+      />
+      <ListSort
+        sortKey={listSort}
+        direction={listSortDirection}
+        onKey={(next) => {
+          setListSort(next);
+          setListSortDirection(defaultSortDirection(next));
+          setShown(20);
+        }}
+        onDirection={(next) => {
+          setListSortDirection(next);
+          setShown(20);
+        }}
+      />
+    </div>
+  );
+
   return (
     <Section index="06" title="Tonight's targets" hideHeading>
-      <div className="list-tools list-tools-compact">
-        <ListFilter
-          filter={listFilter}
-          onFilter={(next) => {
-            setListFilter(next);
-            setShown(20);
-          }}
-        />
-        <CustomFilters />
-        <ListSort
-          sortKey={listSort}
-          direction={listSortDirection}
-          onKey={(next) => {
-            setListSort(next);
-            setListSortDirection(defaultSortDirection(next));
-            setShown(20);
-          }}
-          onDirection={(next) => {
-            setListSortDirection(next);
-            setShown(20);
-          }}
-        />
-        <ListSearch
-          query={query}
-          pinned={Boolean(pinnedId)}
-          onQuery={(next) => {
-            setQuery(next);
-            setPinnedId(null);
-          }}
-          onClear={clearSearch}
-          onSubmit={() => {
-            if (!pinnedId && results[0]) selectResult(results[0]);
-          }}
-        />
-      </div>
+      {toolsHost ? createPortal(tools, toolsHost) : tools}
       {pinnedId ? (
         <button type="button" className="show-all" onClick={clearSearch}>
           Show all targets
@@ -156,21 +161,21 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
       ) : null}
       {!catalogue ? <p className="note">Loading the deep-sky catalogue…</p> : null}
       {pinnedId ? null : (
-      <div className="rows">
-        {results.map((object) => (
-          <button key={object.id} type="button" className="row" onClick={() => selectResult(object)}>
-            <span className="row-index">{primaryDesignation(object)}</span>
-            <span>
-              <strong>{objectTitle(object)}</strong>
-              <small>
-                {objectTypeLabel(object.type)}
-                {object.constellation ? ` · ${constellationName(object.constellation)}` : ""}
-              </small>
-            </span>
-            <span className="meta">{object.magnitude == null ? "—" : object.magnitude.toFixed(1)}</span>
-          </button>
-        ))}
-      </div>
+        <div className="rows search-hits">
+          {results.map((object) => (
+            <button key={object.id} type="button" className="row" onClick={() => selectResult(object)}>
+              <span className="row-index">{primaryDesignation(object)}</span>
+              <span>
+                <strong>{objectTitle(object)}</strong>
+                <small>
+                  {objectTypeLabel(object.type)}
+                  {object.constellation ? ` · ${constellationName(object.constellation)}` : ""}
+                </small>
+              </span>
+              <span className="meta">{object.magnitude == null ? "—" : object.magnitude.toFixed(1)}</span>
+            </button>
+          ))}
+        </div>
       )}
       {!pinnedId && catalogue && query.trim() && results.length === 0 ? (
         <p className="note">
@@ -181,17 +186,15 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
       {!pinned && catalogue && !scoring && shortlist.length === 0 ? (
         <p className="note">Nothing in this view clears the horizon. Try another night, site, or filter.</p>
       ) : null}
-      <div className="rows">
+      <div className={`target-grid${pinned ? " is-pinned" : ""}`}>
         {(pinned ? [pinned] : visible).map((item) => (
           <TargetRow
             key={item.object.id}
             item={item}
-            expanded={pinned != null || selected?.id === item.object.id}
+            active={selected?.id === item.object.id}
             onToggle={() => {
-              if (pinned) return;
               chooseTarget(item.object.id);
             }}
-            detail={detail}
           />
         ))}
       </div>
@@ -199,6 +202,11 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
         <button type="button" className="ghost show-more" onClick={() => setShown((count) => count + 20)}>
           Show more
         </button>
+      ) : null}
+      {selected && detail ? (
+        <TargetDetailDialog title={objectTitle(selected)} onClose={() => focusTarget(null)}>
+          {detail}
+        </TargetDetailDialog>
       ) : null}
     </Section>
   );
@@ -228,22 +236,22 @@ function pinnedRow(
 
 function TargetRow({
   item,
-  expanded,
+  active,
   onToggle,
-  detail,
 }: {
   item: ListedTarget;
-  expanded: boolean;
+  active: boolean;
   onToggle: () => void;
-  detail?: ReactNode;
 }) {
+  const frameValue = item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`;
+  const imageableValue = formatImageableHours(item.usableHours);
   return (
-    <div className="target-slot">
+    <div className={`target-slot${active ? " is-active" : ""}`}>
       <div
         className="target"
         role="button"
         tabIndex={0}
-        aria-expanded={expanded}
+        aria-pressed={active}
         onClick={onToggle}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return;
@@ -261,32 +269,80 @@ function TargetRow({
             name={objectTitle(item.object)}
             typeLabel={objectTypeLabel(item.object.type)}
             magnitude={item.object.magnitude}
+            size={256}
           />
           <span className="target-copy">
             <span className="target-title">
               <strong>{objectTitle(item.object)}</strong>
-              <span className="tag">{bandLabel(item.band)}</span>
             </span>
-            <span className="target-sub">
-              {primaryDesignation(item.object)} · {objectTypeLabel(item.object.type)}
+            <span className="target-code">{primaryDesignation(item.object)}</span>
+            <span className="target-type">{objectTypeLabel(item.object.type)}</span>
+            <span className="tag">{bandLabel(item.band)}</span>
+            <span className="target-facts">
+              <span className="fact-pair">
+                <span className="fact-value">{frameValue}</span>
+                <span className="fact-sep">·</span>
+                <span className="fact-value">{imageableValue}</span>
+                <FactInfo
+                  tip={`Frame ${frameValue}: how much of the sensor the object fills with the current telescope, corrector, and camera. Imageable ${imageableValue}: hours tonight when the object is at least ${IMAGEABLE_MIN_ALTITUDE_DEG}° up, the sun is below −${Math.abs(ASTRONOMICAL_SUN_ALTITUDE_DEG)}°, and the Moon is acceptable for this target’s band.`}
+                />
+              </span>
             </span>
           </span>
         </span>
-        <span className="target-facts">
-          <Fact
-            label="Frame"
-            value={item.frameFillPercent == null ? "—" : `${Math.round(item.frameFillPercent)}%`}
-            tip="How much of the sensor the object fills, from its catalogued size and the current telescope, corrector, and camera."
-          />
-          <Fact
-            label="Imageable"
-            value={formatImageableHours(item.usableHours)}
-            tip={`Hours tonight when the object is at least ${IMAGEABLE_MIN_ALTITUDE_DEG}° up, the sun is below −${Math.abs(ASTRONOMICAL_SUN_ALTITUDE_DEG)}°, and the Moon is acceptable for this target’s band (broadband skips bright-Moon time).`}
-          />
-        </span>
       </div>
-      {expanded && detail ? <div className="inline-detail">{detail}</div> : null}
     </div>
+  );
+}
+
+function TargetDetailDialog({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onCloseRef.current();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  return createPortal(
+    <div className="target-dialog-backdrop" onClick={onClose}>
+      <div
+        className="target-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="target-dialog-close" ref={closeRef} aria-label="Close target details" onClick={onClose}>
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </button>
+        <div className="target-dialog-body">{children}</div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -503,15 +559,9 @@ function ListSort({
   );
 }
 
-function customFilterCount(query: { types: readonly unknown[]; catalogues: readonly unknown[]; maxMagnitude: number | null; minSizeArcmin: number | null }): number {
-  return query.types.length + query.catalogues.length + (query.maxMagnitude != null ? 1 : 0) + (query.minSizeArcmin != null ? 1 : 0);
-}
-
-function CustomFilters() {
-  const { targetQuery, setTargetQuery, extendedReady } = usePlannerState();
+function FactInfo({ tip }: { tip: string }) {
   const [open, setOpen] = useState(false);
   const host = useRef<HTMLSpanElement>(null);
-  const count = customFilterCount(targetQuery);
 
   useEffect(() => {
     if (!open) return;
@@ -530,109 +580,31 @@ function CustomFilters() {
   }, [open]);
 
   return (
-    <span className={`custom-filter${open ? " open" : ""}`} ref={host}>
+    <span
+      className={`fact-info-host${open ? " is-open" : ""}`}
+      ref={host}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       <button
         type="button"
-        className="tab custom-tab"
+        className="fact-info"
+        aria-label="Frame and imageable hours info"
         aria-expanded={open}
-        aria-controls="custom-filters"
-        aria-label={count > 0 ? `Custom filters, ${count} active` : "Custom filters"}
-        onClick={() => setOpen((current) => !current)}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
       >
-        Custom
-        {count > 0 ? <span className="custom-count">{count}</span> : null}
-        <svg className="custom-chevron" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M3.5 6l4.5 4.5L12.5 6" />
-        </svg>
+        i
       </button>
       {open ? (
-        <div className="custom-panel" id="custom-filters" role="region" aria-label="Custom filters">
-          <div className="fields">
-            <label className="field">
-              Type
-              <select
-                multiple
-                value={targetQuery.types}
-                onChange={(event) => {
-                  const types = Array.from(event.target.selectedOptions, (option) => option.value as DeepSkyType);
-                  setTargetQuery({ ...targetQuery, types });
-                }}
-              >
-                {DEEP_SKY_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {objectTypeLabel(type)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Magnitude
-              <input
-                inputMode="decimal"
-                placeholder="e.g. 8"
-                value={targetQuery.maxMagnitude ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value.trim();
-                  const maxMagnitude = value === "" ? null : Number(value);
-                  setTargetQuery({
-                    ...targetQuery,
-                    maxMagnitude: maxMagnitude != null && Number.isFinite(maxMagnitude) ? maxMagnitude : null,
-                  });
-                }}
-              />
-            </label>
-            <label className="field">
-              Catalogue
-              <select
-                multiple
-                value={targetQuery.catalogues}
-                onChange={(event) => {
-                  const catalogues = Array.from(event.target.selectedOptions, (option) => option.value as CatalogueId);
-                  setTargetQuery({ ...targetQuery, catalogues });
-                }}
-              >
-                {CATALOGUE_IDS.map((catalogueId) => (
-                  <option key={catalogueId} value={catalogueId}>
-                    {catalogueLabel(catalogueId)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Size
-              <input
-                inputMode="decimal"
-                placeholder="e.g. 10"
-                value={targetQuery.minSizeArcmin ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value.trim();
-                  const minSizeArcmin = value === "" ? null : Number(value);
-                  setTargetQuery({
-                    ...targetQuery,
-                    minSizeArcmin: minSizeArcmin != null && Number.isFinite(minSizeArcmin) ? minSizeArcmin : null,
-                  });
-                }}
-              />
-            </label>
-          </div>
-          <p className="custom-hint">
-            Leave these empty for the usual shortlist. Hold Ctrl or Command to pick more than one type or catalogue.
-            {!extendedReady ? " The extended catalogues are still loading." : ""}
-          </p>
-        </div>
+        <span className="fact-tip" role="tooltip">
+          {tip}
+        </span>
       ) : null}
-    </span>
-  );
-}
-
-function Fact({ label, value, tip }: { label: string; value: string; tip: string }) {
-  return (
-    <span className="fact">
-      <span className="fact-label">{label}</span>
-      <span className="fact-value">{value}</span>
-      <span className="fact-tip" role="tooltip">
-        {tip}
-      </span>
     </span>
   );
 }
@@ -677,6 +649,7 @@ function TargetThumb({
   name,
   typeLabel,
   magnitude,
+  size = 96,
 }: {
   raDeg: number;
   decDeg: number;
@@ -684,11 +657,12 @@ function TargetThumb({
   name: string;
   typeLabel: string;
   magnitude: number | null;
+  size?: number;
 }) {
   const host = useRef<HTMLButtonElement>(null);
   const [phase, setPhase] = useState<"wait" | "show" | "empty">("wait");
   const [preview, setPreview] = useState(false);
-  const src = skySrc(raDeg, decDeg, majorArcmin, 96);
+  const src = skySrc(raDeg, decDeg, majorArcmin, size);
 
   useEffect(() => {
     const node = host.current;
@@ -746,7 +720,7 @@ function TargetThumb({
         }}
       >
         {phase === "show" ? (
-          <img className="thumb" alt="" width={40} height={40} src={src} />
+          <img className="thumb" alt="" width={size} height={size} src={src} />
         ) : (
           <span className={`thumb thumb-empty${phase === "wait" ? " thumb-wait" : ""}`} aria-hidden="true" />
         )}

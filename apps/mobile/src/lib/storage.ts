@@ -29,10 +29,11 @@ export type GearRig = {
   telescopeId: string;
   cameraId: string;
   reducer: number;
+  filterIds: string[];
 };
 
 export type StoredSession = {
-  version: 4;
+  version: 5;
   theme: ThemeName;
   locationId: string;
   customSite?: Site;
@@ -51,6 +52,9 @@ export type StoredSession = {
   /** User equipment library (seed or custom ids). */
   libraryTelescopeIds: string[];
   libraryCameraIds: string[];
+  libraryFilterIds: string[];
+  /** Preferred flattener/reducer factor keyed by telescope id. */
+  telescopeReducers: Record<string, number>;
   rigs: GearRig[];
   activeRigId: string | null;
   listSort: TargetSortKey;
@@ -76,11 +80,23 @@ export async function loadSession(): Promise<StoredSession | null> {
     const raw = await AsyncStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Omit<StoredSession, "version">> & { version?: number };
-    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== 4) return null;
+    if (
+      parsed.version !== 1 &&
+      parsed.version !== 2 &&
+      parsed.version !== 3 &&
+      parsed.version !== 4 &&
+      parsed.version !== 5
+    ) {
+      return null;
+    }
     const customTelescopes = Array.isArray(parsed.customTelescopes) ? (parsed.customTelescopes as Telescope[]) : [];
     const customCameras = Array.isArray(parsed.customCameras) ? (parsed.customCameras as Camera[]) : [];
+    const customFilters = Array.isArray(parsed.customFilters) ? (parsed.customFilters as ImagingFilter[]) : [];
     const telescopeId = typeof parsed.telescopeId === "string" ? parsed.telescopeId : "";
     const cameraId = typeof parsed.cameraId === "string" ? parsed.cameraId : "";
+    const filterIds = Array.isArray(parsed.filterIds)
+      ? parsed.filterIds.filter((id): id is string => typeof id === "string")
+      : [];
     const rigs = parseRigs(parsed.rigs);
     const customSite = parseSite(parsed.customSite);
     const savedSites = mergeSavedSites(parseSavedSites(parsed.savedSites), customSite);
@@ -96,6 +112,12 @@ export async function loadSession(): Promise<StoredSession | null> {
       ...rigs.map((rig) => rig.cameraId),
       cameraId,
     ]);
+    const libraryFilterIds = uniqueIds([
+      ...(Array.isArray(parsed.libraryFilterIds) ? parsed.libraryFilterIds : []),
+      ...customFilters.map((item) => item.id),
+      ...rigs.flatMap((rig) => rig.filterIds),
+      ...filterIds,
+    ]);
     const activeSiteId =
       typeof parsed.activeSiteId === "string" && savedSites.some((site) => site.id === parsed.activeSiteId)
         ? parsed.activeSiteId
@@ -103,7 +125,7 @@ export async function loadSession(): Promise<StoredSession | null> {
           savedSites[0]?.id ??
           null);
     return {
-      version: 4,
+      version: 5,
       theme: parsed.theme === "night" ? "night" : "dark",
       locationId: typeof parsed.locationId === "string" ? parsed.locationId : "",
       customSite,
@@ -114,12 +136,17 @@ export async function loadSession(): Promise<StoredSession | null> {
       focalOverrideMm: typeof parsed.focalOverrideMm === "number" ? parsed.focalOverrideMm : null,
       smartModeId: typeof parsed.smartModeId === "string" ? parsed.smartModeId : null,
       cameraId,
-      filterIds: Array.isArray(parsed.filterIds) ? parsed.filterIds.filter((id): id is string => typeof id === "string") : [],
+      filterIds,
       customTelescopes,
       customCameras,
-      customFilters: Array.isArray(parsed.customFilters) ? (parsed.customFilters as ImagingFilter[]) : [],
+      customFilters,
       libraryTelescopeIds,
       libraryCameraIds,
+      libraryFilterIds,
+      telescopeReducers: parseFactorMap(
+        (parsed as { telescopeReducers?: unknown }).telescopeReducers ??
+          (parsed as { cameraReducers?: unknown }).cameraReducers,
+      ),
       rigs,
       activeRigId: typeof parsed.activeRigId === "string" ? parsed.activeRigId : null,
       listSort: parseSort(parsed.listSort),
@@ -150,9 +177,21 @@ function parseRigs(value: unknown): GearRig[] {
       telescopeId: item.telescopeId,
       cameraId: item.cameraId,
       reducer: typeof item.reducer === "number" && item.reducer > 0 ? item.reducer : 1,
+      filterIds: Array.isArray(item.filterIds)
+        ? item.filterIds.filter((id): id is string => typeof id === "string")
+        : [],
     });
   }
   return rigs;
+}
+
+function parseFactorMap(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Record<string, number> = {};
+  for (const [id, factor] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof factor === "number" && factor > 0) out[id] = factor;
+  }
+  return out;
 }
 
 export async function saveSession(session: StoredSession): Promise<void> {

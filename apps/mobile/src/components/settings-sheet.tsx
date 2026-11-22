@@ -1,13 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Modal, Pressable, ScrollView, Text, View } from "react-native";
-import type { Site } from "@dss/core";
+import { effectiveFocalLengthMm, type Site } from "@dss/core";
 import { DateField, isoToDisplayDate } from "@/components/date-field";
 import { Field, GhostButton, PrimaryButton, useThemeStyles } from "@/components/ui";
 import { fetchGeocode } from "@/lib/api";
 import { usePlannerState } from "@/state/planner-context";
+import type { Planner } from "@/state/use-planner";
 import { colors, type ThemeName } from "@/theme/tokens";
 
-type SettingsPanel = "menu" | "location" | "date" | "telescope" | "camera";
+type SettingsPanel = "menu" | "location" | "date" | "rig" | "telescope" | "flattener" | "camera";
+
+const REDUCERS: { value: number; label: string }[] = [
+  { value: 1, label: "1.0× flattener or none" },
+  { value: 0.8, label: "0.8× reducer" },
+  { value: 0.75, label: "0.75× reducer" },
+  { value: 0.63, label: "0.63× reducer" },
+  { value: 2, label: "2× Barlow" },
+];
+
+function reducerLabel(value: number): string {
+  return REDUCERS.find((item) => item.value === value)?.label ?? `${value}×`;
+}
 
 export function SettingsSheet({
   visible,
@@ -22,6 +35,9 @@ export function SettingsSheet({
   const styles = useThemeStyles(planner.theme);
   const c = colors(planner.theme);
   const [panel, setPanel] = useState<SettingsPanel>(initialPanel);
+  const rigLocked = Boolean(planner.activeRigId);
+  const smartLocked = Boolean(planner.telescope?.smart);
+  const flattenerLocked = rigLocked || smartLocked;
 
   useEffect(() => {
     if (visible) setPanel(initialPanel);
@@ -32,8 +48,10 @@ export function SettingsSheet({
     : planner.placeStatus === "detecting"
       ? "Detecting…"
       : "Set location";
-  const scope = planner.telescope?.name.replace(/^(Sky-Watcher|ZWO)\s+/, "") ?? "Choose…";
-  const camera = planner.camera?.name ?? "Choose…";
+  const activeRig = planner.rigs.find((item) => item.id === planner.activeRigId) ?? null;
+  const scope = telescopeChipLabel(planner);
+  const camera = cameraChipLabel(planner);
+  const flattener = smartLocked ? "Built-in optics" : reducerLabel(planner.reducer);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -66,10 +84,58 @@ export function SettingsSheet({
 
           {panel === "menu" ? (
             <View style={{ paddingHorizontal: 16, paddingBottom: 28, gap: 10 }}>
-              <SettingsRow theme={planner.theme} label="Location" value={planner.locationReady ? `${place}${planner.bortleLoading ? "" : ` · Bortle ${planner.bortle}`}` : place} onPress={() => setPanel("location")} />
-              <SettingsRow theme={planner.theme} label="Date" value={formatDay(planner.date)} onPress={() => setPanel("date")} />
-              <SettingsRow theme={planner.theme} label="Telescope" value={scope} onPress={() => setPanel("telescope")} />
-              <SettingsRow theme={planner.theme} label="Camera" value={camera} onPress={() => setPanel("camera")} />
+              <SettingsRow
+                theme={planner.theme}
+                label="Location"
+                value={
+                  planner.locationReady
+                    ? `${place}${planner.bortleLoading ? "" : ` · Bortle ${planner.bortle}`}`
+                    : place
+                }
+                onPress={() => setPanel("location")}
+              />
+              <SettingsRow
+                theme={planner.theme}
+                label="Date"
+                value={formatDay(planner.date)}
+                onPress={() => setPanel("date")}
+              />
+              <SettingsRow
+                theme={planner.theme}
+                label="Rig"
+                value={activeRig?.name ?? "Manual scope + camera"}
+                onPress={() => setPanel("rig")}
+              />
+              <SettingsRow
+                theme={planner.theme}
+                label="Telescope"
+                value={scope}
+                onPress={() => setPanel("telescope")}
+                disabled={rigLocked}
+                hint={rigLocked ? "Locked by selected rig" : undefined}
+              />
+              <SettingsRow
+                theme={planner.theme}
+                label="Flattener"
+                value={flattener}
+                onPress={() => setPanel("flattener")}
+                disabled={flattenerLocked}
+                hint={
+                  rigLocked
+                    ? "Locked by selected rig"
+                    : smartLocked
+                      ? "Smart scope uses built-in optics"
+                      : undefined
+                }
+              />
+              <SettingsRow
+                theme={planner.theme}
+                label="Camera"
+                value={camera}
+                onPress={() => setPanel("camera")}
+                disabled={rigLocked}
+                hint={rigLocked ? "Locked by selected rig" : undefined}
+              />
               <Pressable onPress={onClose} style={{ alignItems: "center", paddingVertical: 10 }}>
                 <Text style={styles.muted}>Close</Text>
               </Pressable>
@@ -78,7 +144,9 @@ export function SettingsSheet({
 
           {panel === "location" ? <LocationSetup onDone={() => setPanel("menu")} /> : null}
           {panel === "date" ? <DateSetup onDone={() => setPanel("menu")} /> : null}
+          {panel === "rig" ? <RigSetup onDone={() => setPanel("menu")} /> : null}
           {panel === "telescope" ? <TelescopeSetup onDone={() => setPanel("menu")} /> : null}
+          {panel === "flattener" ? <FlattenerSetup onDone={() => setPanel("menu")} /> : null}
           {panel === "camera" ? <CameraSetup onDone={() => setPanel("menu")} /> : null}
         </View>
       </View>
@@ -91,17 +159,26 @@ function SettingsRow({
   label,
   value,
   onPress,
+  disabled,
+  hint,
 }: {
   theme: ThemeName;
   label: string;
   value: string;
   onPress: () => void;
+  disabled?: boolean;
+  hint?: string;
 }) {
   const styles = useThemeStyles(theme);
   return (
-    <Pressable onPress={onPress} style={[styles.card, { gap: 2 }]}>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.card, { gap: 2, opacity: disabled ? 0.55 : 1 }]}
+    >
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.body}>{value}</Text>
+      {hint ? <Text style={styles.muted}>{hint}</Text> : null}
     </Pressable>
   );
 }
@@ -203,12 +280,7 @@ function DateSetup({ onDone }: { onDone: () => void }) {
   const [value, setValue] = useState(planner.date);
   return (
     <View style={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}>
-      <DateField
-        theme={planner.theme}
-        label="Night of (MM-DD-YYYY)"
-        valueIso={value}
-        onChangeIso={setValue}
-      />
+      <DateField theme={planner.theme} label="Night of (MM-DD-YYYY)" valueIso={value} onChangeIso={setValue} />
       <PrimaryButton
         theme={planner.theme}
         title="Save date"
@@ -241,22 +313,241 @@ function DateSetup({ onDone }: { onDone: () => void }) {
   );
 }
 
+function RigSetup({ onDone }: { onDone: () => void }) {
+  const planner = usePlannerState();
+  const styles = useThemeStyles(planner.theme);
+  const c = colors(planner.theme);
+
+  return (
+    <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}>
+      <Text style={styles.muted}>
+        Choosing a saved rig sets scope, flattener, camera, and filter together and locks manual gear picks.
+      </Text>
+      <Pressable
+        onPress={() => {
+          planner.clearActiveRig();
+          onDone();
+        }}
+        style={[styles.card, !planner.activeRigId ? { borderColor: c.accent } : null]}
+      >
+        <Text style={[styles.body, !planner.activeRigId ? styles.accent : null]}>Manual scope + camera</Text>
+        <Text style={styles.muted}>Pick telescope and camera separately</Text>
+      </Pressable>
+      {planner.rigs.length === 0 ? (
+        <Text style={styles.muted}>No saved rigs yet. Add some under Profile → Equipment.</Text>
+      ) : (
+        planner.rigs.map((rig) => {
+          const selected = planner.activeRigId === rig.id;
+          const scope = planner.telescopes.find((item) => item.id === rig.telescopeId);
+          const camera = planner.cameraList.find((item) => item.id === rig.cameraId);
+          return (
+            <Pressable
+              key={rig.id}
+              onPress={() => {
+                planner.selectRig(rig.id);
+                onDone();
+              }}
+              style={[styles.card, selected ? { borderColor: c.accent } : null]}
+            >
+              <Text style={[styles.body, selected ? styles.accent : null]}>{rig.name}</Text>
+              <Text style={styles.muted}>
+                {[scope?.name ?? rig.telescopeId, camera?.name ?? rig.cameraId, `${rig.reducer}×`]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </Text>
+            </Pressable>
+          );
+        })
+      )}
+    </ScrollView>
+  );
+}
+
+function FlattenerSetup({ onDone }: { onDone: () => void }) {
+  const planner = usePlannerState();
+  const styles = useThemeStyles(planner.theme);
+  const c = colors(planner.theme);
+
+  if (planner.activeRigId) {
+    return (
+      <View style={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}>
+        <Text style={styles.body}>Flattener is locked by the selected rig.</Text>
+        <Text style={styles.muted}>Switch to Manual under Rig to change it separately.</Text>
+        <View style={[styles.card, { borderColor: c.accent }]}>
+          <Text style={[styles.body, styles.accent]}>{reducerLabel(planner.reducer)}</Text>
+        </View>
+        <PrimaryButton theme={planner.theme} title="Back" onPress={onDone} />
+      </View>
+    );
+  }
+
+  if (planner.telescope?.smart) {
+    return (
+      <View style={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}>
+        <Text style={styles.body}>Smart scopes use built-in optics.</Text>
+        <Text style={styles.muted}>No separate flattener or reducer applies.</Text>
+        <PrimaryButton theme={planner.theme} title="Back" onPress={onDone} />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}>
+      <Text style={styles.muted}>Choose the flattener, reducer, or Barlow on this scope.</Text>
+      {REDUCERS.map((item) => {
+        const selected = planner.reducer === item.value;
+        return (
+          <Pressable
+            key={item.value}
+            onPress={() => {
+              planner.setReducer(item.value);
+              if (planner.telescope) {
+                planner.setTelescopePreferredReducer(planner.telescope.id, item.value);
+              }
+              onDone();
+            }}
+            style={[styles.card, selected ? { borderColor: c.accent } : null]}
+          >
+            <Text style={[styles.body, selected ? styles.accent : null]}>{item.label}</Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 function TelescopeSetup({ onDone }: { onDone: () => void }) {
   const planner = usePlannerState();
   const styles = useThemeStyles(planner.theme);
   const c = colors(planner.theme);
   const [text, setText] = useState("");
+  const computedFl = planner.telescope
+    ? Math.round(
+        planner.telescope.smart
+          ? (planner.smartMode?.focalLengthMm ?? planner.telescope.focalLengthMm)
+          : effectiveFocalLengthMm(planner.telescope, planner.reducer),
+      )
+    : null;
+  const [flText, setFlText] = useState(
+    planner.focalOverrideMm != null ? String(planner.focalOverrideMm) : computedFl != null ? String(computedFl) : "",
+  );
+  const flTextRef = useRef(flText);
+  flTextRef.current = flText;
+  const setFocalOverrideMm = planner.setFocalOverrideMm;
+
+  useEffect(() => {
+    setFlText(
+      planner.focalOverrideMm != null
+        ? String(planner.focalOverrideMm)
+        : computedFl != null
+          ? String(computedFl)
+          : "",
+    );
+  }, [planner.focalOverrideMm, computedFl, planner.telescope?.id]);
+
   const options = useMemo(() => {
     const query = text.trim().toLowerCase();
+    const library = new Set(planner.libraryTelescopeIds);
     const pool = query
       ? planner.telescopes.filter((item) => `${item.name} ${item.id}`.toLowerCase().includes(query))
       : planner.telescopes;
-    return [...pool].sort((a, b) => a.name.localeCompare(b.name));
-  }, [planner.telescopes, text]);
+    const inLibrary = pool.filter((item) => library.has(item.id)).sort((a, b) => a.name.localeCompare(b.name));
+    const rest = pool.filter((item) => !library.has(item.id)).sort((a, b) => a.name.localeCompare(b.name));
+    return [...inLibrary, ...rest];
+  }, [planner.libraryTelescopeIds, planner.telescopes, text]);
+
+  function commitFocalLength(raw: string, soft = false) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      setFocalOverrideMm(null);
+      if (!soft && computedFl != null) setFlText(String(computedFl));
+      return;
+    }
+    if (soft && trimmed.endsWith(".")) return;
+    const next = Number(trimmed);
+    if (!Number.isFinite(next) || next < 10 || next > 20_000) return;
+    setFocalOverrideMm(Math.round(next));
+  }
+
+  useEffect(() => {
+    return () => {
+      const trimmed = flTextRef.current.trim();
+      if (!trimmed || trimmed.endsWith(".")) return;
+      const next = Number(trimmed);
+      if (!Number.isFinite(next) || next < 10 || next > 20_000) return;
+      setFocalOverrideMm(Math.round(next));
+    };
+  }, [setFocalOverrideMm]);
+
+  const flControls = (
+    <>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+        {planner.activeRigId ? (
+          <View style={{ flex: 1, justifyContent: "center", paddingTop: 22 }}>
+            <Text style={styles.body}>{planner.telescope?.name ?? "Scope from rig"}</Text>
+            <Text style={styles.muted}>Locked by selected rig</Text>
+          </View>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <Field
+              theme={planner.theme}
+              label="Search"
+              value={text}
+              onChangeText={setText}
+              placeholder="Seestar, Evostar…"
+            />
+          </View>
+        )}
+        <View style={{ width: 108 }}>
+          <Field
+            theme={planner.theme}
+            label="FL (mm)"
+            value={flText}
+            onChangeText={(value) => {
+              setFlText(value);
+              commitFocalLength(value, true);
+            }}
+            placeholder={computedFl != null ? String(computedFl) : "480"}
+            keyboardType="numeric"
+          />
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <PrimaryButton theme={planner.theme} title="Apply FL" onPress={() => commitFocalLength(flText)} />
+        </View>
+        {planner.focalOverrideMm != null ? (
+          <GhostButton
+            theme={planner.theme}
+            title="Clear FL"
+            onPress={() => {
+              planner.setFocalOverrideMm(null);
+              if (computedFl != null) setFlText(String(computedFl));
+            }}
+          />
+        ) : null}
+      </View>
+      {planner.focalOverrideMm != null && computedFl != null ? (
+        <Text style={styles.muted}>Using entered FL. Scope + corrector give {computedFl} mm.</Text>
+      ) : (
+        <Text style={styles.muted}>Enter FL beside search to override the scope focal length.</Text>
+      )}
+    </>
+  );
+
+  if (planner.activeRigId) {
+    return (
+      <View style={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}>
+        {flControls}
+        <Text style={styles.muted}>Switch to Manual under Rig to change scope separately.</Text>
+        <PrimaryButton theme={planner.theme} title="Back" onPress={onDone} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>
-      <Field theme={planner.theme} label="Search telescopes" value={text} onChangeText={setText} placeholder="Seestar, Evostar…" />
+      {flControls}
       {planner.telescope?.smart?.modes?.length ? (
         <View style={{ gap: 8 }}>
           <Text style={styles.muted}>Lens / focal length</Text>
@@ -278,17 +569,35 @@ function TelescopeSetup({ onDone }: { onDone: () => void }) {
         data={options}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 20 }}
+        keyboardShouldPersistTaps="handled"
+        ListFooterComponent={
+          <PrimaryButton
+            theme={planner.theme}
+            title="Done"
+            onPress={() => {
+              commitFocalLength(flText);
+              onDone();
+            }}
+          />
+        }
         renderItem={({ item }) => {
           const selected = planner.telescope?.id === item.id;
+          const inLibrary = planner.libraryTelescopeIds.includes(item.id);
           return (
             <Pressable
               style={[styles.card, { marginBottom: 8 }, selected ? { borderColor: c.accent } : null]}
               onPress={() => {
                 planner.setTelescopeId(item.id);
-                onDone();
               }}
             >
-              <Text style={[styles.body, selected ? styles.accent : null]}>{item.name}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={[styles.body, selected ? styles.accent : null, { flex: 1 }]}>{item.name}</Text>
+                {inLibrary ? (
+                  <Text style={{ color: c.accent, fontSize: 11, fontWeight: "700", textTransform: "uppercase" }}>
+                    Yours
+                  </Text>
+                ) : null}
+              </View>
               <Text style={styles.muted}>
                 {item.smart ? "Smart · " : ""}
                 {item.apertureMm} mm · {item.focalLengthMm} mm
@@ -312,10 +621,23 @@ function CameraSetup({ onDone }: { onDone: () => void }) {
   );
   const options = useMemo(() => {
     const query = text.trim().toLowerCase();
+    const library = new Set(planner.libraryCameraIds);
     const base = planner.cameraList.filter((item) => item.custom || !smartCameraIds.has(item.id));
     const pool = query ? base.filter((item) => item.name.toLowerCase().includes(query)) : base;
-    return [...pool].sort((a, b) => a.name.localeCompare(b.name));
-  }, [planner.cameraList, smartCameraIds, text]);
+    const inLibrary = pool.filter((item) => library.has(item.id)).sort((a, b) => a.name.localeCompare(b.name));
+    const rest = pool.filter((item) => !library.has(item.id)).sort((a, b) => a.name.localeCompare(b.name));
+    return [...inLibrary, ...rest];
+  }, [planner.cameraList, planner.libraryCameraIds, smartCameraIds, text]);
+
+  if (planner.activeRigId) {
+    return (
+      <View style={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}>
+        <Text style={styles.body}>Camera is locked by the selected rig.</Text>
+        <Text style={styles.muted}>Switch to Manual under Rig to change camera separately.</Text>
+        <PrimaryButton theme={planner.theme} title="Back" onPress={onDone} />
+      </View>
+    );
+  }
 
   if (planner.telescope?.smart) {
     return (
@@ -351,8 +673,10 @@ function CameraSetup({ onDone }: { onDone: () => void }) {
         data={options}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 20 }}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const selected = planner.camera?.id === item.id;
+          const inLibrary = planner.libraryCameraIds.includes(item.id);
           return (
             <Pressable
               style={[styles.card, { marginBottom: 8 }, selected ? { borderColor: c.accent } : null]}
@@ -361,7 +685,14 @@ function CameraSetup({ onDone }: { onDone: () => void }) {
                 onDone();
               }}
             >
-              <Text style={[styles.body, selected ? styles.accent : null]}>{item.name}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={[styles.body, selected ? styles.accent : null, { flex: 1 }]}>{item.name}</Text>
+                {inLibrary ? (
+                  <Text style={{ color: c.accent, fontSize: 11, fontWeight: "700", textTransform: "uppercase" }}>
+                    Yours
+                  </Text>
+                ) : null}
+              </View>
               <Text style={styles.muted}>
                 {item.sensor} · {item.widthPx}×{item.heightPx}
               </Text>
@@ -381,8 +712,12 @@ function panelTitle(panel: SettingsPanel): string {
       return "Location";
     case "date":
       return "Date";
+    case "rig":
+      return "Rig";
     case "telescope":
       return "Telescope";
+    case "flattener":
+      return "Flattener";
     case "camera":
       return "Camera";
     default: {
@@ -398,4 +733,33 @@ function formatDay(iso: string): string {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const month = months[Number(match[2]) - 1] ?? match[2];
   return `${Number(match[3])} ${month} ${match[1]}`;
+}
+
+function trimGear(name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  return name.replace(/^(Sky-Watcher|ZWO)\s+/, "");
+}
+
+function telescopeChipLabel(planner: Planner): string {
+  const telescope = planner.telescope;
+  // Custom FL replaces the catalogue name on the closed row — don't keep both.
+  if (planner.focalOverrideMm != null) {
+    return `${planner.focalOverrideMm} mm`;
+  }
+  const name = trimGear(telescope?.name) ?? "Choose…";
+  if (!telescope) return name;
+  if (planner.optics) {
+    return `${name} · ${Math.round(planner.optics.focalLengthMm)} mm`;
+  }
+  const focalMm = telescope.smart
+    ? (planner.smartMode?.focalLengthMm ?? telescope.focalLengthMm)
+    : effectiveFocalLengthMm(telescope, planner.reducer);
+  return `${name} · ${Math.round(focalMm)} mm`;
+}
+
+function cameraChipLabel(planner: Planner): string {
+  const name = trimGear(planner.camera?.name) ?? "Choose…";
+  if (!planner.camera) return name;
+  if (planner.filterIds.length <= 1) return name;
+  return `${name} · ${planner.filterIds.length} filters`;
 }

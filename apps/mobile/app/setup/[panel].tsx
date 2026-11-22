@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
-import type { Site } from "@dss/core";
+import { effectiveFocalLengthMm, type Site } from "@dss/core";
 import { DateField } from "@/components/date-field";
 import { Field, GhostButton, PrimaryButton, useThemeStyles } from "@/components/ui";
 import { fetchGeocode } from "@/lib/api";
@@ -136,6 +136,27 @@ function TelescopeSetup() {
   const planner = usePlannerState();
   const styles = useThemeStyles(planner.theme);
   const [text, setText] = useState("");
+  const computedFl = planner.telescope
+    ? Math.round(
+        planner.telescope.smart
+          ? (planner.smartMode?.focalLengthMm ?? planner.telescope.focalLengthMm)
+          : effectiveFocalLengthMm(planner.telescope, planner.reducer),
+      )
+    : null;
+  const [flText, setFlText] = useState(
+    planner.focalOverrideMm != null ? String(planner.focalOverrideMm) : computedFl != null ? String(computedFl) : "",
+  );
+
+  useEffect(() => {
+    setFlText(
+      planner.focalOverrideMm != null
+        ? String(planner.focalOverrideMm)
+        : computedFl != null
+          ? String(computedFl)
+          : "",
+    );
+  }, [planner.focalOverrideMm, computedFl, planner.telescope?.id]);
+
   const options = useMemo(() => {
     const query = text.trim().toLowerCase();
     const pool = query
@@ -144,9 +165,60 @@ function TelescopeSetup() {
     return [...pool].sort((a, b) => a.name.localeCompare(b.name));
   }, [planner.telescopes, text]);
 
+  function commitFocalLength(raw: string, soft = false) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      planner.setFocalOverrideMm(null);
+      if (!soft && computedFl != null) setFlText(String(computedFl));
+      return;
+    }
+    if (soft && trimmed.endsWith(".")) return;
+    const next = Number(trimmed);
+    if (!Number.isFinite(next) || next < 10 || next > 20_000) return;
+    planner.setFocalOverrideMm(Math.round(next));
+  }
+
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
-      <Field theme={planner.theme} label="Search telescopes" value={text} onChangeText={setText} placeholder="Seestar, Evostar…" />
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+        <View style={{ flex: 1 }}>
+          <Field
+            theme={planner.theme}
+            label="Search"
+            value={text}
+            onChangeText={setText}
+            placeholder="Seestar, Evostar…"
+          />
+        </View>
+        <View style={{ width: 108 }}>
+          <Field
+            theme={planner.theme}
+            label="FL (mm)"
+            value={flText}
+            onChangeText={(value) => {
+              setFlText(value);
+              commitFocalLength(value, true);
+            }}
+            placeholder={computedFl != null ? String(computedFl) : "480"}
+            keyboardType="numeric"
+          />
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <PrimaryButton theme={planner.theme} title="Apply FL" onPress={() => commitFocalLength(flText)} />
+        </View>
+        {planner.focalOverrideMm != null ? (
+          <GhostButton
+            theme={planner.theme}
+            title="Clear FL"
+            onPress={() => {
+              planner.setFocalOverrideMm(null);
+              if (computedFl != null) setFlText(String(computedFl));
+            }}
+          />
+        ) : null}
+      </View>
       {planner.telescope?.smart?.modes?.length ? (
         <View style={{ gap: 8 }}>
           <Text style={styles.muted}>Lens / focal length</Text>
@@ -158,6 +230,7 @@ function TelescopeSetup() {
       <FlatList
         data={options}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <Pressable style={[styles.card, { marginBottom: 8 }]} onPress={() => planner.setTelescopeId(item.id)}>
             <Text style={styles.body}>{item.name}</Text>

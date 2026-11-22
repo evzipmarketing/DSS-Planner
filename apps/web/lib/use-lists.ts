@@ -63,12 +63,43 @@ export function useLists() {
     }));
   }, []);
 
+  const removeFromList = useCallback((listId: string, objectId: string) => {
+    setState((current) => ({
+      ...current,
+      lists: current.lists.map((list) =>
+        list.id === listId
+          ? { ...list, items: list.items.filter((item) => item.objectId !== objectId) }
+          : list,
+      ),
+    }));
+  }, []);
+
+  const deleteList = useCallback((listId: string) => {
+    setState((current) => ({
+      ...current,
+      lists: current.lists.filter((list) => list.id !== listId),
+    }));
+  }, []);
+
+  const renameList = useCallback((listId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setState((current) => ({
+      ...current,
+      lists: current.lists.map((list) => (list.id === listId ? { ...list, name: trimmed } : list)),
+    }));
+  }, []);
+
   return {
     favorites: state.favorites,
     lists: state.lists,
+    ready,
     toggleFavorite,
     createList,
     addToList,
+    removeFromList,
+    deleteList,
+    renameList,
   };
 }
 
