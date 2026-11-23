@@ -618,6 +618,50 @@ details.drawer summary { cursor: pointer; color: var(--accent-text); min-height:
   align-items: center;
 }
 
+.date-nav-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.date-nav-row .date-nav-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.date-nav-row .date-field-inline {
+  display: block;
+  flex: 0 1 168px;
+  min-width: 140px;
+  margin: 0;
+}
+
+.date-nav-row .date-field-control {
+  width: 100%;
+}
+
+.date-nav-row .day-row {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  justify-content: center;
+  min-width: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .combo { position: relative; }
 
 .combo-list {
@@ -2714,6 +2758,296 @@ html:not([data-theme="night"]) .hour.broken { color: var(--muted); }
 
 .hub-chevron {
   color: var(--muted);
+}
+
+.target-csv-export {
+  margin-top: 10px;
+}
+
+.target-csv-export .ghost {
+  width: 100%;
+}
+
+.multi-target-panel,
+.single-target-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.single-target-summary,
+.single-target-nights {
+  display: grid;
+  gap: 10px;
+}
+
+.single-target-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.single-target-controls label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.single-target-goal-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.single-target-goal-input input {
+  width: 64px;
+  min-height: 36px;
+  padding: 6px 8px;
+  text-align: center;
+  font-weight: 600;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 10px;
+  background: var(--bg-raised, var(--bg));
+  color: var(--text);
+}
+
+.single-target-progress {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.single-target-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.single-target-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.single-target-night {
+  display: grid;
+  gap: 2px;
+}
+
+.single-target-moon-hint {
+  margin: 4px 0 0;
+  color: var(--clay, #e08a7a);
+  font-size: 0.85rem;
+}
+
+.single-target-windows {
+  margin: 6px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.multi-target-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.multi-target-source-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.multi-target-filter-menu {
+  position: relative;
+  z-index: 6;
+}
+
+.minimal .multi-target-filter-menu .sort-tab,
+.multi-target-filter-menu .sort-tab {
+  min-width: 9.5rem;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.minimal .multi-target-filter-menu .sort-tab:hover,
+.multi-target-filter-menu .sort-tab:hover {
+  border-color: var(--accent-text);
+  background: color-mix(in srgb, var(--saffron) 14%, var(--bg-raised));
+}
+
+.minimal .multi-target-filter-menu .sort-tab[aria-pressed="true"],
+.multi-target-filter-menu .sort-tab[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--saffron);
+  color: var(--saffron-ink);
+}
+
+.multi-target-filter-menu .sort-panel {
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
+}
+
+.multi-target-thumb-scroller {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.multi-target-thumb {
+  flex: 0 0 auto;
+  width: 76px;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.multi-target-thumb:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.multi-target-thumb-frame {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  display: block;
+}
+
+.multi-target-thumb.is-selected .multi-target-thumb-frame {
+  border-width: 2px;
+  border-color: var(--accent);
+}
+
+.multi-target-thumb-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.multi-target-thumb-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.multi-target-thumb-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  max-width: 76px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.multi-target-thumb.is-selected {
+  color: var(--text);
+}
+
+.multi-target-date-card,
+.multi-target-chart-card {
+  display: grid;
+  gap: 10px;
+}
+
+.multi-target-moon-hint {
+  margin: 4px 0 0;
+  color: var(--clay, #e08a7a);
+  font-size: 0.9rem;
+}
+
+.multi-alt-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.multi-alt-empty {
+  height: 160px;
+}
+
+.multi-target-budgets,
+.multi-target-order {
+  display: grid;
+  gap: 10px;
+}
+
+.multi-target-budget-row {
+  display: grid;
+  gap: 10px;
+}
+
+.multi-target-budget-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.multi-target-order-controls {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.multi-target-order-controls .ghost {
+  min-width: 36px;
+  padding-inline: 10px;
+}
+
+.multi-target-order-controls .ghost:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.multi-target-scheduled {
+  margin: 4px 0 0;
+  font-weight: 600;
+}
+
+.multi-target-budget-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.multi-target-budget-controls .ghost {
+  min-width: 36px;
+  padding-inline: 10px;
+}
+
+.multi-target-shoot-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 10px;
+}
+
+.multi-target-panel .chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .hub-card {

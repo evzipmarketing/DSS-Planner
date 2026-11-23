@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { objectTitle } from "@dss/core";
+import { buildPlanCsv, frameFillPercent, objectTitle, planCsvRowFromTarget } from "@dss/core";
+import { constellationName } from "@dss/data";
 import { AltitudeChart } from "@/components/altitude-chart";
 import { FramingPreview } from "@/components/framing-preview";
 import { ObjectDetails } from "@/components/object-details";
@@ -18,6 +19,7 @@ export default function TargetDetailScreen() {
   const c = colors(planner.theme);
   const [listOpen, setListOpen] = useState(false);
   const [newListName, setNewListName] = useState("");
+  const [exportBusy, setExportBusy] = useState(false);
 
   useEffect(() => {
     if (id) planner.chooseTarget(id);
@@ -27,6 +29,15 @@ export default function TargetDetailScreen() {
     () => planner.catalogue?.find((item) => item.id === id) ?? planner.selected,
     [planner.catalogue, planner.selected, id],
   );
+
+  const ranked = useMemo(
+    () => (object ? planner.shortlist.find((item) => item.object.id === object.id) : undefined),
+    [planner.shortlist, object],
+  );
+
+  const field = planner.optics
+    ? { widthArcmin: planner.optics.field.widthArcmin, heightArcmin: planner.optics.field.heightArcmin }
+    : null;
 
   if (!object) {
     return (
@@ -38,6 +49,31 @@ export default function TargetDetailScreen() {
   }
 
   const favorited = lists.favorites.includes(object.id);
+  const target = object;
+
+  async function shareTargetCsv() {
+    const csv = buildPlanCsv([
+      planCsvRowFromTarget({
+        object: target,
+        frameFillPercent: ranked?.frameFillPercent ?? frameFillPercent(target.majorArcmin, field),
+        usableHours: ranked?.usableHours ?? null,
+        band: ranked?.band ?? null,
+        constellation: target.constellation ? constellationName(target.constellation) : "",
+        listName: ranked ? "Tonight" : "",
+      }),
+    ]);
+    setExportBusy(true);
+    try {
+      await Share.share({
+        title: `DeepSkyMate ${objectTitle(target)}`,
+        message: csv,
+      });
+    } catch {
+      Alert.alert("Share failed", "Could not open the share sheet for this CSV.");
+    } finally {
+      setExportBusy(false);
+    }
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}>
@@ -101,6 +137,14 @@ export default function TargetDetailScreen() {
       <View style={styles.card}>
         <Text style={[styles.body, { fontWeight: "600", marginBottom: 8 }]}>Frame</Text>
         <FramingPreview />
+        <View style={{ marginTop: 12 }}>
+          <PrimaryButton
+            theme={planner.theme}
+            title={exportBusy ? "Opening share…" : "Export CSV"}
+            onPress={() => void shareTargetCsv()}
+            disabled={exportBusy}
+          />
+        </View>
       </View>
 
       <Modal visible={listOpen} animationType="slide" transparent onRequestClose={() => setListOpen(false)}>

@@ -3,6 +3,7 @@ import { angularSeparationDeg, equatorialUnit } from "../src/altitude";
 import {
   bandAdvice,
   bandAdviceForObject,
+  bandAdviceFromFilter,
   compareTargetPriority,
   compareTargetSort,
   frameFillPercent,
@@ -11,6 +12,7 @@ import {
   imageableCrossing,
   imagingOkWithMoon,
   moonPlan,
+  nightSuitableForBand,
   observationScore,
   passesCustomListRanges,
   passesListFilter,
@@ -59,6 +61,20 @@ describe("moon separation and priority", () => {
     expect(bandAdvice("RfN")).toBe("broadband");
     expect(bandAdvice("DrkN")).toBe("broadband");
     expect(bandAdvice("OCl")).toBe("broadband");
+  });
+
+  it("maps filter kinds to Moon scheduling bands", () => {
+    expect(bandAdviceFromFilter("luminance")).toBe("broadband");
+    expect(bandAdviceFromFilter("red")).toBe("broadband");
+    expect(bandAdviceFromFilter("ha")).toBe("narrowband");
+    expect(bandAdviceFromFilter("dual_narrowband")).toBe("narrowband");
+  });
+
+  it("rejects bright-Moon nights for broadband goals", () => {
+    expect(nightSuitableForBand({ band: "broadband", illuminatedFraction: 1, moonScore: 1 })).toBe(false);
+    expect(nightSuitableForBand({ band: "broadband", illuminatedFraction: 0.2, moonScore: 1 })).toBe(true);
+    expect(nightSuitableForBand({ band: "narrowband", illuminatedFraction: 1, moonScore: 0.9 })).toBe(true);
+    expect(nightSuitableForBand({ band: "narrowband", illuminatedFraction: 1, moonScore: 0.05 })).toBe(false);
   });
 
   it("penalises a bright nearby Moon and prefers narrowband when the Moon is far", () => {

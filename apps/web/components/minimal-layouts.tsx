@@ -9,6 +9,7 @@ import { FramingPreview } from "./framing-preview";
 import { LocationPanel } from "./location-panel";
 import { ObjectDetails, Shortlist } from "./target-panels";
 import { RigPanel } from "./rig-panel";
+import { TargetCsvExport } from "./target-csv-export";
 import { WeatherPanel } from "./weather-panel";
 import { usePlannerState } from "./planner-context";
 import type { ThemeName } from "@/lib/storage";
@@ -167,6 +168,7 @@ export function TonightPage() {
                 <div className="detail-col">
                   <ObjectDetails />
                   <AltitudeChart compact />
+                  <TargetCsvExport />
                 </div>
                 <FramingPreview />
               </div>

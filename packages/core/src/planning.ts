@@ -1,7 +1,12 @@
 import { cataloguePrestigeWeight } from "./catalogue";
 import { roundHours } from "./format";
 import { assertNever } from "./never";
-import { ASTRONOMICAL_SUN_ALTITUDE_DEG, IMAGEABLE_MIN_ALTITUDE_DEG, type DeepSkyType } from "./types";
+import {
+  ASTRONOMICAL_SUN_ALTITUDE_DEG,
+  IMAGEABLE_MIN_ALTITUDE_DEG,
+  type DeepSkyType,
+  type FilterKind,
+} from "./types";
 
 export type BandAdvice = "narrowband" | "broadband" | "both";
 
@@ -145,6 +150,50 @@ export function bandLabel(band: BandAdvice): string {
       return "Both";
     default:
       return assertNever(band, "band");
+  }
+}
+
+/** Map the user's filter wheel choice to the Moon rules used for scheduling. */
+export function bandAdviceFromFilter(kind: FilterKind): BandAdvice {
+  switch (kind) {
+    case "dual_narrowband":
+    case "tri_narrowband":
+    case "quad_narrowband":
+    case "ha":
+    case "oiii":
+    case "sii":
+      return "narrowband";
+    case "broadband":
+    case "uv_ir_cut":
+    case "luminance":
+    case "red":
+    case "green":
+    case "blue":
+      return "broadband";
+    default:
+      return assertNever(kind, "filter");
+  }
+}
+
+/**
+ * Whether a whole night should count toward a goal for this band.
+ * Broadband skips bright-Moon nights entirely (even if the Moon sets for part of the night).
+ * Narrowband only rejects nights where the Moon is bright and close.
+ */
+export function nightSuitableForBand(input: {
+  band: BandAdvice;
+  illuminatedFraction: number;
+  moonScore: number;
+}): boolean {
+  switch (input.band) {
+    case "broadband":
+      return input.illuminatedFraction < MOON_BRIGHT_FRACTION;
+    case "both":
+      return input.illuminatedFraction < 0.85 && input.moonScore >= 0.5;
+    case "narrowband":
+      return input.moonScore >= 0.1;
+    default:
+      return assertNever(input.band, "band");
   }
 }
 

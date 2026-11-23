@@ -20,7 +20,6 @@ export default function PlannerStackLayout() {
       <Stack.Screen name="multi-rigs" options={{ title: "Multi-rigs" }} />
       <Stack.Screen name="collage" options={{ title: "Collage" }} />
       <Stack.Screen name="asterisms" options={{ title: "Asterisms" }} />
-      <Stack.Screen name="export" options={{ title: "Export CSV" }} />
     </Stack>
   );
 }

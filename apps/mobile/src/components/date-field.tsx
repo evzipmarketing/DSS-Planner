@@ -42,11 +42,14 @@ export function DateField({
   label,
   valueIso,
   onChangeIso,
+  compact = false,
 }: {
   theme: ThemeName;
   label: string;
   valueIso: string;
   onChangeIso: (iso: string) => void;
+  /** Inline control without a stacked label — for single-row toolbars. */
+  compact?: boolean;
 }) {
   const styles = useThemeStyles(theme);
   const c = colors(theme);
@@ -78,8 +81,8 @@ export function DateField({
   }
 
   return (
-    <View style={{ gap: 6 }}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={{ gap: compact ? 0 : 6, flex: compact ? 1 : undefined, minWidth: 0, width: compact ? "100%" : undefined }}>
+      {compact ? null : <Text style={styles.label}>{label}</Text>}
       <View
         style={[
           styles.input,
@@ -87,13 +90,21 @@ export function DateField({
             flexDirection: "row",
             alignItems: "center",
             paddingVertical: 0,
-            paddingRight: 6,
-            gap: 4,
+            paddingLeft: compact ? 8 : 12,
+            paddingRight: compact ? 2 : 6,
+            gap: 2,
+            minHeight: compact ? 40 : undefined,
           },
         ]}
       >
         <TextInput
-          style={{ flex: 1, color: c.text, fontSize: 15, paddingVertical: 10 }}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            color: c.text,
+            fontSize: compact ? 13 : 15,
+            paddingVertical: compact ? 8 : 10,
+          }}
           value={text}
           onChangeText={commitText}
           onBlur={() => {
@@ -104,6 +115,7 @@ export function DateField({
           placeholderTextColor={c.faint}
           keyboardType="numbers-and-punctuation"
           autoCapitalize="none"
+          accessibilityLabel={label}
         />
         <Pressable
           onPress={() => setPickerOpen(true)}
@@ -111,11 +123,12 @@ export function DateField({
           accessibilityLabel="Open calendar"
           hitSlop={8}
           style={{
-            width: 36,
-            height: 36,
+            width: compact ? 32 : 36,
+            height: compact ? 32 : 36,
             borderRadius: 10,
             alignItems: "center",
             justifyContent: "center",
+            flexShrink: 0,
           }}
         >
           <CalendarGlyph color={c.accent} />

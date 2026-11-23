@@ -52,60 +52,63 @@ export function DatePanel({ onDone }: { onDone?: () => void }) {
 
   return (
     <Section index="03" title="Date">
-      <div className="day-row">
-        <button type="button" className="day" onClick={() => pick(addDaysIso(date, -1))}>
-          Previous day
-        </button>
-        <button type="button" className="day" aria-pressed={date === today} onClick={() => pick(today)}>
-          Today
-        </button>
-        <button type="button" className="day" onClick={() => pick(addDaysIso(date, 1))}>
-          Next day
-        </button>
-      </div>
-      <label className="field date-field" htmlFor={`${pickerId}-text`}>
-        Night of (MM-DD-YYYY)
-        <span className="date-field-control">
-          <input
-            id={`${pickerId}-text`}
-            type="text"
-            inputMode="numeric"
-            placeholder="MM-DD-YYYY"
-            value={text}
-            onChange={(event) => commitText(event.target.value)}
-            onBlur={() => {
-              const iso = displayToIsoDate(text);
-              setText(iso ? isoToDisplayDate(iso) : isoToDisplayDate(date));
-            }}
-          />
-          <button
-            type="button"
-            className="date-picker-btn"
-            aria-label="Open calendar"
-            title="Open calendar"
-            onClick={() => {
-              const input = pickerRef.current;
-              if (!input) return;
-              if (typeof input.showPicker === "function") input.showPicker();
-              else input.click();
-            }}
-          >
-            <CalendarIcon />
+      <div className="date-nav-row">
+        <label className="date-field date-field-inline" htmlFor={`${pickerId}-text`}>
+          <span className="sr-only">Night of (MM-DD-YYYY)</span>
+          <span className="date-field-control">
+            <input
+              id={`${pickerId}-text`}
+              type="text"
+              inputMode="numeric"
+              placeholder="MM-DD-YYYY"
+              aria-label="Night of (MM-DD-YYYY)"
+              value={text}
+              onChange={(event) => commitText(event.target.value)}
+              onBlur={() => {
+                const iso = displayToIsoDate(text);
+                setText(iso ? isoToDisplayDate(iso) : isoToDisplayDate(date));
+              }}
+            />
+            <button
+              type="button"
+              className="date-picker-btn"
+              aria-label="Open calendar"
+              title="Open calendar"
+              onClick={() => {
+                const input = pickerRef.current;
+                if (!input) return;
+                if (typeof input.showPicker === "function") input.showPicker();
+                else input.click();
+              }}
+            >
+              <CalendarIcon />
+            </button>
+            <input
+              ref={pickerRef}
+              className="date-picker-native"
+              type="date"
+              value={date}
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(event) => {
+                if (!event.target.value) return;
+                pick(event.target.value);
+              }}
+            />
+          </span>
+        </label>
+        <div className="day-row">
+          <button type="button" className="day" onClick={() => pick(addDaysIso(date, -1))}>
+            Previous day
           </button>
-          <input
-            ref={pickerRef}
-            className="date-picker-native"
-            type="date"
-            value={date}
-            tabIndex={-1}
-            aria-hidden="true"
-            onChange={(event) => {
-              if (!event.target.value) return;
-              pick(event.target.value);
-            }}
-          />
-        </span>
-      </label>
+          <button type="button" className="day" aria-pressed={date === today} onClick={() => pick(today)}>
+            Today
+          </button>
+          <button type="button" className="day" onClick={() => pick(addDaysIso(date, 1))}>
+            Next day
+          </button>
+        </div>
+      </div>
       <p className="note">The night runs from local noon to the next local noon, in {site.timezone}.</p>
     </Section>
   );
