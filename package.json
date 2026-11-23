@@ -11,7 +11,8 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "check": "turbo lint typecheck test"
+    "check": "turbo lint typecheck test",
+    "efforts:refresh": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/refresh-efforts.ps1"
   },
   "devDependencies": {
     "turbo": "^2.6.1",
