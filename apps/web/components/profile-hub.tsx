@@ -172,13 +172,7 @@ export function ProfileHubPage() {
     );
   }
 
-  if (
-    section === "about" ||
-    section === "terms" ||
-    section === "privacy" ||
-    section === "acknowledgements" ||
-    section === "contact"
-  ) {
+  if (section === "about" || section === "terms" || section === "privacy" || section === "acknowledgements") {
     return (
       <div className="hub-page">
         <button type="button" className="ghost hub-back" onClick={() => setSection("home")}>
@@ -294,14 +288,13 @@ export function ProfileHubPage() {
           <p className="about-publisher">Published by {COMPANY_SHORT_NAME}</p>
           <ul className="hub-list about-links">
             <HubNav title="About DeepSkyMate" detail="Version and product details" onSelect={() => setSection("about")} />
-            <HubNav title="Terms of use" detail="How you may use the app" onSelect={() => setSection("terms")} />
-            <HubNav title="Privacy" detail="What stays local and what we request" onSelect={() => setSection("privacy")} />
+            <HubNav title="Terms of use" detail="Acceptance, subscriptions, content, and liability" onSelect={() => setSection("terms")} />
+            <HubNav title="Privacy" detail="How we collect, use, and protect your data" onSelect={() => setSection("privacy")} />
             <HubNav
               title="Acknowledgements"
               detail="Catalogue, sky, weather, and place data credits"
               onSelect={() => setSection("acknowledgements")}
             />
-            <HubNav title="Contact" detail="Email and registered office" onSelect={() => setSection("contact")} />
           </ul>
         </div>
       </section>

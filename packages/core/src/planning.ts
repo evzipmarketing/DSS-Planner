@@ -16,9 +16,70 @@ export const TARGET_LIST_FILTERS = [
   "clusters",
   "good-fit",
   "moon-safe",
+  "custom",
 ] as const;
 
 export type TargetListFilter = (typeof TARGET_LIST_FILTERS)[number];
+
+/** Upper bound for the custom frame-fill slider (objects can overfill the sensor). */
+export const CUSTOM_LIST_FRAME_FILL_MAX = 200;
+/** Upper bound for the custom imageable-hours slider. */
+export const CUSTOM_LIST_IMAGEABLE_HOURS_MAX = 12;
+
+export type CustomListRanges = {
+  minFrameFillPercent: number;
+  maxFrameFillPercent: number;
+  minImageableHours: number;
+  maxImageableHours: number;
+};
+
+export const DEFAULT_CUSTOM_LIST_RANGES: CustomListRanges = {
+  minFrameFillPercent: 0,
+  maxFrameFillPercent: CUSTOM_LIST_FRAME_FILL_MAX,
+  minImageableHours: 0,
+  maxImageableHours: CUSTOM_LIST_IMAGEABLE_HOURS_MAX,
+};
+
+function clampRangeValue(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+export function clampCustomListRanges(ranges: CustomListRanges): CustomListRanges {
+  const minFrame = clampRangeValue(ranges.minFrameFillPercent, 0, CUSTOM_LIST_FRAME_FILL_MAX);
+  const maxFrame = clampRangeValue(ranges.maxFrameFillPercent, minFrame, CUSTOM_LIST_FRAME_FILL_MAX);
+  const minHours = clampRangeValue(ranges.minImageableHours, 0, CUSTOM_LIST_IMAGEABLE_HOURS_MAX);
+  const maxHours = clampRangeValue(ranges.maxImageableHours, minHours, CUSTOM_LIST_IMAGEABLE_HOURS_MAX);
+  return {
+    minFrameFillPercent: minFrame,
+    maxFrameFillPercent: maxFrame,
+    minImageableHours: minHours,
+    maxImageableHours: maxHours,
+  };
+}
+
+export function customListRangesActive(ranges: CustomListRanges): boolean {
+  const next = clampCustomListRanges(ranges);
+  return (
+    next.minFrameFillPercent > DEFAULT_CUSTOM_LIST_RANGES.minFrameFillPercent ||
+    next.maxFrameFillPercent < DEFAULT_CUSTOM_LIST_RANGES.maxFrameFillPercent ||
+    next.minImageableHours > DEFAULT_CUSTOM_LIST_RANGES.minImageableHours ||
+    next.maxImageableHours < DEFAULT_CUSTOM_LIST_RANGES.maxImageableHours
+  );
+}
+
+export function passesCustomListRanges(
+  item: { frameFillPercent: number | null; usableHours: number },
+  ranges: CustomListRanges,
+): boolean {
+  const next = clampCustomListRanges(ranges);
+  if (item.frameFillPercent != null) {
+    if (item.frameFillPercent < next.minFrameFillPercent || item.frameFillPercent > next.maxFrameFillPercent) {
+      return false;
+    }
+  }
+  return item.usableHours >= next.minImageableHours && item.usableHours <= next.maxImageableHours;
+}
 
 /** Moon fraction at or above this counts as bright enough to hurt broadband. */
 export const MOON_BRIGHT_FRACTION = 0.35;
@@ -575,6 +636,9 @@ export function passesListFilter(
       return item.frameFit === "good";
     case "moon-safe":
       return item.moonHint == null && item.moonScore >= 0.6;
+    case "custom":
+      // Frame fill / imageable hour bounds are applied via passesCustomListRanges.
+      return true;
     default:
       return assertNever(filter, "target list");
   }
@@ -598,6 +662,8 @@ export function listFilterLabel(filter: TargetListFilter): string {
       return "Good fit";
     case "moon-safe":
       return "Moon-safe";
+    case "custom":
+      return "Custom";
     default:
       return assertNever(filter, "target list");
   }

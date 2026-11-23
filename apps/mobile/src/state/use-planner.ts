@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  DEFAULT_CUSTOM_LIST_RANGES,
   EMPTY_TARGET_QUERY,
   IMAGEABLE_SAMPLE_MINUTES,
   bandAdvice,
   buildNightTrack,
+  clampCustomListRanges,
   isComponentObject,
   effectiveFocalLengthMm,
   fieldOfView,
@@ -16,6 +18,7 @@ import {
   searchCatalogue,
   sensorDisagreement,
   type Camera,
+  type CustomListRanges,
   type DeepSkyObject,
   type FieldOfView,
   type ImagingFilter,
@@ -73,6 +76,7 @@ export function usePlanner() {
   const [extendedCatalogue, setExtendedCatalogue] = useState<DeepSkyObject[] | null>(null);
   const [targetQuery, setTargetQuery] = useState<TargetQuery>(EMPTY_TARGET_QUERY);
   const [listFilter, setListFilter] = useState<TargetListFilter>("all");
+  const [customListRanges, setCustomListRangesState] = useState<CustomListRanges>(DEFAULT_CUSTOM_LIST_RANGES);
   const [listSort, setListSort] = useState<TargetSortKey>("recommended");
   const [listSortDirection, setListSortDirection] = useState<SortDirection>("desc");
   const [theme, setTheme] = useState<ThemeName>("dark");
@@ -339,7 +343,11 @@ export function usePlanner() {
     [optics],
   );
   const fieldKey = field ? `${field.widthArcmin.toFixed(4)}x${field.heightArcmin.toFixed(4)}` : "none";
-  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${fieldKey}|${listFilter}|${bortle}|${includeExtendedCatalogue ? "extended" : "core"}|${includeComponentObjects ? "components" : "hosts"}`;
+  const customRangesKey =
+    listFilter === "custom"
+      ? `${customListRanges.minFrameFillPercent}|${customListRanges.maxFrameFillPercent}|${customListRanges.minImageableHours}|${customListRanges.maxImageableHours}`
+      : "off";
+  const shortlistKey = `${site.latitude}|${site.longitude}|${site.timezone}|${date}|${targetQuery.types.join(",")}|${targetQuery.catalogues.join(",")}|${targetQuery.maxMagnitude ?? ""}|${targetQuery.minSizeArcmin ?? ""}|${fieldKey}|${listFilter}|${customRangesKey}|${bortle}|${includeExtendedCatalogue ? "extended" : "core"}|${includeComponentObjects ? "components" : "hosts"}`;
   const setupReady = locationReady && Boolean(date) && Boolean(telescope) && Boolean(camera);
 
   const shortlist = useMemo(() => {
@@ -357,11 +365,15 @@ export function usePlanner() {
     const timer = setTimeout(() => {
       setRanked({
         key: shortlistKey,
-        items: rankTargets(catalogue, site, date, 100, targetQuery, field, listFilter, bortle),
+        items: rankTargets(catalogue, site, date, 100, targetQuery, field, listFilter, bortle, customListRanges),
       });
     }, 16);
     return () => clearTimeout(timer);
-  }, [hydrated, catalogue, site, date, shortlistKey, targetQuery, field, listFilter, bortle, setupReady]);
+  }, [hydrated, catalogue, site, date, shortlistKey, targetQuery, field, listFilter, bortle, customListRanges, setupReady]);
+
+  function setCustomListRanges(next: CustomListRanges) {
+    setCustomListRangesState(clampCustomListRanges(next));
+  }
 
   const selected = useMemo(
     () => catalogue?.find((object) => object.id === selectedId) ?? null,
@@ -722,6 +734,8 @@ export function usePlanner() {
     setTargetQuery,
     listFilter,
     setListFilter,
+    customListRanges,
+    setCustomListRanges,
     listSort,
     setListSort,
     listSortDirection,

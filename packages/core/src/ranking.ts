@@ -9,10 +9,13 @@ import {
   isDarkObject,
   isImageableSample,
   moonPlan,
+  DEFAULT_CUSTOM_LIST_RANGES,
+  passesCustomListRanges,
   passesListFilter,
   visibilityScore,
   type BandAdvice,
   type BrightnessHint,
+  type CustomListRanges,
   type FrameFit,
   type TargetListFilter,
 } from "./planning";
@@ -230,6 +233,7 @@ export function rankTargets(
   field: { widthArcmin: number; heightArcmin: number } | null = null,
   listFilter: TargetListFilter = "all",
   bortle = 5,
+  customRanges: CustomListRanges = DEFAULT_CUSTOM_LIST_RANGES,
 ): RankedTarget[] {
   const grid = nightHorizonGrid(site, dateIso, IMAGEABLE_SAMPLE_MINUTES);
   const stepHours = IMAGEABLE_SAMPLE_MINUTES / 60;
@@ -243,6 +247,7 @@ export function rankTargets(
         listFilter,
       ),
     )
+    .filter((item) => listFilter !== "custom" || passesCustomListRanges(item, customRanges))
     .sort(compareTargetPriority);
   return dedupeOverlappingTargets(scored).slice(0, limit);
 }

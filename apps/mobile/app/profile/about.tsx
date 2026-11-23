@@ -5,16 +5,19 @@ import { useThemeStyles } from "@/components/ui";
 import {
   APP_NAME,
   APP_TAGLINE,
+  APP_URL,
   APP_VERSION,
   COMPANY_ADDRESS,
   COMPANY_EMAIL,
   COMPANY_LEGAL_NAME,
   COMPANY_SHORT_NAME,
   COPYRIGHT_YEAR,
+  PRIVACY_LAST_UPDATED,
+  TERMS_LAST_UPDATED,
 } from "@/lib/app-meta";
 import { usePlannerState } from "@/state/planner-context";
 
-type AboutPageId = "about" | "terms" | "privacy" | "acknowledgements" | "contact";
+type AboutPageId = "about" | "terms" | "privacy" | "acknowledgements";
 
 export default function AboutLegalScreen() {
   const { page } = useLocalSearchParams<{ page?: string }>();
@@ -30,7 +33,6 @@ export default function AboutLegalScreen() {
         {id === "terms" ? <TermsBody theme={planner.theme} /> : null}
         {id === "privacy" ? <PrivacyBody theme={planner.theme} /> : null}
         {id === "acknowledgements" ? <AcknowledgementsBody theme={planner.theme} /> : null}
-        {id === "contact" ? <ContactBody theme={planner.theme} /> : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -47,6 +49,12 @@ function AboutBody({ theme }: { theme: "dark" | "night" }) {
       <MetaRow theme={theme} label="Product" value={APP_NAME} />
       <MetaRow theme={theme} label="Publisher" value={COMPANY_LEGAL_NAME} />
       <MetaRow theme={theme} label="Focus" value={APP_TAGLINE} />
+      <MetaRow
+        theme={theme}
+        label="Contact"
+        value={COMPANY_EMAIL}
+        onPress={() => void Linking.openURL(`mailto:${COMPANY_EMAIL}`)}
+      />
       <Text style={styles.muted}>
         Planning scores, weather summaries, and sky previews are aids for preparation. Always confirm conditions outdoors
         before you commit to a session.
@@ -58,28 +66,85 @@ function AboutBody({ theme }: { theme: "dark" | "night" }) {
 function TermsBody({ theme }: { theme: "dark" | "night" }) {
   const styles = useThemeStyles(theme);
   return (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 12 }}>
       <Text style={styles.body}>
-        By using {APP_NAME}, you agree to these terms. The service is provided by {COMPANY_LEGAL_NAME} (“we”, “us”).
+        Using {APP_NAME} means you accept these Terms and Conditions. If you do not agree, stop using the app. The
+        service is provided by {COMPANY_LEGAL_NAME} (“we”, “us”).
       </Text>
-      <Text style={[styles.body, { fontWeight: "600" }]}>Use of the app</Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>1. Intellectual property and attribution</Text>
       <Text style={styles.muted}>
-        You may use {APP_NAME} for personal or professional imaging planning. You must not misuse the service, attempt
-        unauthorized access, scrape or redistribute catalogue or imagery feeds beyond what the product provides, or
-        interfere with other users.
+        {APP_NAME} software and branding are copyrighted by {COMPANY_LEGAL_NAME}. When republishing planning output,
+        include attribution with a link to {APP_URL}. Third-party catalogues and imagery remain under their own licences
+        (see Acknowledgements).
       </Text>
-      <Text style={[styles.body, { fontWeight: "600" }]}>Planning information</Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>2. Accounts, subscriptions, and payments</Text>
       <Text style={styles.muted}>
-        Rankings, usable hours, frame fill, Bortle estimates, and forecasts are approximate. They depend on site, date,
-        gear, and third-party data. We do not guarantee that a target will be imageable or that forecasts will match the
-        sky.
+        {APP_NAME} is intended as freemium: core planning is free; paid tiers may add limits or features. Billing will use
+        third-party gateways (we do not store full card numbers). Unless stated otherwise, subscription payments may be
+        refunded within 30 days via {COMPANY_EMAIL}. Plan changes will be announced with reasonable notice when
+        practical. Partner perks are “as is” and do not expand our refund obligations.
       </Text>
-      <Text style={[styles.body, { fontWeight: "600" }]}>Liability</Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>3. User-generated content</Text>
       <Text style={styles.muted}>
-        To the fullest extent permitted by law, {COMPANY_SHORT_NAME} is not liable for lost imaging time, equipment
-        decisions, or other damages arising from reliance on planning output. The app is provided “as is”.
+        Sites, equipment, lists, and profile details you enter must be lawful, non-spam, and related to astronomy
+        planning. You keep ownership; when sync/sharing features are enabled you grant us a licence to host and display
+        content as needed to run the service—not to sell it as a standalone product.
       </Text>
-      <Text style={styles.muted}>Last updated {COPYRIGHT_YEAR}.</Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>4. Account termination</Text>
+      <Text style={styles.muted}>
+        We may suspend or delete accounts that violate these Terms. We are not liable for data or unused paid time lost
+        due to termination for cause. Clear local data anytime; email {COMPANY_EMAIL} for account deletion when accounts
+        exist.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>5. Data loss and backups</Text>
+      <Text style={styles.muted}>
+        You are responsible for backing up important content. Much data is local today. We do not guarantee preservation
+        and are not liable for accidental loss or corruption.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>6. APIs</Text>
+      <Text style={styles.muted}>
+        Developer APIs, if published, may be limited or revoked. Commercial redistribution needs written consent. No
+        minimum uptime is guaranteed.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>7. Accuracy</Text>
+      <Text style={styles.muted}>
+        Rise/set times, rankings, frame fill, Bortle, weather, and positions are approximations for planning only. Always
+        confirm conditions outdoors before a session.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>8. Third-party data</Text>
+      <Text style={styles.muted}>
+        Catalogues, weather, places, and sky plates come from third parties and remain theirs. Paid features do not
+        transfer ownership of those datasets. See Acknowledgements.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>9. Disclaimer and liability</Text>
+      <Text style={styles.muted}>
+        {APP_NAME} is provided “as is” and “as available”. To the maximum extent permitted by law, {COMPANY_SHORT_NAME}{" "}
+        disclaims warranties and is not liable for data loss, breaches, lost imaging time, interruptions, or other
+        damages arising from use of the app. Use is at your own risk.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>10. Indemnification</Text>
+      <Text style={styles.muted}>
+        You agree to indemnify {COMPANY_LEGAL_NAME} against claims arising from your use, your breach of these Terms, or
+        your infringement of third-party rights.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>11. Changes and governing law</Text>
+      <Text style={styles.muted}>
+        We may update these Terms; continued use after changes means acceptance. Governed by the laws of India; disputes
+        (subject to mandatory consumer protections) in Hyderabad, Telangana courts. Contact: {COMPANY_EMAIL}. Office:{" "}
+        {COMPANY_ADDRESS}.
+      </Text>
+      <Text style={styles.muted}>Last updated {TERMS_LAST_UPDATED}.</Text>
     </View>
   );
 }
@@ -87,23 +152,77 @@ function TermsBody({ theme }: { theme: "dark" | "night" }) {
 function PrivacyBody({ theme }: { theme: "dark" | "night" }) {
   const styles = useThemeStyles(theme);
   return (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 12 }}>
       <Text style={styles.body}>
-        This notice describes how {APP_NAME} handles information when you use the app published by {COMPANY_LEGAL_NAME}.
+        {APP_NAME} values your privacy and is dedicated to protecting your personal data. We make reasonable efforts and
+        employ industry-standard safeguards to preserve your privacy. This Privacy Policy explains how {COMPANY_LEGAL_NAME}{" "}
+        (“we”, “us”) collects, uses, processes, and protects information when you use {APP_NAME}.
       </Text>
-      <Text style={[styles.body, { fontWeight: "600" }]}>What stays on your device</Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>1. Information we collect</Text>
       <Text style={styles.muted}>
-        Site, date, rig, equipment library, theme, list preferences, and similar planner settings are stored on your
-        device. We do not receive that data unless you later opt into a synced account feature.
+        Account & profile information you enter (email, username, phone, preferences); planner content such as sites,
+        equipment, lists, and gear settings; observing location coordinates and place names; and technical data such as
+        IP address, device or browser type, and error logs when the app calls our APIs.
       </Text>
-      <Text style={[styles.body, { fontWeight: "600" }]}>Requests the app makes</Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>2. How we use your information</Text>
       <Text style={styles.muted}>
-        To show forecasts, place names, time zones, and sky preview plates, the app calls our servers or partner APIs with
-        coordinates, dates, or sky positions you select.
+        To compute planning results tailored to your site, date, and gear; to store your library and preferences on
+        device (and sync them if you later enable an account); to send important service notices; and to maintain
+        security and enforce our Terms of use.
       </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>3. What stays on your device today</Text>
       <Text style={styles.muted}>
-        Privacy questions: {COMPANY_EMAIL}. Last updated {COPYRIGHT_YEAR}.
+        The current apps are primarily local-first. Planner settings are stored on your device. We do not receive a
+        standing copy of that library unless you enable cloud sync or another account feature.
       </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>4. Third-party processing and sharing</Text>
+      <Text style={styles.muted}>
+        We do not sell your personal information. Limited data may go to hosting providers; weather/place/sky services
+        (for example Open-Meteo, OpenStreetMap Nominatim, CDS imagery); and, when enabled, payment or email providers. We
+        may also disclose information when required by law or to protect rights and safety.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>5. Cookies and local storage</Text>
+      <Text style={styles.muted}>
+        {APP_NAME} uses local storage (and comparable mobile storage) to remember theme, gear, locations, and lists.
+        Clearing storage may reset those settings.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>6. Data retention and your rights</Text>
+      <Text style={styles.muted}>
+        Local data remains until you clear it or uninstall. Account data, when available, is kept while the account is
+        active and as needed afterward for legal or backup purposes. You may request access, correction, or deletion by
+        emailing {COMPANY_EMAIL}.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>7. Children</Text>
+      <Text style={styles.muted}>
+        {APP_NAME} is not directed at children under 13 (or the minimum age in your country). We do not knowingly collect
+        children’s personal information.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>8. International processing</Text>
+      <Text style={styles.muted}>
+        {COMPANY_LEGAL_NAME} is based in India. Providers may process data in other countries with appropriate safeguards.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>9. Security disclaimer</Text>
+      <Text style={styles.muted}>
+        No system is 100% secure. {APP_NAME} is provided “as is”. To the maximum extent permitted by law,{" "}
+        {COMPANY_SHORT_NAME} is not liable for unauthorized access, transmission errors, or third-party security failures.
+        See also our Terms of use.
+      </Text>
+
+      <Text style={[styles.body, { fontWeight: "600" }]}>10. Policy changes and contact</Text>
+      <Text style={styles.muted}>
+        We may update this policy and will note significant changes in the app when practical. Privacy questions:{" "}
+        {COMPANY_EMAIL}. Registered office: {COMPANY_ADDRESS}.
+      </Text>
+      <Text style={styles.muted}>Last updated {PRIVACY_LAST_UPDATED}.</Text>
     </View>
   );
 }
@@ -127,22 +246,7 @@ function AcknowledgementsBody({ theme }: { theme: "dark" | "night" }) {
       </Text>
       <Text style={[styles.body, { fontWeight: "600" }]}>Weather and places</Text>
       <Text style={styles.muted}>Forecasts and geocoding use Open-Meteo (CC BY 4.0) and OpenStreetMap Nominatim (ODbL).</Text>
-      <Text style={styles.muted}>If a credit should be corrected, use Contact.</Text>
-    </View>
-  );
-}
-
-function ContactBody({ theme }: { theme: "dark" | "night" }) {
-  const styles = useThemeStyles(theme);
-  return (
-    <View style={{ gap: 10 }}>
-      <Text style={styles.body}>
-        Reach the team behind {APP_NAME} at {COMPANY_LEGAL_NAME}.
-      </Text>
-      <MetaRow theme={theme} label="Email" value={COMPANY_EMAIL} onPress={() => void Linking.openURL(`mailto:${COMPANY_EMAIL}`)} />
-      <MetaRow theme={theme} label="Registered office" value={COMPANY_ADDRESS} />
-      <MetaRow theme={theme} label="Company" value={COMPANY_LEGAL_NAME} />
-      <Text style={styles.muted}>For catalogue credit corrections, privacy questions, or product feedback, email is best.</Text>
+      <Text style={styles.muted}>If a credit should be corrected, email {COMPANY_EMAIL}.</Text>
     </View>
   );
 }
@@ -178,7 +282,6 @@ function parsePage(page: string | undefined): AboutPageId {
     case "terms":
     case "privacy":
     case "acknowledgements":
-    case "contact":
     case "about":
       return page;
     default:
@@ -196,8 +299,6 @@ function pageTitle(id: AboutPageId): string {
       return "Privacy";
     case "acknowledgements":
       return "Acknowledgements";
-    case "contact":
-      return "Contact";
     default: {
       const unexpected: never = id;
       return unexpected;

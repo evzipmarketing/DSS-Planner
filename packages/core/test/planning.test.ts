@@ -12,6 +12,7 @@ import {
   imagingOkWithMoon,
   moonPlan,
   observationScore,
+  passesCustomListRanges,
   passesListFilter,
   visibilityScore,
   type TargetSortFields,
@@ -129,6 +130,34 @@ describe("moon separation and priority", () => {
       { band: "narrowband", frameFit: "small", moonHint: null, moonScore: 1, objectType: "SNR" },
       "good-fit",
     )).toBe(false);
+    expect(passesListFilter(
+      { band: "narrowband", frameFit: "small", moonHint: null, moonScore: 1, objectType: "SNR" },
+      "custom",
+    )).toBe(true);
+    expect(
+      passesCustomListRanges(
+        { frameFillPercent: 40, usableHours: 3 },
+        { minFrameFillPercent: 20, maxFrameFillPercent: 80, minImageableHours: 2, maxImageableHours: 8 },
+      ),
+    ).toBe(true);
+    expect(
+      passesCustomListRanges(
+        { frameFillPercent: 10, usableHours: 3 },
+        { minFrameFillPercent: 20, maxFrameFillPercent: 80, minImageableHours: 2, maxImageableHours: 8 },
+      ),
+    ).toBe(false);
+    expect(
+      passesCustomListRanges(
+        { frameFillPercent: 40, usableHours: 1 },
+        { minFrameFillPercent: 20, maxFrameFillPercent: 80, minImageableHours: 2, maxImageableHours: 8 },
+      ),
+    ).toBe(false);
+    expect(
+      passesCustomListRanges(
+        { frameFillPercent: null, usableHours: 4 },
+        { minFrameFillPercent: 20, maxFrameFillPercent: 80, minImageableHours: 2, maxImageableHours: 8 },
+      ),
+    ).toBe(true);
   });
 
   it("lengthens a broadband stack when the Moon is bright and caps it at the usable window", () => {

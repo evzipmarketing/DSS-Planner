@@ -166,13 +166,13 @@ export default function ProfileScreen() {
             <HubRow
               theme={planner.theme}
               title="Terms of use"
-              detail="How you may use the app"
+              detail="Acceptance, subscriptions, content, and liability"
               onPress={() => router.push({ pathname: "/profile/about", params: { page: "terms" } })}
             />
             <HubRow
               theme={planner.theme}
               title="Privacy"
-              detail="What stays local and what we request"
+              detail="How we collect, use, and protect your data"
               onPress={() => router.push({ pathname: "/profile/about", params: { page: "privacy" } })}
             />
             <HubRow
@@ -180,12 +180,6 @@ export default function ProfileScreen() {
               title="Acknowledgements"
               detail="Catalogue, sky, weather, and place data credits"
               onPress={() => router.push({ pathname: "/profile/about", params: { page: "acknowledgements" } })}
-            />
-            <HubRow
-              theme={planner.theme}
-              title="Contact"
-              detail="Email and registered office"
-              onPress={() => router.push({ pathname: "/profile/about", params: { page: "contact" } })}
             />
           </View>
         </View>

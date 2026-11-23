@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } 
 import { createPortal } from "react-dom";
 import {
   ASTRONOMICAL_SUN_ALTITUDE_DEG,
+  CUSTOM_LIST_FRAME_FILL_MAX,
+  CUSTOM_LIST_IMAGEABLE_HOURS_MAX,
+  DEFAULT_CUSTOM_LIST_RANGES,
   IMAGEABLE_MIN_ALTITUDE_DEG,
   TARGET_LIST_FILTERS,
   TARGET_SORT_KEYS,
@@ -11,6 +14,7 @@ import {
   bandLabel,
   catalogueLabel,
   compareTargetSort,
+  customListRangesActive,
   defaultSortDirection,
   frameFillPercent,
   formatArcmin,
@@ -22,6 +26,7 @@ import {
   formatSignedDegrees,
   listFilterLabel,
   targetSortLabel,
+  type CustomListRanges,
   type SortDirection,
   type TargetSortKey,
   objectTitle,
@@ -45,6 +50,8 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
     extendedReady,
     listFilter,
     setListFilter,
+    customListRanges,
+    setCustomListRanges,
     listSort,
     setListSort,
     listSortDirection,
@@ -59,6 +66,7 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
   const [shown, setShown] = useState(20);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [toolsHost, setToolsHost] = useState<HTMLElement | null>(null);
+  const [customOpen, setCustomOpen] = useState(false);
 
   useEffect(() => {
     setToolsHost(document.getElementById("tonight-list-tools"));
@@ -130,8 +138,17 @@ export function Shortlist({ detail }: { detail?: ReactNode }) {
       />
       <ListFilter
         filter={listFilter}
+        ranges={customListRanges}
+        customOpen={customOpen}
+        onCustomOpen={setCustomOpen}
         onFilter={(next) => {
           setListFilter(next);
+          setShown(20);
+          if (next === "custom") setCustomOpen(true);
+          else setCustomOpen(false);
+        }}
+        onRanges={(next) => {
+          setCustomListRanges(next);
           setShown(20);
         }}
       />
@@ -347,45 +364,83 @@ function TargetDetailDialog({
 }
 
 function useMenuDismiss(open: boolean, host: RefObject<HTMLElement | null>, setOpen: (open: boolean) => void) {
+  const setOpenRef = useRef(setOpen);
+  setOpenRef.current = setOpen;
+
   useEffect(() => {
     if (!open) return;
+    let armed = false;
+    const armTimer = window.setTimeout(() => {
+      armed = true;
+    }, 0);
     function onPointer(event: PointerEvent) {
-      if (!host.current?.contains(event.target as Node)) setOpen(false);
+      if (!armed) return;
+      if (!host.current?.contains(event.target as Node)) setOpenRef.current(false);
     }
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") setOpenRef.current(false);
     }
     document.addEventListener("pointerdown", onPointer);
     document.addEventListener("keydown", onKeyDown);
     return () => {
+      window.clearTimeout(armTimer);
       document.removeEventListener("pointerdown", onPointer);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open, host, setOpen]);
+  }, [open, host]);
 }
 
 function ListFilter({
   filter,
+  ranges,
+  customOpen,
+  onCustomOpen,
   onFilter,
+  onRanges,
 }: {
   filter: (typeof TARGET_LIST_FILTERS)[number];
+  ranges: CustomListRanges;
+  customOpen: boolean;
+  onCustomOpen: (open: boolean) => void;
   onFilter: (filter: (typeof TARGET_LIST_FILTERS)[number]) => void;
+  onRanges: (ranges: CustomListRanges) => void;
 }) {
   const [open, setOpen] = useState(false);
   const host = useRef<HTMLDivElement>(null);
-  useMenuDismiss(open, host, setOpen);
+  useMenuDismiss(open || customOpen, host, (next) => {
+    setOpen(next);
+    if (!next) onCustomOpen(false);
+  });
+
+  const chipLabel =
+    filter === "custom" && customListRangesActive(ranges)
+      ? `Custom · ${Math.round(ranges.minFrameFillPercent)}–${Math.round(ranges.maxFrameFillPercent)}%`
+      : listFilterLabel(filter);
 
   return (
-    <div className={`sort-menu filter-menu${open ? " open" : ""}`} ref={host}>
+    <div className={`sort-menu filter-menu${customOpen ? " custom-open" : ""}${open ? " open" : ""}`} ref={host}>
       <button
         type="button"
-        className="tab sort-tab"
-        aria-expanded={open}
+        className={`tab sort-tab${filter === "custom" ? " custom-tab" : ""}`}
+        aria-expanded={open || customOpen}
         aria-haspopup="listbox"
-        aria-controls="target-filter"
-        onClick={() => setOpen((current) => !current)}
+        aria-controls={customOpen ? "custom-filters" : "target-filter"}
+        onClick={() => {
+          if (filter === "custom") {
+            setOpen(false);
+            onCustomOpen(!customOpen);
+            return;
+          }
+          onCustomOpen(false);
+          setOpen((current) => !current);
+        }}
       >
-        {listFilterLabel(filter)}
+        {chipLabel}
+        {filter === "custom" && customListRangesActive(ranges) ? (
+          <span className="custom-count" aria-hidden="true">
+            ·
+          </span>
+        ) : null}
         <svg className="custom-chevron" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M3.5 6l4.5 4.5L12.5 6" />
         </svg>
@@ -409,6 +464,125 @@ function ListFilter({
           ))}
         </div>
       ) : null}
+      {customOpen ? (
+        <div className="custom-panel" id="custom-filters" role="region" aria-label="Custom filter ranges">
+          <DualRangeField
+            label="Frame fill"
+            min={0}
+            max={CUSTOM_LIST_FRAME_FILL_MAX}
+            step={5}
+            low={ranges.minFrameFillPercent}
+            high={ranges.maxFrameFillPercent}
+            formatValue={(value) => `${Math.round(value)}%`}
+            onChange={(low, high) =>
+              onRanges({
+                ...ranges,
+                minFrameFillPercent: low,
+                maxFrameFillPercent: high,
+              })
+            }
+          />
+          <DualRangeField
+            label="Imageable hours"
+            min={0}
+            max={CUSTOM_LIST_IMAGEABLE_HOURS_MAX}
+            step={0.5}
+            low={ranges.minImageableHours}
+            high={ranges.maxImageableHours}
+            formatValue={(value) => `${value.toFixed(1)} h`}
+            onChange={(low, high) =>
+              onRanges({
+                ...ranges,
+                minImageableHours: low,
+                maxImageableHours: high,
+              })
+            }
+          />
+          <div className="custom-panel-actions">
+            <button type="button" className="ghost-link" onClick={() => onRanges(DEFAULT_CUSTOM_LIST_RANGES)}>
+              Reset
+            </button>
+            <button
+              type="button"
+              className="ghost-link"
+              onClick={() => {
+                onCustomOpen(false);
+                setOpen(true);
+              }}
+            >
+              Other filters
+            </button>
+          </div>
+          <p className="custom-hint">Drag either thumb to set the min and max kept in Tonight’s list.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DualRangeField({
+  label,
+  min,
+  max,
+  step,
+  low,
+  high,
+  formatValue,
+  onChange,
+}: {
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  low: number;
+  high: number;
+  formatValue: (value: number) => string;
+  onChange: (low: number, high: number) => void;
+}) {
+  const span = Math.max(max - min, step);
+  const lowPct = ((low - min) / span) * 100;
+  const highPct = ((high - min) / span) * 100;
+
+  return (
+    <div className="dual-range">
+      <div className="dual-range-header">
+        <span>{label}</span>
+        <strong>
+          {formatValue(low)} – {formatValue(high)}
+        </strong>
+      </div>
+      <div
+        className="dual-range-track"
+        style={{
+          ["--low" as string]: `${lowPct}%`,
+          ["--high" as string]: `${highPct}%`,
+        }}
+      >
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={low}
+          aria-label={`${label} minimum`}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            onChange(Math.min(next, high), high);
+          }}
+        />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={high}
+          aria-label={`${label} maximum`}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            onChange(low, Math.max(next, low));
+          }}
+        />
+      </div>
     </div>
   );
 }

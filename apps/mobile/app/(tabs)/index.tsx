@@ -3,10 +3,14 @@ import { FlatList, Image, Modal, Pressable, Text, TextInput, View } from "react-
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import {
+  CUSTOM_LIST_FRAME_FILL_MAX,
+  CUSTOM_LIST_IMAGEABLE_HOURS_MAX,
+  DEFAULT_CUSTOM_LIST_RANGES,
   TARGET_LIST_FILTERS,
   TARGET_SORT_KEYS,
   bandLabel,
   compareTargetSort,
+  customListRangesActive,
   defaultSortDirection,
   formatImageableHours,
   listFilterLabel,
@@ -19,6 +23,7 @@ import {
   type TargetSortKey,
 } from "@dss/core";
 import { constellationName } from "@dss/data";
+import { DualRangeSlider } from "@/components/dual-range-slider";
 import { SettingsSheet } from "@/components/settings-sheet";
 import { TargetThumb } from "@/components/target-thumb";
 import { OfflineBanner, useThemeStyles } from "@/components/ui";
@@ -35,6 +40,7 @@ export default function TonightScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const searchRef = useRef<TextInput>(null);
 
@@ -84,6 +90,7 @@ export default function TonightScreen() {
   function chooseFilter(filter: TargetListFilter) {
     planner.setListFilter(filter);
     setFilterOpen(false);
+    if (filter === "custom") setCustomOpen(true);
   }
 
   function chooseSort(key: TargetSortKey) {
@@ -91,6 +98,11 @@ export default function TonightScreen() {
     planner.setListSortDirection(defaultSortDirection(key));
     setSortOpen(false);
   }
+
+  const filterChipLabel =
+    planner.listFilter === "custom" && customListRangesActive(planner.customListRanges)
+      ? `Custom · ${Math.round(planner.customListRanges.minFrameFillPercent)}–${Math.round(planner.customListRanges.maxFrameFillPercent)}%`
+      : listFilterLabel(planner.listFilter);
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -146,8 +158,12 @@ export default function TonightScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <ToolChip
                     theme={planner.theme}
-                    label={listFilterLabel(planner.listFilter)}
-                    onPress={() => setFilterOpen(true)}
+                    label={filterChipLabel}
+                    onPress={() => {
+                      if (planner.listFilter === "custom") setCustomOpen(true);
+                      else setFilterOpen(true);
+                    }}
+                    onLongPress={() => setFilterOpen(true)}
                     flex
                   />
                   <ToolChip
@@ -265,6 +281,18 @@ export default function TonightScreen() {
           onPress: () => chooseSort(key),
         }))}
       />
+      <CustomFilterSheet
+        theme={planner.theme}
+        visible={customOpen}
+        ranges={planner.customListRanges}
+        onChange={planner.setCustomListRanges}
+        onReset={() => planner.setCustomListRanges(DEFAULT_CUSTOM_LIST_RANGES)}
+        onClose={() => setCustomOpen(false)}
+        onChangeFilter={() => {
+          setCustomOpen(false);
+          setFilterOpen(true);
+        }}
+      />
 
       <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </SafeAreaView>
@@ -275,11 +303,13 @@ function ToolChip({
   theme,
   label,
   onPress,
+  onLongPress,
   flex,
 }: {
   theme: "dark" | "night";
   label: string;
   onPress: () => void;
+  onLongPress?: () => void;
   flex?: boolean;
 }) {
   const styles = useThemeStyles(theme);
@@ -287,6 +317,7 @@ function ToolChip({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       style={[
         styles.chip,
         {
@@ -305,6 +336,95 @@ function ToolChip({
       </Text>
       <Text style={{ color: c.accent, fontSize: 10 }}>▼</Text>
     </Pressable>
+  );
+}
+
+function CustomFilterSheet({
+  theme,
+  visible,
+  ranges,
+  onChange,
+  onReset,
+  onClose,
+  onChangeFilter,
+}: {
+  theme: "dark" | "night";
+  visible: boolean;
+  ranges: typeof DEFAULT_CUSTOM_LIST_RANGES;
+  onChange: (next: typeof DEFAULT_CUSTOM_LIST_RANGES) => void;
+  onReset: () => void;
+  onClose: () => void;
+  onChangeFilter: () => void;
+}) {
+  const styles = useThemeStyles(theme);
+  const c = colors(theme);
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }} onPress={onClose} />
+        <View
+          style={{
+            backgroundColor: c.bgRaised,
+            borderTopLeftRadius: 18,
+            borderTopRightRadius: 18,
+            borderColor: c.line,
+            borderWidth: 1,
+            padding: 16,
+            paddingBottom: 28,
+            gap: 16,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <Text style={styles.label}>Custom filter</Text>
+            <Pressable onPress={onChangeFilter} hitSlop={8}>
+              <Text style={styles.accent}>Other filters</Text>
+            </Pressable>
+          </View>
+          <DualRangeSlider
+            theme={theme}
+            label="Frame fill"
+            min={0}
+            max={CUSTOM_LIST_FRAME_FILL_MAX}
+            step={5}
+            low={ranges.minFrameFillPercent}
+            high={ranges.maxFrameFillPercent}
+            formatValue={(value) => `${Math.round(value)}%`}
+            onChange={(low, high) =>
+              onChange({
+                ...ranges,
+                minFrameFillPercent: low,
+                maxFrameFillPercent: high,
+              })
+            }
+          />
+          <DualRangeSlider
+            theme={theme}
+            label="Imageable hours"
+            min={0}
+            max={CUSTOM_LIST_IMAGEABLE_HOURS_MAX}
+            step={0.5}
+            low={ranges.minImageableHours}
+            high={ranges.maxImageableHours}
+            formatValue={(value) => `${value.toFixed(1)} h`}
+            onChange={(low, high) =>
+              onChange({
+                ...ranges,
+                minImageableHours: low,
+                maxImageableHours: high,
+              })
+            }
+          />
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Pressable onPress={onReset} style={{ paddingVertical: 10, paddingHorizontal: 4 }}>
+              <Text style={styles.muted}>Reset</Text>
+            </Pressable>
+            <Pressable onPress={onClose} style={{ paddingVertical: 10, paddingHorizontal: 4 }}>
+              <Text style={styles.accent}>Done</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
