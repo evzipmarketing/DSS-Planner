@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MultiRigsPanel } from "./multi-rigs-panel";
 import { MultiTargetPanel } from "./multi-target-panel";
 import { SingleTargetPanel } from "./single-target-panel";
 
@@ -18,15 +19,15 @@ const MODULES = [
     ready: true,
   },
   {
-    id: "mosaic",
-    title: "Mosaic",
-    detail: "Grid size, overlap, and panel framing for wide fields.",
-    ready: false,
-  },
-  {
     id: "multi-rigs",
     title: "Multi-rigs",
     detail: "Coordinate several scopes and cameras on the same night.",
+    ready: true,
+  },
+  {
+    id: "mosaic",
+    title: "Mosaic",
+    detail: "Grid size, overlap, and panel framing for wide fields.",
     ready: false,
   },
   {
@@ -43,7 +44,7 @@ const MODULES = [
   },
 ] as const;
 
-type PlannerSection = "home" | "multi-target" | "single-target";
+type PlannerSection = "home" | "multi-target" | "single-target" | "multi-rigs";
 
 export function PlannerHubPage() {
   const [section, setSection] = useState<PlannerSection>("home");
@@ -72,6 +73,20 @@ export function PlannerHubPage() {
           <h1>Single-target planner</h1>
         </header>
         <SingleTargetPanel />
+      </div>
+    );
+  }
+
+  if (section === "multi-rigs") {
+    return (
+      <div className="hub-page">
+        <button type="button" className="ghost hub-back" onClick={() => setSection("home")}>
+          ← Planner
+        </button>
+        <header className="hub-intro">
+          <h1>Multi-rigs</h1>
+        </header>
+        <MultiRigsPanel />
       </div>
     );
   }

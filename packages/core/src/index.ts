@@ -12,6 +12,7 @@ export * from "./catalogue";
 export * from "./export-csv";
 export * from "./multi-target";
 export * from "./single-target";
+export * from "./multi-rigs";
 export * from "./weather";
 export * from "./panchang";
 export * from "./bortle";

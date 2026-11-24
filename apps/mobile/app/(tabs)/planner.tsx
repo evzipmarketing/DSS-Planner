@@ -19,15 +19,15 @@ const MODULES = [
     ready: true,
   },
   {
-    href: "/planner/mosaic",
-    title: "Mosaic",
-    detail: "Grid size, overlap, and panel framing for wide fields.",
-    ready: false,
-  },
-  {
     href: "/planner/multi-rigs",
     title: "Multi-rigs",
     detail: "Coordinate several scopes and cameras on the same night.",
+    ready: true,
+  },
+  {
+    href: "/planner/mosaic",
+    title: "Mosaic",
+    detail: "Grid size, overlap, and panel framing for wide fields.",
     ready: false,
   },
   {

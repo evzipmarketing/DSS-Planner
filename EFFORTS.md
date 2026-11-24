@@ -10,14 +10,14 @@ _Last refreshed: 2026-11-24 (auto)_
 | Metric | Value | Source |
 |--------|-------|--------|
 | Project start (first commit) | **2026-11-12** | `git log --reverse` |
-| Latest commit (as of refresh) | **2026-11-24** | `ada5a07` — Add EFFORTS.md development log for dates, LOC, and cost tracking. |
+| Latest commit (as of refresh) | **2026-11-24** | `8affda4` — Keep EFFORTS.md current with a refresh script and Cursor rule. |
 | Calendar span | **13 days** (2026-11-12 → 2026-11-24) | First → latest commit date |
 | Days with commits | **7** | Unique `git log` dates |
-| Total commits on `main` | **26** | `git rev-list --count HEAD` |
-| Source files counted | **147** | `apps/` + `packages/` |
-| Current source LOC | **~30,466** | Line count under `apps/` + `packages/` |
-| Git churn (all history) | **+47,852 / -4,498** (net ~**+43,354**) | `git log --numstat` |
-| Cursor agent transcripts (local) | **8** chats under this project | Agent transcript folder |
+| Total commits on `main` | **27** | `git rev-list --count HEAD` |
+| Source files counted | **150** | `apps/` + `packages/` |
+| Current source LOC | **~32,937** | Line count under `apps/` + `packages/` |
+| Git churn (all history) | **+48,124 / -4,557** (net ~**+43,567**) | `git log --numstat` |
+| Cursor agent transcripts (local) | **9** chats under this project | Agent transcript folder |
 
 ---
 
@@ -33,7 +33,7 @@ _Last refreshed: 2026-11-24 (auto)_
 | 2026-11-21 | 2 | |
 | 2026-11-22 | 1 | |
 | 2026-11-23 | 1 | |
-| 2026-11-24 | 2 | |
+| 2026-11-24 | 3 | |
 
 _Notes column is manual — keep useful context when editing by hand._
 
@@ -43,7 +43,7 @@ _Notes column is manual — keep useful context when editing by hand._
 |--------|--------:|
 | Cursor Agent | 31 |
 | evzipmarketing | 13 |
-| itsardnepu | 9 |
+| itsardnepu | 10 |
 
 \*Author totals can exceed tip commit count when history was rewritten or commits exist on other refs.
 
@@ -55,19 +55,19 @@ Counted under `apps/` and `packages/`, excluding `node_modules`, `.next`, `dist`
 
 | Area | Approx. lines |
 |------|-------------:|
-| `apps/web` | 12,547 |
-| `apps/mobile` | 9,877 |
-| `packages/core` | 4,701 |
+| `apps/web` | 13,593 |
+| `apps/mobile` | 10,707 |
+| `packages/core` | 5,296 |
 | `packages/data` | 3,341 |
-| **Total** | **~30,466** |
+| **Total** | **~32,937** |
 
 ### By file type
 
 | Extension | Approx. lines |
 |-----------|-------------:|
-| `.tsx` | 15,207 |
-| `.ts` | 11,323 |
-| `.css` | 3,555 |
+| `.tsx` | 16,912 |
+| `.ts` | 11,918 |
+| `.css` | 3,726 |
 | `.json` | 227 |
 | `.md` | 110 |
 | `.js` | 44 |
@@ -76,8 +76,8 @@ Counted under `apps/` and `packages/`, excluding `node_modules`, `.next`, `dist`
 
 | Item | Value |
 |------|------:|
-| `packages/core/test` files | 5 |
-| Test LOC (approx.) | ~1,320 |
+| `packages/core/test` files | 6 |
+| Test LOC (approx.) | ~1,615 |
 
 ### How to re-measure
 
@@ -119,7 +119,7 @@ Cursor does not expose spend inside the repo. Copy numbers from the Cursor dashb
 
 | Item | Amount | Period | Source |
 |------|-------:|--------|--------|
-| Cursor plan / subscription | _TBD_ | | Cursor Settings â†’ Account / Billing |
+| Cursor plan / subscription | _TBD_ | | Cursor Settings ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Account / Billing |
 | Cursor usage credits / on-demand | _TBD_ | | Cursor usage page |
 | Agent / premium model premium requests | _TBD_ | | |
 | GitHub (repo / Actions) | _TBD_ | | |
@@ -139,8 +139,8 @@ Cursor does not expose spend inside the repo. Copy numbers from the Cursor dashb
 ## Stack & scope (for context)
 
 - **Monorepo:** `apps/web` (Next), `apps/mobile` (Expo), `packages/core`, `packages/data`
-- **Shipped (high level):** Tonight shortlist & ranking, gear/setup, altitude/imageable windows, moon/band advice, Profile/lists, sky explorer, Planner hub, multi-target night planner, single-target goal-first planner, CSV export on target details
-- **Still planned:** Multi-rigs, Mosaic, Collage, Asterisms (see `.cursor/plans/planner_modules_plan_0bfd4930.plan.md`)
+- **Shipped (high level):** Tonight shortlist & ranking, gear/setup, altitude/imageable windows, moon/band advice, Profile/lists, sky explorer, Planner hub, multi-target night planner, single-target goal-first planner, multi-rigs night planner, CSV export on target details
+- **Still planned:** Mosaic, Collage, Asterisms (see `.cursor/plans/planner_modules_plan_0bfd4930.plan.md`)
 
 ---
 

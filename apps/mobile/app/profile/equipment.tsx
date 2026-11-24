@@ -513,7 +513,10 @@ function AddGearModal({ mode, onClose }: { mode: AddMode; onClose: () => void })
     setFilterKind("ha");
     setBandpass("7");
     setTransmission("0.9");
-  }, [mode, planner.telescope?.id, planner.camera?.id, planner.filterIds, planner.reducer]);
+    // Only reset when the dialog mode opens/changes — not when Tonight gear updates,
+    // or a typed rig name gets wiped mid-entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: seed from planner once per mode
+  }, [mode]);
 
   const selectedScope = planner.telescopes.find((item) => item.id === telescopeId) ?? null;
   const selectedCamera = planner.cameraList.find((item) => item.id === cameraId) ?? null;

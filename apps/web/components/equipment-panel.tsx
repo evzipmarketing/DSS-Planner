@@ -349,7 +349,8 @@ function AddGearDialog({ mode, onClose }: { mode: Exclude<AddMode, null>; onClos
   function pickScope(id: string) {
     const scope = planner.telescopes.find((item) => item.id === id);
     setTelescopeId(id);
-    setName("");
+    // Catalogue scope pick replaces custom-name fields; never wipe a typed rig name.
+    if (mode === "scope") setName("");
     if (scope?.smart) {
       setCameraId(scope.smart.cameraId);
       setFilterId(scope.smart.filterIds[0] ?? "");
