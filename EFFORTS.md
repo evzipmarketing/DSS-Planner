@@ -1,4 +1,4 @@
-# DeepSkyMate Ã¢â‚¬â€ development efforts
+# DeepSkyMate — development efforts
 
 Auto-measured project stats. Refresh with `pnpm efforts:refresh`.
 
@@ -10,14 +10,14 @@ _Last refreshed: 2026-11-26 (auto)_
 | Metric | Value | Source |
 |--------|-------|--------|
 | Project start (first commit) | **2026-11-12** | `git log --reverse` |
-| Latest commit (as of refresh) | **2026-11-26** | `3bd683c` — Refresh EFFORTS.md after shipping planner modules. |
+| Latest commit (as of refresh) | **2026-11-26** | `07599ca` — Sync DeepSkyMate brand icons for mobile and web PWA install. |
 | Calendar span | **15 days** (2026-11-12 → 2026-11-26) | First → latest commit date |
 | Days with commits | **8** | Unique `git log` dates |
-| Total commits on `main` | **30** | `git rev-list --count HEAD` |
+| Total commits on `main` | **31** | `git rev-list --count HEAD` |
 | Source files counted | **183** | `apps/` + `packages/` |
 | Current source LOC | **~43,069** | Line count under `apps/` + `packages/` |
-| Git churn (all history) | **+61,817 / -5,359** (net ~**+56,458**) | `git log --numstat` |
-| Cursor agent transcripts (local) | **19** chats under this project | Agent transcript folder |
+| Git churn (all history) | **+62,131 / -5,517** (net ~**+56,614**) | `git log --numstat` |
+| Cursor agent transcripts (local) | **20** chats under this project | Agent transcript folder |
 
 ---
 
@@ -32,15 +32,15 @@ _Last refreshed: 2026-11-26 (auto)_
 | 2026-11-22 | 1 |
 | 2026-11-23 | 1 |
 | 2026-11-24 | 4 |
-| 2026-11-26 | 2 |
+| 2026-11-26 | 3 |
 
 ### Authors
 
 | Author | Commits |
 |--------|--------:|
 | Cursor Agent | 31 |
+| itsardnepu | 14 |
 | evzipmarketing | 13 |
-| itsardnepu | 13 |
 
 ---
 

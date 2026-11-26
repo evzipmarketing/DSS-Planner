@@ -48,7 +48,7 @@ export function ModuleGearPicker() {
   useEffect(() => {
     if (gearReady) setOpen(false);
     else setOpen(true);
-  }, [gearReady, planner.activeRigId, planner.telescopeId, planner.cameraId]);
+  }, [gearReady, planner.activeRigId, planner.telescope?.id, planner.camera?.id]);
 
   useEffect(() => {
     setFlText(planner.focalOverrideMm != null ? String(planner.focalOverrideMm) : "");
@@ -214,7 +214,7 @@ export function ModuleGearPicker() {
             <View style={{ maxHeight: 220 }}>
               <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
                 {scopeOptions.map((item) => {
-                  const selected = planner.telescopeId === item.id;
+                  const selected = planner.telescope?.id === item.id;
                   const inLibrary = planner.libraryTelescopeIds.includes(item.id);
                   return (
                     <Pressable
@@ -354,7 +354,7 @@ export function ModuleGearPicker() {
 
               {menu === "camera"
                 ? cameraOptions.map((item) => {
-                    const selected = planner.cameraId === item.id;
+                    const selected = planner.camera?.id === item.id;
                     const inLibrary = planner.libraryCameraIds.includes(item.id);
                     return (
                       <Pressable

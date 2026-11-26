@@ -26,7 +26,7 @@ export function ModuleGearPicker() {
     // Keep the menu open until gear is complete; collapse once a rig/manual gear is ready.
     if (gearReady) setOpen(false);
     else setOpen(true);
-  }, [gearReady, planner.activeRigId, planner.telescopeId, planner.cameraId]);
+  }, [gearReady, planner.activeRigId, planner.telescope?.id, planner.camera?.id]);
 
   const flLocked = planner.focalOverrideMm != null;
 
