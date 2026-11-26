@@ -10,13 +10,13 @@ _Last refreshed: 2026-11-26 (auto)_
 | Metric | Value | Source |
 |--------|-------|--------|
 | Project start (first commit) | **2026-11-12** | `git log --reverse` |
-| Latest commit (as of refresh) | **2026-11-24** | `ee397dd` — Ship multi-rigs planner for parallel gear nights. |
-| Calendar span | **13 days** (2026-11-12 → 2026-11-24) | First → latest commit date |
-| Days with commits | **7** | Unique `git log` dates |
-| Total commits on `main` | **28** | `git rev-list --count HEAD` |
+| Latest commit (as of refresh) | **2026-11-26** | `48d578c` — Ship mosaic, collage, and asterisms planners with saveable imaging plans. |
+| Calendar span | **15 days** (2026-11-12 → 2026-11-26) | First → latest commit date |
+| Days with commits | **8** | Unique `git log` dates |
+| Total commits on `main` | **29** | `git rev-list --count HEAD` |
 | Source files counted | **183** | `apps/` + `packages/` |
 | Current source LOC | **~43,050** | Line count under `apps/` + `packages/` |
-| Git churn (all history) | **+50,804 / -4,602** (net ~**+46,202**) | `git log --numstat` |
+| Git churn (all history) | **+61,808 / -5,351** (net ~**+56,457**) | `git log --numstat` |
 | Cursor agent transcripts (local) | **19** chats under this project | Agent transcript folder |
 
 ---
@@ -34,6 +34,7 @@ _Last refreshed: 2026-11-26 (auto)_
 | 2026-11-22 | 1 | |
 | 2026-11-23 | 1 | |
 | 2026-11-24 | 4 | |
+| 2026-11-26 | 1 | |
 
 _Notes column is manual — keep useful context when editing by hand._
 
@@ -43,7 +44,7 @@ _Notes column is manual — keep useful context when editing by hand._
 |--------|--------:|
 | Cursor Agent | 31 |
 | evzipmarketing | 13 |
-| itsardnepu | 11 |
+| itsardnepu | 12 |
 
 \*Author totals can exceed tip commit count when history was rewritten or commits exist on other refs.
 
@@ -86,7 +87,7 @@ pnpm efforts:refresh
 # or: powershell -File scripts/refresh-efforts.ps1
 ```
 
-**Heuristic estimate (auto):** ~42–84 hours (7 active days × 6–12 h). Replace with your hour log below.
+**Heuristic estimate (auto):** ~48–96 hours (8 active days × 6–12 h). Replace with your hour log below.
 <!-- efforts:measured:end -->
 
 ---
@@ -119,7 +120,7 @@ Cursor does not expose spend inside the repo. Copy numbers from the Cursor dashb
 
 | Item | Amount | Period | Source |
 |------|-------:|--------|--------|
-| Cursor plan / subscription | _TBD_ | | Cursor Settings ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Account / Billing |
+| Cursor plan / subscription | _TBD_ | | Cursor Settings ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ Account / Billing |
 | Cursor usage credits / on-demand | _TBD_ | | Cursor usage page |
 | Agent / premium model premium requests | _TBD_ | | |
 | GitHub (repo / Actions) | _TBD_ | | |
