@@ -116,6 +116,10 @@ export function Field({
   autoCapitalize = "none",
   editable = true,
   autoFocus = false,
+  secureTextEntry = false,
+  textContentType,
+  onFocus,
+  onBlur,
 }: {
   theme: ThemeName;
   label: string;
@@ -126,6 +130,10 @@ export function Field({
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   editable?: boolean;
   autoFocus?: boolean;
+  secureTextEntry?: boolean;
+  textContentType?: "none" | "username" | "emailAddress" | "telephoneNumber" | "password" | "newPassword";
+  onFocus?: () => void;
+  onBlur?: () => void;
 }) {
   const styles = useThemeStyles(theme);
   return (
@@ -141,6 +149,11 @@ export function Field({
         autoCapitalize={autoCapitalize}
         editable={editable}
         autoFocus={autoFocus}
+        secureTextEntry={secureTextEntry}
+        textContentType={textContentType}
+        autoCorrect={false}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     </View>
   );

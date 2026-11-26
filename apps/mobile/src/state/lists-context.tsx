@@ -50,7 +50,7 @@ export function ListsProvider({ children }: { children: ReactNode }) {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user.id;
       if (!userId) {
-        setSyncError("Sign in to sync lists.");
+        setSyncError("Sign in to sync target lists.");
         return;
       }
 

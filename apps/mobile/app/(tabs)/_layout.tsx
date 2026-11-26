@@ -1,5 +1,7 @@
+import { View } from "react-native";
 import { Tabs } from "expo-router";
 import Svg, { Circle, Path } from "react-native-svg";
+import { ThemeFab } from "@/components/theme-fab";
 import { usePlannerState } from "@/state/planner-context";
 import { colors } from "@/theme/tokens";
 
@@ -60,45 +62,48 @@ export default function TabsLayout() {
   const { theme } = usePlannerState();
   const c = colors(theme);
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: c.bgRaised,
-          borderTopColor: c.line,
-        },
-        tabBarActiveTintColor: c.accent,
-        tabBarInactiveTintColor: c.muted,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Tonight",
-          tabBarIcon: ({ color, focused }) => <TonightIcon color={String(color)} focused={focused} />,
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: c.bgRaised,
+            borderTopColor: c.line,
+          },
+          tabBarActiveTintColor: c.accent,
+          tabBarInactiveTintColor: c.muted,
         }}
-      />
-      <Tabs.Screen
-        name="planner"
-        options={{
-          title: "Planner",
-          tabBarIcon: ({ color, focused }) => <PlannerIcon color={String(color)} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="sky"
-        options={{
-          title: "Sky",
-          tabBarIcon: ({ color, focused }) => <SkyIcon color={String(color)} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, focused }) => <ProfileIcon color={String(color)} focused={focused} />,
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Tonight",
+            tabBarIcon: ({ color, focused }) => <TonightIcon color={String(color)} focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="planner"
+          options={{
+            title: "Planner",
+            tabBarIcon: ({ color, focused }) => <PlannerIcon color={String(color)} focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="sky"
+          options={{
+            title: "Sky",
+            tabBarIcon: ({ color, focused }) => <SkyIcon color={String(color)} focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Profile",
+            tabBarIcon: ({ color, focused }) => <ProfileIcon color={String(color)} focused={focused} />,
+          }}
+        />
+      </Tabs>
+      <ThemeFab />
+    </View>
   );
 }

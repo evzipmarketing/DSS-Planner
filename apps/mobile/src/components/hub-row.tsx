@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useThemeStyles } from "@/components/ui";
 import { colors, type ThemeName } from "@/theme/tokens";
@@ -8,12 +9,14 @@ export function HubRow({
   detail,
   onPress,
   badge,
+  leading,
 }: {
   theme: ThemeName;
   title: string;
   detail?: string;
   onPress: () => void;
   badge?: string;
+  leading?: ReactNode;
 }) {
   const styles = useThemeStyles(theme);
   const c = colors(theme);
@@ -31,6 +34,7 @@ export function HubRow({
         gap: 12,
       }}
     >
+      {leading ? <View style={{ flexShrink: 0 }}>{leading}</View> : null}
       <View style={{ flex: 1, gap: 3 }}>
         <Text style={[styles.body, { fontWeight: "600" }]}>{title}</Text>
         {detail ? <Text style={styles.muted}>{detail}</Text> : null}

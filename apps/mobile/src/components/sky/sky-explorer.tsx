@@ -57,10 +57,9 @@ type Props = {
   locationReady: boolean;
   target: DeepSkyObject | null;
   popularDsos: DeepSkyObject[];
-  onThemeToggle: () => void;
 };
 
-export function SkyExplorer({ theme, site, locationReady, target, popularDsos, onThemeToggle }: Props) {
+export function SkyExplorer({ theme, site, locationReady, target, popularDsos }: Props) {
   const c = colors(theme);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [heading, setHeading] = useState(0);
@@ -490,12 +489,6 @@ export function SkyExplorer({ theme, site, locationReady, target, popularDsos, o
           icon={manual ? <PanIcon color={manual ? c.accent : c.text} /> : <CompassIcon color={c.text} />}
         />
         <Fab color={c} accessibilityLabel="Search sky" onPress={() => setSearchOpen(true)} icon={<SearchIcon color={c.text} />} />
-        <Fab
-          color={c}
-          accessibilityLabel="Toggle night flashlight theme"
-          onPress={onThemeToggle}
-          icon={<ThemeIcon color={c.text} night={theme === "night"} />}
-        />
         <Fab color={c} accessibilityLabel="Sky settings" onPress={() => setSettingsOpen(true)} icon={<SettingsIcon color={c.text} />} />
       </View>
 
@@ -647,34 +640,6 @@ function SearchIcon({ color }: { color: string }) {
     <Svg width={18} height={18} viewBox="0 0 24 24">
       <Path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" fill="none" stroke={color} strokeWidth={1.8} />
       <Path d="m16 16 4.5 4.5" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-function ThemeIcon({ color, night }: { color: string; night: boolean }) {
-  if (night) {
-    return (
-      <Svg width={18} height={18} viewBox="0 0 24 24">
-        <Path
-          d="M12 4.5a7.5 7.5 0 1 0 9 9.2A8 8 0 0 1 12 4.5Z"
-          fill="none"
-          stroke={color}
-          strokeWidth={1.8}
-          strokeLinejoin="round"
-        />
-      </Svg>
-    );
-  }
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24">
-      <Path d="M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" fill="none" stroke={color} strokeWidth={1.8} />
-      <Path
-        d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.1 5.1l1.6 1.6M17.3 17.3l1.6 1.6M5.1 18.9l1.6-1.6M17.3 6.7l1.6-1.6"
-        fill="none"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
     </Svg>
   );
 }

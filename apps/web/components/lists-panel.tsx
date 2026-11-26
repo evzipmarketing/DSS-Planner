@@ -28,12 +28,12 @@ export function ListsPanel() {
   return (
     <div className="lists-panel">
       <p className="note">
-        Favorites and named lists stay in this browser. Star targets from Tonight detail, or add them to a list there.
+        Favorites and named target lists stay in this browser. Star targets from Tonight detail, or add them to a target list there.
       </p>
 
       <div className="hub-card" style={{ display: "grid", gap: 10 }}>
         <label className="field">
-          New list
+          New target list
           <span className="list-create-row">
             <input
               value={name}

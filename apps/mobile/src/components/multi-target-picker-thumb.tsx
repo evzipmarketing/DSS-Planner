@@ -9,6 +9,7 @@ export function MultiTargetPickerThumb({
   raDeg,
   decDeg,
   majorArcmin,
+  fovDeg: fovDegProp,
   label,
   theme,
   selected,
@@ -19,6 +20,8 @@ export function MultiTargetPickerThumb({
   raDeg: number;
   decDeg: number;
   majorArcmin: number | null;
+  /** When set, used as plate FOV instead of the object-size heuristic. */
+  fovDeg?: number;
   label: string;
   theme: ThemeName;
   selected: boolean;
@@ -32,7 +35,10 @@ export function MultiTargetPickerThumb({
   useEffect(() => {
     let cancelled = false;
     setUri(null);
-    const fov = Math.min(6, Math.max(0.12, ((majorArcmin ?? 15) / 60) * 1.8));
+    const fov =
+      fovDegProp != null && Number.isFinite(fovDegProp)
+        ? Math.min(20, Math.max(0.05, fovDegProp))
+        : Math.min(6, Math.max(0.12, ((majorArcmin ?? 15) / 60) * 1.8));
     void fetchSkyPlate({ ra: raDeg, dec: decDeg, fov, size: 96 })
       .then((plate) => {
         if (!cancelled) setUri(plate.uri);
@@ -43,7 +49,7 @@ export function MultiTargetPickerThumb({
     return () => {
       cancelled = true;
     };
-  }, [raDeg, decDeg, majorArcmin]);
+  }, [raDeg, decDeg, majorArcmin, fovDegProp]);
 
   return (
     <Pressable

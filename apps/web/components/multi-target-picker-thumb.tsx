@@ -2,8 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 
-function skySrc(raDeg: number, decDeg: number, majorArcmin: number | null, size = 96): string {
-  const fov = Math.min(6, Math.max(0.12, ((majorArcmin ?? 15) / 60) * 1.8));
+function skySrc(
+  raDeg: number,
+  decDeg: number,
+  majorArcmin: number | null,
+  fovDeg: number | undefined,
+  size = 96,
+): string {
+  const fov =
+    fovDeg != null && Number.isFinite(fovDeg)
+      ? Math.min(20, Math.max(0.05, fovDeg))
+      : Math.min(6, Math.max(0.12, ((majorArcmin ?? 15) / 60) * 1.8));
   return `/api/sky?ra=${raDeg.toFixed(4)}&dec=${decDeg.toFixed(4)}&fov=${fov.toFixed(3)}&size=${size}`;
 }
 
@@ -11,6 +20,7 @@ export function MultiTargetPickerThumb({
   raDeg,
   decDeg,
   majorArcmin,
+  fovDeg,
   label,
   selected,
   disabled,
@@ -20,6 +30,8 @@ export function MultiTargetPickerThumb({
   raDeg: number;
   decDeg: number;
   majorArcmin: number | null;
+  /** When set, used as plate FOV instead of the object-size heuristic. */
+  fovDeg?: number;
   label: string;
   selected: boolean;
   disabled?: boolean;
@@ -28,7 +40,7 @@ export function MultiTargetPickerThumb({
 }) {
   const host = useRef<HTMLButtonElement>(null);
   const [show, setShow] = useState(false);
-  const src = skySrc(raDeg, decDeg, majorArcmin);
+  const src = skySrc(raDeg, decDeg, majorArcmin, fovDeg);
 
   useEffect(() => {
     const node = host.current;

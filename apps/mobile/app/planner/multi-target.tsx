@@ -23,9 +23,14 @@ import {
   type TargetListFilter,
 } from "@dss/core";
 import { DateField } from "@/components/date-field";
+import { ModuleGearPicker } from "@/components/module-gear-picker";
+import { SavePlanControl } from "@/components/save-plan-control";
+import { applySavedPlanGear } from "@/lib/apply-plan-gear";
+import { planFilterFields, snapshotPlanGear, snapshotPlanSite } from "@/lib/plan-snapshot";
 import { MultiAltitudeChart } from "@/components/multi-altitude-chart";
 import { MultiTargetPickerThumb } from "@/components/multi-target-picker-thumb";
 import { Chip, useThemeStyles } from "@/components/ui";
+import { useImagingPlans } from "@/state/imaging-plans-context";
 import { useLists } from "@/state/lists-context";
 import { usePlannerState } from "@/state/planner-context";
 import { colors } from "@/theme/tokens";
@@ -46,6 +51,7 @@ type PickerSource =
 export default function MultiTargetPlannerScreen() {
   const planner = usePlannerState();
   const lists = useLists();
+  const imagingPlans = useImagingPlans();
   const styles = useThemeStyles(planner.theme);
   const c = colors(planner.theme);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -54,6 +60,24 @@ export default function MultiTargetPlannerScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
   const [source, setSource] = useState<PickerSource>({ kind: "filtered" });
+
+  useEffect(() => {
+    if (!imagingPlans.ready) return;
+    let cancelled = false;
+    void (async () => {
+      const plan = await imagingPlans.consumePendingPlan("multi-target");
+      if (cancelled || !plan || plan.module !== "multi-target") return;
+      applySavedPlanGear(planner, plan);
+      setSource(plan.pickerSource);
+      setSelectedIds(plan.selectedObjectIds);
+      setBudgets(plan.requestedHoursById);
+      setStrategy(plan.strategy);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once when plans are ready
+  }, [imagingPlans.ready]);
 
   const catalogueById = useMemo(() => {
     const map = new Map((planner.catalogue ?? []).map((item) => [item.id, item]));
@@ -158,7 +182,7 @@ export default function MultiTargetPlannerScreen() {
   const listsChipLabel =
     source.kind === "list"
       ? `${source.listName} (${lists.lists.find((list) => list.id === source.listId)?.items.length ?? 0})`
-      : "Lists";
+      : "Target Lists";
 
   const emptyPickerMessage = (() => {
     switch (source.kind) {
@@ -220,15 +244,19 @@ export default function MultiTargetPlannerScreen() {
           without double-booking.
         </Text>
 
-        {!planner.setupReady ? (
+        {!planner.locationReady || !planner.date ? (
           <View style={[styles.card, { gap: 6 }]}>
             <Text style={[styles.body, { fontWeight: "600" }]}>Finish Tonight setup</Text>
-            <Text style={styles.muted}>Set location, date, telescope, and camera first so windows and FOV match tonight.</Text>
+            <Text style={styles.muted}>Set location and date first.</Text>
           </View>
         ) : (
           <>
+            <ModuleGearPicker />
+            {!planner.telescope || !planner.camera ? (
+              <Text style={styles.muted}>Choose a saved rig or pick a telescope and camera above to continue.</Text>
+            ) : (
+            <>
             <View style={[styles.card, { gap: 10 }]}>
-              <Text style={styles.label}>Night</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <View style={{ flex: 1.35, minWidth: 0 }}>
                   <DateField
@@ -309,7 +337,7 @@ export default function MultiTargetPlannerScreen() {
                 <Pressable
                   onPress={() => setListsOpen(true)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Lists, ${listsChipLabel}`}
+                  accessibilityLabel={`Target Lists, ${listsChipLabel}`}
                   style={[
                     styles.chip,
                     source.kind === "list" ? styles.chipActive : null,
@@ -521,6 +549,30 @@ export default function MultiTargetPlannerScreen() {
             ) : (
               <Text style={styles.muted}>Select targets above to set hour budgets and shoot order.</Text>
             )}
+            </>
+            )}
+            <SavePlanControl
+              theme={planner.theme}
+              disabled={selectedIds.length === 0 || !planner.setupReady}
+              disabledReason={
+                !planner.setupReady ? "Set location and gear before saving." : "Select at least one target to save."
+              }
+              defaultName={`Multi-target ${planner.date}`}
+              onSave={(name) => {
+                imagingPlans.savePlan({
+                  name,
+                  module: "multi-target",
+                  siteRef: snapshotPlanSite(planner),
+                  pickerSource: source,
+                  ...planFilterFields(planner, source),
+                  gear: snapshotPlanGear(planner),
+                  dateIso: planner.date,
+                  selectedObjectIds: selectedIds,
+                  requestedHoursById: budgets,
+                  strategy,
+                });
+              }}
+            />
           </>
         )}
       </ScrollView>
@@ -579,10 +631,10 @@ export default function MultiTargetPlannerScreen() {
               maxHeight: "70%",
             }}
           >
-            <Text style={[styles.label, { marginBottom: 4 }]}>Saved lists</Text>
+            <Text style={[styles.label, { marginBottom: 4 }]}>Saved target lists</Text>
             <ScrollView>
               {lists.lists.length === 0 ? (
-                <Text style={styles.muted}>No saved lists yet.</Text>
+                <Text style={styles.muted}>No saved target lists yet.</Text>
               ) : (
                 lists.lists.map((list) => {
                   const selected = source.kind === "list" && source.listId === list.id;

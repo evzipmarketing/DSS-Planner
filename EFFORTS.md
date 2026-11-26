@@ -3,21 +3,21 @@
 Reference sheet for dates, code volume, and effort. **Measured** blocks below are refreshed by `pnpm efforts:refresh` (or Cursor agents after milestones). Keep **Fill in** rows for your hours and billing.
 
 <!-- efforts:measured:start -->
-_Last refreshed: 2026-11-24 (auto)_
+_Last refreshed: 2026-11-26 (auto)_
 
 ## Snapshot
 
 | Metric | Value | Source |
 |--------|-------|--------|
 | Project start (first commit) | **2026-11-12** | `git log --reverse` |
-| Latest commit (as of refresh) | **2026-11-24** | `8affda4` — Keep EFFORTS.md current with a refresh script and Cursor rule. |
+| Latest commit (as of refresh) | **2026-11-24** | `ee397dd` — Ship multi-rigs planner for parallel gear nights. |
 | Calendar span | **13 days** (2026-11-12 → 2026-11-24) | First → latest commit date |
 | Days with commits | **7** | Unique `git log` dates |
-| Total commits on `main` | **27** | `git rev-list --count HEAD` |
-| Source files counted | **150** | `apps/` + `packages/` |
-| Current source LOC | **~32,937** | Line count under `apps/` + `packages/` |
-| Git churn (all history) | **+48,124 / -4,557** (net ~**+43,567**) | `git log --numstat` |
-| Cursor agent transcripts (local) | **9** chats under this project | Agent transcript folder |
+| Total commits on `main` | **28** | `git rev-list --count HEAD` |
+| Source files counted | **183** | `apps/` + `packages/` |
+| Current source LOC | **~43,050** | Line count under `apps/` + `packages/` |
+| Git churn (all history) | **+50,804 / -4,602** (net ~**+46,202**) | `git log --numstat` |
+| Cursor agent transcripts (local) | **19** chats under this project | Agent transcript folder |
 
 ---
 
@@ -33,7 +33,7 @@ _Last refreshed: 2026-11-24 (auto)_
 | 2026-11-21 | 2 | |
 | 2026-11-22 | 1 | |
 | 2026-11-23 | 1 | |
-| 2026-11-24 | 3 | |
+| 2026-11-24 | 4 | |
 
 _Notes column is manual — keep useful context when editing by hand._
 
@@ -43,32 +43,32 @@ _Notes column is manual — keep useful context when editing by hand._
 |--------|--------:|
 | Cursor Agent | 31 |
 | evzipmarketing | 13 |
-| itsardnepu | 10 |
+| itsardnepu | 11 |
 
 \*Author totals can exceed tip commit count when history was rewritten or commits exist on other refs.
 
 ---
 
-## Lines of code (measured 2026-11-24)
+## Lines of code (measured 2026-11-26)
 
 Counted under `apps/` and `packages/`, excluding `node_modules`, `.next`, `dist`, `build`, `.expo`, `coverage`.
 
 | Area | Approx. lines |
 |------|-------------:|
-| `apps/web` | 13,593 |
-| `apps/mobile` | 10,707 |
-| `packages/core` | 5,296 |
-| `packages/data` | 3,341 |
-| **Total** | **~32,937** |
+| `apps/web` | 17,731 |
+| `apps/mobile` | 14,562 |
+| `packages/core` | 6,847 |
+| `packages/data` | 3,910 |
+| **Total** | **~43,050** |
 
 ### By file type
 
 | Extension | Approx. lines |
 |-----------|-------------:|
-| `.tsx` | 16,912 |
-| `.ts` | 11,918 |
-| `.css` | 3,726 |
-| `.json` | 227 |
+| `.tsx` | 23,496 |
+| `.ts` | 14,473 |
+| `.css` | 4,699 |
+| `.json` | 228 |
 | `.md` | 110 |
 | `.js` | 44 |
 
@@ -76,8 +76,8 @@ Counted under `apps/` and `packages/`, excluding `node_modules`, `.next`, `dist`
 
 | Item | Value |
 |------|------:|
-| `packages/core/test` files | 6 |
-| Test LOC (approx.) | ~1,615 |
+| `packages/core/test` files | 9 |
+| Test LOC (approx.) | ~2,088 |
 
 ### How to re-measure
 
@@ -119,7 +119,7 @@ Cursor does not expose spend inside the repo. Copy numbers from the Cursor dashb
 
 | Item | Amount | Period | Source |
 |------|-------:|--------|--------|
-| Cursor plan / subscription | _TBD_ | | Cursor Settings ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Account / Billing |
+| Cursor plan / subscription | _TBD_ | | Cursor Settings ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Account / Billing |
 | Cursor usage credits / on-demand | _TBD_ | | Cursor usage page |
 | Agent / premium model premium requests | _TBD_ | | |
 | GitHub (repo / Actions) | _TBD_ | | |
@@ -157,3 +157,4 @@ Cursor does not expose spend inside the repo. Copy numbers from the Cursor dashb
 | 2026-11-24 | Initial efforts log from git + LOC snapshot |
 | 2026-11-24 | Added auto-refresh script + Cursor rule for regular updates |
 | 2026-11-24 | Auto-refresh via `scripts/refresh-efforts.ps1` |
+| 2026-11-26 | Auto-refresh via `scripts/refresh-efforts.ps1` |

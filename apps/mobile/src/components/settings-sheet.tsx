@@ -421,6 +421,8 @@ function TelescopeSetup({ onDone }: { onDone: () => void }) {
   const styles = useThemeStyles(planner.theme);
   const c = colors(planner.theme);
   const [text, setText] = useState("");
+  const [searchActive, setSearchActive] = useState(false);
+  const searchBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const computedFl = planner.telescope
     ? Math.round(
         planner.telescope.smart
@@ -428,22 +430,18 @@ function TelescopeSetup({ onDone }: { onDone: () => void }) {
           : effectiveFocalLengthMm(planner.telescope, planner.reducer),
       )
     : null;
+  // Only the custom override lives in the field; computed FL is placeholder-only.
   const [flText, setFlText] = useState(
-    planner.focalOverrideMm != null ? String(planner.focalOverrideMm) : computedFl != null ? String(computedFl) : "",
+    planner.focalOverrideMm != null ? String(planner.focalOverrideMm) : "",
   );
   const flTextRef = useRef(flText);
   flTextRef.current = flText;
   const setFocalOverrideMm = planner.setFocalOverrideMm;
+  const flLocked = planner.focalOverrideMm != null;
 
   useEffect(() => {
-    setFlText(
-      planner.focalOverrideMm != null
-        ? String(planner.focalOverrideMm)
-        : computedFl != null
-          ? String(computedFl)
-          : "",
-    );
-  }, [planner.focalOverrideMm, computedFl, planner.telescope?.id]);
+    setFlText(planner.focalOverrideMm != null ? String(planner.focalOverrideMm) : "");
+  }, [planner.focalOverrideMm, planner.telescope?.id]);
 
   const options = useMemo(() => {
     const query = text.trim().toLowerCase();
@@ -456,14 +454,13 @@ function TelescopeSetup({ onDone }: { onDone: () => void }) {
     return [...inLibrary, ...rest];
   }, [planner.libraryTelescopeIds, planner.telescopes, text]);
 
-  function commitFocalLength(raw: string, soft = false) {
+  function commitFocalLength(raw: string) {
     const trimmed = raw.trim();
     if (!trimmed) {
       setFocalOverrideMm(null);
-      if (!soft && computedFl != null) setFlText(String(computedFl));
       return;
     }
-    if (soft && trimmed.endsWith(".")) return;
+    if (trimmed.endsWith(".")) return;
     const next = Number(trimmed);
     if (!Number.isFinite(next) || next < 10 || next > 20_000) return;
     setFocalOverrideMm(Math.round(next));
@@ -471,6 +468,7 @@ function TelescopeSetup({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     return () => {
+      if (searchBlurTimer.current) clearTimeout(searchBlurTimer.current);
       const trimmed = flTextRef.current.trim();
       if (!trimmed || trimmed.endsWith(".")) return;
       const next = Number(trimmed);
@@ -482,19 +480,33 @@ function TelescopeSetup({ onDone }: { onDone: () => void }) {
   const flControls = (
     <>
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-        {planner.activeRigId ? (
+        {planner.activeRigId || flLocked ? (
           <View style={{ flex: 1, justifyContent: "center", paddingTop: 22 }}>
-            <Text style={styles.body}>{planner.telescope?.name ?? "Scope from rig"}</Text>
-            <Text style={styles.muted}>Locked by selected rig</Text>
+            <Text style={styles.body}>
+              {flLocked
+                ? `${planner.focalOverrideMm} mm`
+                : (planner.telescope?.name ?? "Scope from rig")}
+            </Text>
+            <Text style={styles.muted}>
+              {flLocked ? "Locked by custom FL" : "Locked by selected rig"}
+            </Text>
           </View>
         ) : (
           <View style={{ flex: 1 }}>
             <Field
               theme={planner.theme}
               label="Search"
-              value={text}
+              value={searchActive ? text : (planner.telescope?.name ?? "")}
               onChangeText={setText}
               placeholder="Seestar, Evostar…"
+              onFocus={() => {
+                if (searchBlurTimer.current) clearTimeout(searchBlurTimer.current);
+                setText("");
+                setSearchActive(true);
+              }}
+              onBlur={() => {
+                searchBlurTimer.current = setTimeout(() => setSearchActive(false), 180);
+              }}
             />
           </View>
         )}
@@ -505,32 +517,21 @@ function TelescopeSetup({ onDone }: { onDone: () => void }) {
             value={flText}
             onChangeText={(value) => {
               setFlText(value);
-              commitFocalLength(value, true);
+              commitFocalLength(value);
             }}
             placeholder={computedFl != null ? String(computedFl) : "480"}
             keyboardType="numeric"
           />
         </View>
       </View>
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <View style={{ flex: 1 }}>
-          <PrimaryButton theme={planner.theme} title="Apply FL" onPress={() => commitFocalLength(flText)} />
-        </View>
-        {planner.focalOverrideMm != null ? (
-          <GhostButton
-            theme={planner.theme}
-            title="Clear FL"
-            onPress={() => {
-              planner.setFocalOverrideMm(null);
-              if (computedFl != null) setFlText(String(computedFl));
-            }}
-          />
-        ) : null}
-      </View>
       {planner.focalOverrideMm != null && computedFl != null ? (
-        <Text style={styles.muted}>Using entered FL. Scope + corrector give {computedFl} mm.</Text>
+        <Text style={styles.muted}>
+          Using entered FL. Delete the value to remove it. Scope + corrector give {computedFl} mm.
+        </Text>
       ) : (
-        <Text style={styles.muted}>Enter FL beside search to override the scope focal length.</Text>
+        <Text style={styles.muted}>
+          Type a focal length to apply it automatically. Delete the value to remove the override.
+        </Text>
       )}
     </>
   );
@@ -565,45 +566,49 @@ function TelescopeSetup({ onDone }: { onDone: () => void }) {
           })}
         </View>
       ) : null}
-      <FlatList
-        data={options}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        keyboardShouldPersistTaps="handled"
-        ListFooterComponent={
-          <PrimaryButton
-            theme={planner.theme}
-            title="Done"
-            onPress={() => {
-              commitFocalLength(flText);
-              onDone();
-            }}
-          />
-        }
-        renderItem={({ item }) => {
-          const selected = planner.telescope?.id === item.id;
-          const inLibrary = planner.libraryTelescopeIds.includes(item.id);
-          return (
-            <Pressable
-              style={[styles.card, { marginBottom: 8 }, selected ? { borderColor: c.accent } : null]}
-              onPress={() => {
-                planner.setTelescopeId(item.id);
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Text style={[styles.body, selected ? styles.accent : null, { flex: 1 }]}>{item.name}</Text>
-                {inLibrary ? (
-                  <Text style={{ color: c.accent, fontSize: 11, fontWeight: "700", textTransform: "uppercase" }}>
-                    Yours
-                  </Text>
-                ) : null}
-              </View>
-              <Text style={styles.muted}>
-                {item.smart ? "Smart · " : ""}
-                {item.apertureMm} mm · {item.focalLengthMm} mm
-              </Text>
-            </Pressable>
-          );
+      {searchActive && !flLocked ? (
+        <FlatList
+          data={options}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          keyboardShouldPersistTaps="handled"
+          style={{ flex: 1 }}
+          renderItem={({ item }) => {
+            const selected = planner.telescope?.id === item.id;
+            const inLibrary = planner.libraryTelescopeIds.includes(item.id);
+            return (
+              <Pressable
+                style={[styles.card, { marginBottom: 8 }, selected ? { borderColor: c.accent } : null]}
+                onPress={() => {
+                  if (searchBlurTimer.current) clearTimeout(searchBlurTimer.current);
+                  planner.setTelescopeId(item.id);
+                  setText("");
+                  setSearchActive(false);
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Text style={[styles.body, selected ? styles.accent : null, { flex: 1 }]}>{item.name}</Text>
+                  {inLibrary ? (
+                    <Text style={{ color: c.accent, fontSize: 11, fontWeight: "700", textTransform: "uppercase" }}>
+                      Yours
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.muted}>
+                  {item.smart ? "Smart · " : ""}
+                  {item.apertureMm} mm · {item.focalLengthMm} mm
+                </Text>
+              </Pressable>
+            );
+          }}
+        />
+      ) : null}
+      <PrimaryButton
+        theme={planner.theme}
+        title="Done"
+        onPress={() => {
+          commitFocalLength(flText);
+          onDone();
         }}
       />
     </View>

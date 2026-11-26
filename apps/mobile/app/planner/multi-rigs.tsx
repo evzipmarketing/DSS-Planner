@@ -28,10 +28,14 @@ import {
   type TimeInterval,
 } from "@dss/core";
 import { DateField } from "@/components/date-field";
+import { SavePlanControl } from "@/components/save-plan-control";
+import { applySavedPlanGear } from "@/lib/apply-plan-gear";
+import { planFilterFields, snapshotPlanGear, snapshotPlanSite } from "@/lib/plan-snapshot";
 import { MultiAltitudeChart } from "@/components/multi-altitude-chart";
 import { MultiTargetPickerThumb } from "@/components/multi-target-picker-thumb";
 import { Chip, useThemeStyles } from "@/components/ui";
 import type { GearRig } from "@/lib/storage";
+import { useImagingPlans } from "@/state/imaging-plans-context";
 import { useLists } from "@/state/lists-context";
 import { usePlannerState } from "@/state/planner-context";
 import { colors } from "@/theme/tokens";
@@ -54,6 +58,7 @@ type RigDraft = {
 export default function MultiRigsPlannerScreen() {
   const planner = usePlannerState();
   const lists = useLists();
+  const imagingPlans = useImagingPlans();
   const styles = useThemeStyles(planner.theme);
   const c = colors(planner.theme);
   const [drafts, setDrafts] = useState<Record<string, RigDraft>>({});
@@ -97,6 +102,23 @@ export default function MultiRigsPlannerScreen() {
       return activeRigs[0]?.id ?? null;
     });
   }, [activeRigs]);
+
+  useEffect(() => {
+    if (!imagingPlans.ready) return;
+    let cancelled = false;
+    void (async () => {
+      const plan = await imagingPlans.consumePendingPlan("multi-rigs");
+      if (cancelled || !plan || plan.module !== "multi-rigs") return;
+      applySavedPlanGear(planner, plan);
+      setSource(plan.pickerSource);
+      setEnabledRigIds(plan.enabledRigIds);
+      setDrafts(plan.rigs);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once when plans are ready
+  }, [imagingPlans.ready]);
 
   const catalogueById = useMemo(() => {
     const map = new Map((planner.catalogue ?? []).map((item) => [item.id, item]));
@@ -202,7 +224,7 @@ export default function MultiRigsPlannerScreen() {
   const listsChipLabel =
     source.kind === "list"
       ? `${source.listName} (${lists.lists.find((list) => list.id === source.listId)?.items.length ?? 0})`
-      : "Lists";
+      : "Target Lists";
 
   const colorByRigId = useMemo(() => {
     const map = new Map<string, string>();
@@ -368,7 +390,6 @@ export default function MultiRigsPlannerScreen() {
             ) : null}
 
             <View style={[styles.card, { gap: 10 }]}>
-              <Text style={styles.label}>Night</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <View style={{ flex: 1.35, minWidth: 0 }}>
                   <DateField
@@ -699,6 +720,30 @@ export default function MultiRigsPlannerScreen() {
                 ))}
               </View>
             ) : null}
+
+            <SavePlanControl
+              theme={planner.theme}
+              disabled={activeRigs.length === 0 || !planner.setupReady}
+              disabledReason={
+                !planner.setupReady
+                  ? "Set location and gear before saving."
+                  : "Enable at least one rig with targets to save."
+              }
+              defaultName={`Multi-rigs ${planner.date}`}
+              onSave={(name) => {
+                imagingPlans.savePlan({
+                  name,
+                  module: "multi-rigs",
+                  siteRef: snapshotPlanSite(planner),
+                  pickerSource: source,
+                  ...planFilterFields(planner, source),
+                  gear: snapshotPlanGear(planner),
+                  dateIso: planner.date,
+                  enabledRigIds,
+                  rigs: drafts,
+                });
+              }}
+            />
           </>
         )}
       </ScrollView>
@@ -755,10 +800,10 @@ export default function MultiRigsPlannerScreen() {
               maxHeight: "70%",
             }}
           >
-            <Text style={[styles.label, { marginBottom: 8 }]}>Saved lists</Text>
+            <Text style={[styles.label, { marginBottom: 8 }]}>Saved target lists</Text>
             <ScrollView>
               {lists.lists.length === 0 ? (
-                <Text style={styles.muted}>No saved lists yet.</Text>
+                <Text style={styles.muted}>No saved target lists yet.</Text>
               ) : (
                 lists.lists.map((list) => (
                   <Pressable

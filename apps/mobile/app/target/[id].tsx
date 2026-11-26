@@ -112,7 +112,7 @@ export default function TargetDetailScreen() {
               <Pressable
                 onPress={() => setListOpen(true)}
                 accessibilityRole="button"
-                accessibilityLabel="Add to list"
+                accessibilityLabel="Add to target list"
                 style={{
                   width: 36,
                   height: 36,
@@ -162,8 +162,8 @@ export default function TargetDetailScreen() {
               gap: 10,
             }}
           >
-            <Text style={styles.label}>Add {objectTitle(object)} to a list</Text>
-            {lists.lists.length === 0 ? <Text style={styles.muted}>No lists yet. Create one below.</Text> : null}
+            <Text style={styles.label}>Add {objectTitle(object)} to a target list</Text>
+            {lists.lists.length === 0 ? <Text style={styles.muted}>No target lists yet. Create one below.</Text> : null}
             {lists.lists.map((list) => {
               const already = list.items.some((item) => item.objectId === object.id);
               return (
@@ -186,12 +186,12 @@ export default function TargetDetailScreen() {
               style={styles.input}
               value={newListName}
               onChangeText={setNewListName}
-              placeholder="New list name"
+              placeholder="New target list name"
               placeholderTextColor={c.faint}
             />
             <PrimaryButton
               theme={planner.theme}
-              title="Create list and add"
+              title="Create target list and add"
               onPress={() => {
                 const listId = lists.createList(newListName);
                 if (!listId) return;

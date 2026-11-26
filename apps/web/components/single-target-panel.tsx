@@ -19,8 +19,13 @@ import {
   type TargetListFilter,
   type TimeInterval,
 } from "@dss/core";
+import { applySavedPlanGear } from "@/lib/apply-plan-gear";
+import { planFilterFields, snapshotPlanGear, snapshotPlanSite } from "@/lib/plan-snapshot";
+import { useImagingPlans } from "@/lib/use-imaging-plans";
 import { useLists } from "@/lib/use-lists";
+import { ModuleGearPicker } from "./module-gear-picker";
 import { MultiTargetPickerThumb } from "./multi-target-picker-thumb";
+import { SavePlanControl } from "./save-plan-control";
 import { usePlannerState } from "./planner-context";
 
 type PickerSource =
@@ -34,6 +39,7 @@ const GOAL_HOURS_MAX = 40;
 export function SingleTargetPanel() {
   const planner = usePlannerState();
   const lists = useLists();
+  const imagingPlans = useImagingPlans();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [source, setSource] = useState<PickerSource>({ kind: "filtered" });
   const [filterOpen, setFilterOpen] = useState(false);
@@ -45,6 +51,18 @@ export function SingleTargetPanel() {
   const listsHost = useRef<HTMLDivElement>(null);
   useMenuDismiss(filterOpen, filterHost, setFilterOpen);
   useMenuDismiss(listsOpen, listsHost, setListsOpen);
+
+  useEffect(() => {
+    if (!imagingPlans.ready) return;
+    const plan = imagingPlans.consumePendingPlan("single-target");
+    if (!plan || plan.module !== "single-target") return;
+    applySavedPlanGear(planner, plan);
+    setSource(plan.pickerSource);
+    setSelectedId(plan.objectId);
+    setGoalHours(plan.goalHours);
+    setBandOverride(plan.bandOverride);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once when plans are ready
+  }, [imagingPlans.ready]);
 
   const catalogueById = useMemo(() => {
     const map = new Map((planner.catalogue ?? []).map((item) => [item.id, item]));
@@ -127,7 +145,7 @@ export function SingleTargetPanel() {
   const listsChipLabel =
     source.kind === "list"
       ? `${source.listName} (${lists.lists.find((list) => list.id === source.listId)?.items.length ?? 0})`
-      : "Lists";
+      : "Target Lists";
 
   function chooseFilter(filter: TargetListFilter) {
     planner.setListFilter(filter);
@@ -160,11 +178,11 @@ export function SingleTargetPanel() {
     setGoalDraft(null);
   }
 
-  if (!planner.setupReady) {
+  if (!planner.locationReady || !planner.date) {
     return (
       <div className="single-target-panel">
         <p className="note" style={{ marginTop: 0 }}>
-          Finish location, date, telescope, and camera in Tonight settings first.
+          Set location and date in Tonight settings first.
         </p>
       </div>
     );
@@ -177,6 +195,12 @@ export function SingleTargetPanel() {
         {planner.date} that add up to that goal.
       </p>
 
+      <ModuleGearPicker />
+
+      {!planner.telescope || !planner.camera ? (
+        <p className="note">Choose a saved rig or pick a telescope and camera above to continue.</p>
+      ) : (
+      <>
       <div className="multi-target-source-row">
         <div className={`sort-menu filter-menu multi-target-filter-menu${filterOpen ? " open" : ""}`} ref={filterHost}>
           <button
@@ -244,10 +268,10 @@ export function SingleTargetPanel() {
             </svg>
           </button>
           {listsOpen ? (
-            <div className="sort-panel sort-panel-left" role="listbox" aria-label="Saved lists">
+            <div className="sort-panel sort-panel-left" role="listbox" aria-label="Saved target lists">
               {lists.lists.length === 0 ? (
                 <p className="note" style={{ margin: "8px 10px" }}>
-                  No saved lists yet.
+                  No saved target lists yet.
                 </p>
               ) : (
                 lists.lists.map((list) => (
@@ -393,6 +417,29 @@ export function SingleTargetPanel() {
       ) : (
         <p className="note">Pick a target and set total hours to see which nights cover the goal.</p>
       )}
+      </>
+      )}
+
+      <SavePlanControl
+        disabled={!selectedId || !planner.setupReady}
+        disabledReason={!planner.setupReady ? "Set location and gear before saving." : "Select a target to save."}
+        defaultName={selected ? `Single · ${objectTitle(selected)}` : "Single-target plan"}
+        onSave={(name) => {
+          if (!selectedId) return;
+          imagingPlans.savePlan({
+            name,
+            module: "single-target",
+            siteRef: snapshotPlanSite(planner),
+            pickerSource: source,
+            ...planFilterFields(planner, source),
+            gear: snapshotPlanGear(planner),
+            startDateIso: planner.date,
+            objectId: selectedId,
+            goalHours: effectiveGoal,
+            bandOverride,
+          });
+        }}
+      />
     </div>
   );
 }

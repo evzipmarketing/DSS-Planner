@@ -1060,7 +1060,7 @@ export function ObjectDetails() {
             <button
               type="button"
               className="icon-btn"
-              aria-label="Add to list"
+              aria-label="Add to target list"
               aria-expanded={listOpen}
               onClick={() => setListOpen((open) => !open)}
             >
@@ -1068,8 +1068,8 @@ export function ObjectDetails() {
             </button>
             {listOpen ? (
               <div className="list-popover" role="dialog" aria-label={`Add ${objectTitle(selected)} to a list`}>
-                <p className="list-popover-title">Add to list</p>
-                {lists.lists.length === 0 ? <p className="list-popover-empty">No lists yet. Create one below.</p> : null}
+                <p className="list-popover-title">Add to target list</p>
+                {lists.lists.length === 0 ? <p className="list-popover-empty">No target lists yet. Create one below.</p> : null}
                 {lists.lists.map((list) => {
                   const already = list.items.some((item) => item.objectId === selected.id);
                   return (
@@ -1088,10 +1088,10 @@ export function ObjectDetails() {
                   );
                 })}
                 <label className="field list-new-field">
-                  <span className="visually-hidden">New list name</span>
+                  <span className="visually-hidden">New target list name</span>
                   <input
                     value={newListName}
-                    placeholder="New list name"
+                    placeholder="New target list name"
                     onChange={(event) => setNewListName(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key !== "Enter") return;
@@ -1115,7 +1115,7 @@ export function ObjectDetails() {
                     setListOpen(false);
                   }}
                 >
-                  Create list and add
+                  Create target list and add
                 </button>
               </div>
             ) : null}

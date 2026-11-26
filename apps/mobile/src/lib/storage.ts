@@ -1,11 +1,21 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Camera, ImagingFilter, Site, Telescope, SortDirection, TargetSortKey } from "@dss/core";
+import type {
+  Camera,
+  ImagingFilter,
+  ImagingPlan,
+  Site,
+  Telescope,
+  SortDirection,
+  TargetSortKey,
+} from "@dss/core";
 import { isValidTimeZone } from "@dss/core";
 import { defaultSite } from "@dss/data";
 import type { ThemeName } from "@/theme/tokens";
 
 const SESSION_KEY = "dss-mobile.session.v1";
 const LISTS_KEY = "dss-mobile.lists.v1";
+const IMAGING_PLANS_KEY = "dss-mobile.imaging-plans.v1";
+const PENDING_PLAN_KEY = "dss-mobile.open-plan.v1";
 const PROFILE_KEY = "dss-mobile.profile.v1";
 const WEATHER_CACHE_KEY = "dss-mobile.weather.v1";
 const PLATE_CACHE_KEY = "dss-mobile.plates.v1";
@@ -230,6 +240,65 @@ export async function loadLists(): Promise<LocalListsState> {
 
 export async function saveLists(state: LocalListsState): Promise<void> {
   await AsyncStorage.setItem(LISTS_KEY, JSON.stringify(state));
+}
+
+export type LocalImagingPlansState = {
+  plans: ImagingPlan[];
+};
+
+export async function loadImagingPlans(): Promise<LocalImagingPlansState> {
+  try {
+    const raw = await AsyncStorage.getItem(IMAGING_PLANS_KEY);
+    if (!raw) return { plans: [] };
+    const parsed = JSON.parse(raw) as Partial<LocalImagingPlansState>;
+    return {
+      plans: Array.isArray(parsed.plans)
+        ? parsed.plans.filter((plan): plan is ImagingPlan => isImagingPlan(plan))
+        : [],
+    };
+  } catch {
+    return { plans: [] };
+  }
+}
+
+export async function saveImagingPlans(state: LocalImagingPlansState): Promise<void> {
+  await AsyncStorage.setItem(IMAGING_PLANS_KEY, JSON.stringify(state));
+}
+
+export async function setPendingImagingPlan(planId: string, module: ImagingPlan["module"]): Promise<void> {
+  await AsyncStorage.setItem(PENDING_PLAN_KEY, JSON.stringify({ planId, module }));
+}
+
+export async function consumePendingImagingPlan(
+  module: ImagingPlan["module"],
+): Promise<ImagingPlan | null> {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_PLAN_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { planId?: string; module?: ImagingPlan["module"] };
+    if (parsed.module !== module || typeof parsed.planId !== "string") return null;
+    const { plans } = await loadImagingPlans();
+    const plan = plans.find((item) => item.id === parsed.planId) ?? null;
+    if (plan) await AsyncStorage.removeItem(PENDING_PLAN_KEY);
+    return plan;
+  } catch {
+    return null;
+  }
+}
+
+function isImagingPlan(value: unknown): value is ImagingPlan {
+  if (!value || typeof value !== "object") return false;
+  const plan = value as Partial<ImagingPlan>;
+  return (
+    plan.version === 1 &&
+    typeof plan.id === "string" &&
+    typeof plan.name === "string" &&
+    typeof plan.module === "string" &&
+    typeof plan.createdAt === "string" &&
+    !!plan.gear &&
+    !!plan.siteRef &&
+    !!plan.pickerSource
+  );
 }
 
 export async function loadProfile(): Promise<LocalProfile> {

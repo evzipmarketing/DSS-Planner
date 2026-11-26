@@ -13,7 +13,7 @@ export default function SubscriptionScreen() {
         <View style={[styles.card, { gap: 8 }]}>
           <Text style={[styles.body, { fontWeight: "600" }]}>Free</Text>
           <Text style={styles.muted}>
-            Tonight planning, framing, and local lists are available now. Paid plans for cloud sync limits, multi-rig, and
+            Tonight planning, framing, and local target lists are available now. Paid plans for cloud sync limits, multi-rig, and
             mosaic exports will land here.
           </Text>
         </View>

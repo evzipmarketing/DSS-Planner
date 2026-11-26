@@ -1,6 +1,6 @@
 ---
 name: Planner modules plan
-overview: Ship Planner modules end-to-end (core math → mobile + web UI). Multi-target, Single-target, and Multi-rigs MVPs are shipped; next are Mosaic, Collage, and Asterisms. Export CSV lives on Tonight target details, not in Planner. Remaining modules are stubs with a Soon badge.
+overview: Ship Planner modules end-to-end (core math → mobile + web UI). Multi-target, Single-target, Multi-rigs, Mosaic, Collage, and Asterisms MVPs are shipped. Export CSV lives on Tonight target details, not in Planner.
 todos:
   - id: foundation
     content: Shared core planner APIs, web route parity with mobile, Soon-badge removal per shipped module
@@ -19,13 +19,13 @@ todos:
     status: completed
   - id: mosaic
     content: "Mosaic: rows/cols/overlap/rotation panel centers + sky thumbs"
-    status: pending
+    status: completed
   - id: collage
     content: "Collage: fit multiple targets in one wide frame with FOV advice"
-    status: pending
+    status: completed
   - id: asterisms
     content: "Asterisms: starter catalogue, search, FOV fit, link to Collage"
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -33,7 +33,7 @@ isProject: false
 
 ## Current state
 
-- Hub lists six modules; Multi-target, Single-target, and Multi-rigs are shipped (no Soon badge). Mosaic, Collage, Asterisms remain stubs.
+- Hub lists six modules; Multi-target, Single-target, Multi-rigs, Mosaic, Collage, and Asterisms are shipped (no Soon badge).
 - Mobile screens under [apps/mobile/app/planner/](apps/mobile/app/planner/); web panels via [apps/web/components/planner-hub.tsx](apps/web/components/planner-hub.tsx).
 - **Export CSV** ships on Tonight target details (under the altitude graph), not as a Planner module.
 - Reusable today: `buildNightTrack`, ranking/shortlist, `suggestExposure`, FOV/optics, saved lists/favorites, named `GearRig`s, altitude charts, `buildPlanCsv`, `planMultiRigs`.
@@ -126,6 +126,8 @@ Recommended ship order: **Multi-target → Single-target → Multi-rigs → Mosa
 
 **MVP done when:** User gets a rows×cols panel list with coordinates for the active FOV.
 
+**Shipped:** `@dss/core` `planMosaic` (panel centers, FOV polygons, outer footprint, coverage warning, ≤5×5); interactive sky overlay on mobile + web (drag grid to pan center, rotate handle, numbered dashed panels, corner brackets, live RA/Dec readout); steppers for rows/cols/overlap/rotation; optional panel-coords list with share/copy. Hub Soon badge removed.
+
 ---
 
 ## 5. Collage
@@ -140,6 +142,8 @@ Recommended ship order: **Multi-target → Single-target → Multi-rigs → Mosa
 
 **MVP done when:** Multi-select shows a single framing solution and fit/out list for the active (or suggested) FOV.
 
+**Shipped:** `@dss/core` `planCollage` + `suggestCollageGroups`; Collage night date picker + ignore-date checkbox (filters like Narrowband still apply); mobile dropdown + DSS sky framing; web side-by-side suggestions + DSS sky map. Hub Soon badge removed.
+
 ---
 
 ## 6. Asterisms
@@ -153,6 +157,8 @@ Recommended ship order: **Multi-target → Single-target → Multi-rigs → Mosa
 **Reuse:** Sky explorer patterns, FOV math, catalogue search UX.
 
 **MVP done when:** Fixed starter set (e.g. 15–30 well-known asterisms) is searchable and frame-checkable against the active rig.
+
+**Shipped:** `@dss/data` starter catalogue (~22 asterisms) + search; `@dss/core` `planAsterismFrame` fit labels; mobile `/planner/asterisms` and web `AsterismsPanel` with DSS sky framing; “Use as Collage seed” opens Collage with the pattern. Hub Soon badge removed.
 
 ---
 

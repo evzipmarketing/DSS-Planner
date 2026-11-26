@@ -149,7 +149,7 @@ function TermsPage() {
       <h3>3. User-generated content</h3>
       <p>
         User-generated content means information you enter in {APP_NAME}, including profile details, observing sites,
-        equipment and rig configurations, favorites, named lists, and any other activity stored for your account or on
+        equipment and rig configurations, favorites, named target lists, and any other activity stored for your account or on
         your device.
       </p>
       <p>
@@ -282,7 +282,7 @@ function PrivacyPage() {
         tailored to your site, date, and gear.
       </p>
       <p>
-        To store your equipment library, observing lists, locations, catalogue preferences, and theme on your device, and
+        To store your equipment library, target lists, locations, catalogue preferences, and theme on your device, and
         — when you opt into an account — to sync those settings across devices according to your choices.
       </p>
       <p>

@@ -8,6 +8,7 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   signInWithEmail: (email: string) => Promise<{ error: string | null }>;
+  updatePassword: (password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
 
@@ -44,6 +45,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: email.trim(),
           options: { shouldCreateUser: true },
         });
+        return { error: error?.message ?? null };
+      },
+      updatePassword: async (password) => {
+        if (!supabase) return { error: "Supabase is not configured." };
+        if (!session) return { error: "Sign in before changing your password." };
+        const trimmed = password.trim();
+        if (trimmed.length < 8) return { error: "Use at least 8 characters." };
+        const { error } = await supabase.auth.updateUser({ password: trimmed });
         return { error: error?.message ?? null };
       },
       signOut: async () => {

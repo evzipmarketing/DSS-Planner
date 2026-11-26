@@ -49,11 +49,11 @@ export default function ListsScreen() {
         ListHeaderComponent={
           <View style={{ gap: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <Text style={styles.title}>Lists</Text>
+              <Text style={styles.title}>Target Lists</Text>
               <Pressable
                 onPress={() => setCreateOpen(true)}
                 accessibilityRole="button"
-                accessibilityLabel="Create list"
+                accessibilityLabel="Create target list"
                 style={{
                   width: 36,
                   height: 36,
@@ -72,7 +72,7 @@ export default function ListsScreen() {
             {auth.user ? (
               <GhostButton theme={planner.theme} title={lists.syncing ? "Syncing…" : "Sync with account"} onPress={() => void lists.syncNow()} />
             ) : (
-              <Text style={styles.muted}>Sign in under Profile to sync lists to the cloud.</Text>
+              <Text style={styles.muted}>Sign in under Profile to sync target lists to the cloud.</Text>
             )}
             {lists.syncError ? <Text style={styles.muted}>{lists.syncError}</Text> : null}
 
@@ -167,7 +167,7 @@ export default function ListsScreen() {
             </CollapsibleSection>
           );
         }}
-        ListEmptyComponent={<Text style={[styles.muted, { marginTop: 4 }]}>No saved lists yet. Tap + to create one.</Text>}
+        ListEmptyComponent={<Text style={[styles.muted, { marginTop: 4 }]}>No saved target lists yet. Tap + to create one.</Text>}
       />
 
       <Modal visible={createOpen} transparent animationType="fade" onRequestClose={() => setCreateOpen(false)}>
@@ -183,7 +183,7 @@ export default function ListsScreen() {
               gap: 12,
             }}
           >
-            <Text style={[styles.body, { fontWeight: "600" }]}>New list</Text>
+            <Text style={[styles.body, { fontWeight: "600" }]}>New target list</Text>
             <TextInput
               style={styles.input}
               value={name}

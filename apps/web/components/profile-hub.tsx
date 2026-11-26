@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EquipmentPanel } from "./equipment-panel";
+import { ImagingPlansPanel } from "./imaging-plans-panel";
 import { LegalPage, legalTitle, type LegalPageId } from "./legal-pages";
 import { ListsPanel } from "./lists-panel";
 import { LocationsPanel } from "./locations-panel";
@@ -18,6 +19,7 @@ type ProfileSection =
   | "home"
   | "equipment"
   | "lists"
+  | "imaging-plans"
   | "locations"
   | "catalogue"
   | "subscription"
@@ -28,25 +30,17 @@ export function ProfileHubPage() {
   const [section, setSection] = useState<ProfileSection>("home");
   const [profile, setProfile] = useState<LocalProfile>(EMPTY_PROFILE);
   const [message, setMessage] = useState<string | null>(null);
-  const [online, setOnline] = useState(true);
   const [loaded, setLoaded] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(true);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    setProfile(loadProfile());
+    const next = loadProfile();
+    setProfile(next);
     setLoaded(true);
-    setOnline(typeof navigator === "undefined" ? true : navigator.onLine);
-    function onOnline() {
-      setOnline(true);
-    }
-    function onOffline() {
-      setOnline(false);
-    }
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
+    if (next.username.trim() || next.email.trim() || next.phone.trim()) setAccountOpen(false);
   }, []);
 
   function updateProfile(patch: Partial<LocalProfile>) {
@@ -55,6 +49,31 @@ export function ProfileHubPage() {
       saveProfile(next);
       return next;
     });
+  }
+
+  const accountSummary = useMemo(() => {
+    const name = profile.username.trim() || "Account";
+    const mail = profile.email.trim() || "No email";
+    const phone = profile.phone.trim() || "No phone";
+    return `${name} · ${mail} · ${phone}`;
+  }, [profile.username, profile.email, profile.phone]);
+
+  function submitPasswordChange() {
+    if (!newPassword || !confirmPassword) {
+      setMessage("Enter and confirm a new password.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setMessage("New password and confirmation do not match.");
+      return;
+    }
+    if (newPassword.trim().length < 8) {
+      setMessage("Use at least 8 characters.");
+      return;
+    }
+    setNewPassword("");
+    setConfirmPassword("");
+    setMessage("Password change will work once account sign-in is enabled on web.");
   }
 
   if (section === "equipment") {
@@ -79,10 +98,25 @@ export function ProfileHubPage() {
           ← Profile
         </button>
         <header className="hub-intro">
-          <h1>Lists</h1>
-          <p>Favorites and named observing lists.</p>
+          <h1>Target Lists</h1>
+          <p>Favorites and named target lists.</p>
         </header>
         <ListsPanel />
+      </div>
+    );
+  }
+
+  if (section === "imaging-plans") {
+    return (
+      <div className="hub-page">
+        <button type="button" className="ghost hub-back" onClick={() => setSection("home")}>
+          ← Profile
+        </button>
+        <header className="hub-intro">
+          <h1>Imaging plans</h1>
+          <p>Saved Multi-target, Single-target, Mosaic, Multi-rigs, and Collage sessions.</p>
+        </header>
+        <ImagingPlansPanel />
       </div>
     );
   }
@@ -164,7 +198,7 @@ export function ProfileHubPage() {
         <div className="hub-card" style={{ display: "grid", gap: 8 }}>
           <strong>Free</strong>
           <p style={{ margin: 0, color: "var(--muted)" }}>
-            Tonight planning, framing, and local lists are available now. Paid plans for cloud sync limits, multi-rig,
+            Tonight planning, framing, and local target lists are available now. Paid plans for cloud sync limits, multi-rig,
             and mosaic exports will land here.
           </p>
         </div>
@@ -192,90 +226,138 @@ export function ProfileHubPage() {
         <h1>Profile</h1>
       </header>
 
-      <div className="hub-card profile-photo-card">
+      <div className="hub-card profile-account">
         <button
           type="button"
-          className="profile-photo"
-          aria-label="Profile photo"
-          onClick={() => setMessage("Photo picker lands with the next Profile pass.")}
+          className="module-gear-toggle profile-account-toggle"
+          aria-expanded={accountOpen}
+          onClick={() => setAccountOpen((value) => !value)}
         >
-          {profile.photoUri ? <img src={profile.photoUri} alt="" /> : <span aria-hidden="true">◌</span>}
+          <span>
+            <strong>Account</strong>
+            <span className="note" style={{ display: "block", margin: "2px 0 0" }}>
+              {accountSummary}
+            </span>
+          </span>
+          <span className="module-gear-chevron" aria-hidden="true">
+            {accountOpen ? "▲" : "▼"}
+          </span>
         </button>
-        <p className="note" style={{ margin: 0 }}>
-          {loaded ? "Tap to add a photo" : "Loading…"}
-        </p>
-      </div>
 
-      <div className="hub-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <div>
-          <strong>Theme</strong>
-          <p style={{ margin: "4px 0 0", color: "var(--muted)" }}>
-            {planner.theme === "night" ? "Night vision" : "Dark"}
-          </p>
-        </div>
-        <label className="theme-switch">
-          <input
-            type="checkbox"
-            checked={planner.theme === "night"}
-            onChange={(event) => planner.setTheme(event.target.checked ? "night" : "dark")}
-            aria-label="Night vision theme"
-          />
-          <span>Night</span>
-        </label>
-      </div>
+        {accountOpen ? (
+          <div className="profile-account-body">
+            <div className="profile-account-row">
+              <div className="profile-account-photo">
+                <button
+                  type="button"
+                  className="profile-photo"
+                  aria-label="Profile photo"
+                  onClick={() => setMessage("Photo picker lands with the next Profile pass.")}
+                >
+                  {profile.photoUri ? <img src={profile.photoUri} alt="" /> : <span aria-hidden="true">◌</span>}
+                </button>
+                <p className="note" style={{ margin: 0 }}>
+                  {loaded ? "Click photo to change" : "Loading…"}
+                </p>
+              </div>
+              <div className="profile-account-fields">
+                <label className="field">
+                  Username
+                  <input
+                    value={profile.username}
+                    placeholder="deepskyimager"
+                    autoCapitalize="none"
+                    autoComplete="username"
+                    onChange={(event) => updateProfile({ username: event.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  Email
+                  <input
+                    value={profile.email}
+                    placeholder="you@example.com"
+                    type="email"
+                    autoComplete="email"
+                    onChange={(event) => updateProfile({ email: event.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  Phone (optional)
+                  <input
+                    value={profile.phone}
+                    placeholder="+1 …"
+                    type="tel"
+                    autoComplete="tel"
+                    onChange={(event) => updateProfile({ phone: event.target.value })}
+                  />
+                </label>
+              </div>
+            </div>
 
-      <div className="hub-card profile-account">
-        <label className="field">
-          Username
-          <input
-            value={profile.username}
-            placeholder="deepskyimager"
-            autoCapitalize="none"
-            autoComplete="username"
-            onChange={(event) => updateProfile({ username: event.target.value })}
-          />
-        </label>
-        <label className="field">
-          Email
-          <input
-            value={profile.email}
-            placeholder="you@example.com"
-            type="email"
-            autoComplete="email"
-            onChange={(event) => updateProfile({ email: event.target.value })}
-          />
-        </label>
-        <label className="field">
-          Phone (optional)
-          <input
-            value={profile.phone}
-            placeholder="+1 …"
-            type="tel"
-            autoComplete="tel"
-            onChange={(event) => updateProfile({ phone: event.target.value })}
-          />
-        </label>
-        <p className="note" style={{ margin: 0 }}>
-          Account sign-in and cloud sync will land with the next Profile pass. Details stay on this device for now.
-        </p>
-        {message ? <p className="note">{message}</p> : null}
+            <div className="profile-password">
+              <button
+                type="button"
+                className="module-gear-toggle profile-password-toggle"
+                aria-expanded={passwordOpen}
+                onClick={() => setPasswordOpen((value) => !value)}
+              >
+                <span>
+                  <strong>Change password</strong>
+                </span>
+                <span className="module-gear-chevron" aria-hidden="true">
+                  {passwordOpen ? "▲" : "▼"}
+                </span>
+              </button>
+              {passwordOpen ? (
+                <div className="profile-password-body">
+                  <label className="field">
+                    New password
+                    <input
+                      type="password"
+                      value={newPassword}
+                      placeholder="At least 8 characters"
+                      autoComplete="new-password"
+                      onChange={(event) => setNewPassword(event.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    Confirm password
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      placeholder="Repeat new password"
+                      autoComplete="new-password"
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                    />
+                  </label>
+                  <button type="button" className="primary" onClick={submitPasswordChange}>
+                    Update password
+                  </button>
+                  <p className="note" style={{ margin: 0 }}>
+                    Account sign-in and cloud sync will land with the next Profile pass. Details stay on this device for
+                    now.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            {message ? <p className="note">{message}</p> : null}
+          </div>
+        ) : null}
       </div>
 
       <ul className="hub-list">
-        <HubNav title="Lists" detail="Favorites and named observing lists" onSelect={() => setSection("lists")} />
+        <HubNav title="Target Lists" detail="Favorites and named target lists" onSelect={() => setSection("lists")} />
+        <HubNav
+          title="Imaging plans"
+          detail="Saved Multi-target, Single-target, Mosaic, Multi-rigs, and Collage sessions"
+          onSelect={() => setSection("imaging-plans")}
+        />
         <HubNav title="Equipment" detail="Scopes, cameras, filters" onSelect={() => setSection("equipment")} />
         <HubNav title="Locations" detail="Observing sites" onSelect={() => setSection("locations")} />
         <HubNav title="Catalogue" detail="Extended catalogue and components" onSelect={() => setSection("catalogue")} />
         <HubNav title="Subscription" detail="Plan and billing" onSelect={() => setSection("subscription")} />
       </ul>
-
-      <div className="hub-card" style={{ display: "grid", gap: 8 }}>
-        <strong>Offline &amp; API</strong>
-        <p style={{ margin: 0, color: "var(--muted)" }}>Network: {online ? "Online" : "Offline"}</p>
-        <p style={{ margin: 0, color: "var(--muted)" }}>
-          API: {typeof window === "undefined" ? "…" : window.location.origin}
-        </p>
-      </div>
 
       <section className="about-section" aria-labelledby="about-heading">
         <header className="hub-intro">

@@ -89,7 +89,7 @@ function TermsBody({ theme }: { theme: "dark" | "night" }) {
 
       <Text style={[styles.body, { fontWeight: "600" }]}>3. User-generated content</Text>
       <Text style={styles.muted}>
-        Sites, equipment, lists, and profile details you enter must be lawful, non-spam, and related to astronomy
+        Sites, equipment, target lists, and profile details you enter must be lawful, non-spam, and related to astronomy
         planning. You keep ownership; when sync/sharing features are enabled you grant us a licence to host and display
         content as needed to run the service—not to sell it as a standalone product.
       </Text>
@@ -162,7 +162,7 @@ function PrivacyBody({ theme }: { theme: "dark" | "night" }) {
       <Text style={[styles.body, { fontWeight: "600" }]}>1. Information we collect</Text>
       <Text style={styles.muted}>
         Account & profile information you enter (email, username, phone, preferences); planner content such as sites,
-        equipment, lists, and gear settings; observing location coordinates and place names; and technical data such as
+        equipment, target lists, and gear settings; observing location coordinates and place names; and technical data such as
         IP address, device or browser type, and error logs when the app calls our APIs.
       </Text>
 
@@ -188,7 +188,7 @@ function PrivacyBody({ theme }: { theme: "dark" | "night" }) {
 
       <Text style={[styles.body, { fontWeight: "600" }]}>5. Cookies and local storage</Text>
       <Text style={styles.muted}>
-        {APP_NAME} uses local storage (and comparable mobile storage) to remember theme, gear, locations, and lists.
+        {APP_NAME} uses local storage (and comparable mobile storage) to remember theme, gear, locations, and target lists.
         Clearing storage may reset those settings.
       </Text>
 

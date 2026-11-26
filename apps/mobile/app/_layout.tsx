@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider } from "@/state/auth-context";
+import { ImagingPlansProvider } from "@/state/imaging-plans-context";
 import { ListsProvider } from "@/state/lists-context";
 import { PlannerProvider, usePlannerState } from "@/state/planner-context";
 
@@ -27,7 +28,9 @@ export default function RootLayout() {
       <AuthProvider>
         <PlannerProvider>
           <ListsProvider>
-            <RootNav />
+            <ImagingPlansProvider>
+              <RootNav />
+            </ImagingPlansProvider>
           </ListsProvider>
         </PlannerProvider>
       </AuthProvider>

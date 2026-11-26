@@ -22,9 +22,14 @@ import {
   type MultiTargetStrategy,
   type TargetListFilter,
 } from "@dss/core";
+import { applySavedPlanGear } from "@/lib/apply-plan-gear";
+import { planFilterFields, snapshotPlanGear, snapshotPlanSite } from "@/lib/plan-snapshot";
+import { useImagingPlans } from "@/lib/use-imaging-plans";
 import { useLists } from "@/lib/use-lists";
+import { ModuleGearPicker } from "./module-gear-picker";
 import { MultiAltitudeChart } from "./multi-altitude-chart";
 import { MultiTargetPickerThumb } from "./multi-target-picker-thumb";
+import { SavePlanControl } from "./save-plan-control";
 import { usePlannerState } from "./planner-context";
 
 function isoToDisplayDate(iso: string): string {
@@ -61,6 +66,7 @@ type PickerSource =
 export function MultiTargetPanel() {
   const planner = usePlannerState();
   const lists = useLists();
+  const imagingPlans = useImagingPlans();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [budgets, setBudgets] = useState<Record<string, number>>({});
   const [strategy, setStrategy] = useState<MultiTargetStrategy>("peak-first");
@@ -78,6 +84,18 @@ export function MultiTargetPanel() {
   useEffect(() => {
     setDateText(isoToDisplayDate(planner.date));
   }, [planner.date]);
+
+  useEffect(() => {
+    if (!imagingPlans.ready) return;
+    const plan = imagingPlans.consumePendingPlan("multi-target");
+    if (!plan || plan.module !== "multi-target") return;
+    applySavedPlanGear(planner, plan);
+    setSource(plan.pickerSource);
+    setSelectedIds(plan.selectedObjectIds);
+    setBudgets(plan.requestedHoursById);
+    setStrategy(plan.strategy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once when plans are ready
+  }, [imagingPlans.ready]);
 
   const catalogueById = useMemo(() => {
     const map = new Map((planner.catalogue ?? []).map((item) => [item.id, item]));
@@ -196,7 +214,7 @@ export function MultiTargetPanel() {
       : listFilterLabel(planner.listFilter);
 
   const listsChipLabel =
-    source.kind === "list" ? `${source.listName} (${lists.lists.find((list) => list.id === source.listId)?.items.length ?? 0})` : "Lists";
+    source.kind === "list" ? `${source.listName} (${lists.lists.find((list) => list.id === source.listId)?.items.length ?? 0})` : "Target Lists";
 
   function toggleTarget(id: string) {
     setSelectedIds((prev) => {
@@ -246,11 +264,11 @@ export function MultiTargetPanel() {
     planner.setDate(iso);
   }
 
-  if (!planner.setupReady) {
+  if (!planner.locationReady || !planner.date) {
     return (
       <div className="multi-target-panel">
         <p className="note" style={{ marginTop: 0 }}>
-          Finish location, date, telescope, and camera in Tonight settings first.
+          Set location and date in Tonight settings first.
         </p>
       </div>
     );
@@ -263,9 +281,14 @@ export function MultiTargetPanel() {
         overlap. Broadband targets warn when the Moon is bright.
       </p>
 
+      <ModuleGearPicker />
+
+      {!planner.telescope || !planner.camera ? (
+        <p className="note">Choose a saved rig or pick a telescope and camera above to continue.</p>
+      ) : (
+      <>
       <div className="hub-card multi-target-date-card">
         <div className="date-nav-row">
-          <strong className="date-nav-label">Night</strong>
           <label className="date-field date-field-inline" htmlFor={`${datePickerId}-text`}>
             <span className="sr-only">Night of (MM-DD-YYYY)</span>
             <span className="date-field-control">
@@ -403,10 +426,10 @@ export function MultiTargetPanel() {
             </svg>
           </button>
           {listsOpen ? (
-            <div className="sort-panel sort-panel-left" id="multi-target-lists" role="listbox" aria-label="Saved lists">
+            <div className="sort-panel sort-panel-left" id="multi-target-lists" role="listbox" aria-label="Saved target lists">
               {lists.lists.length === 0 ? (
                 <p className="note" style={{ margin: "8px 10px" }}>
-                  No saved lists yet.
+                  No saved target lists yet.
                 </p>
               ) : (
                 lists.lists.map((list) => (
@@ -577,6 +600,28 @@ export function MultiTargetPanel() {
       ) : (
         <p className="note">Select targets above to set hour budgets and shoot order.</p>
       )}
+      </>
+      )}
+
+      <SavePlanControl
+        disabled={selectedIds.length === 0 || !planner.setupReady}
+        disabledReason={!planner.setupReady ? "Set location and gear before saving." : "Select at least one target to save."}
+        defaultName={`Multi-target ${planner.date}`}
+        onSave={(name) => {
+          imagingPlans.savePlan({
+            name,
+            module: "multi-target",
+            siteRef: snapshotPlanSite(planner),
+            pickerSource: source,
+            ...planFilterFields(planner, source),
+            gear: snapshotPlanGear(planner),
+            dateIso: planner.date,
+            selectedObjectIds: selectedIds,
+            requestedHoursById: budgets,
+            strategy,
+          });
+        }}
+      />
     </div>
   );
 }

@@ -14,7 +14,8 @@ export default function ProfileStackLayout() {
         contentStyle: { backgroundColor: c.bg },
       }}
     >
-      <Stack.Screen name="lists" options={{ title: "Lists" }} />
+      <Stack.Screen name="lists" options={{ title: "Target Lists" }} />
+      <Stack.Screen name="imaging-plans" options={{ title: "Imaging plans" }} />
       <Stack.Screen name="equipment" options={{ title: "Equipment" }} />
       <Stack.Screen name="locations" options={{ title: "Locations" }} />
       <Stack.Screen name="catalogue" options={{ title: "Catalogue" }} />

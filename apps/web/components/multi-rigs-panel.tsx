@@ -26,10 +26,14 @@ import {
   type Telescope,
   type TimeInterval,
 } from "@dss/core";
+import { applySavedPlanGear } from "@/lib/apply-plan-gear";
+import { planFilterFields, snapshotPlanGear, snapshotPlanSite } from "@/lib/plan-snapshot";
+import { useImagingPlans } from "@/lib/use-imaging-plans";
 import { useLists } from "@/lib/use-lists";
 import type { GearRig } from "@/lib/storage";
 import { MultiAltitudeChart } from "./multi-altitude-chart";
 import { MultiTargetPickerThumb } from "./multi-target-picker-thumb";
+import { SavePlanControl } from "./save-plan-control";
 import { usePlannerState } from "./planner-context";
 
 const SERIES_COLORS = ["#7ad0e7", "#e0c07a", "#9ad67a", "#c79ae8", "#e08a7a", "#7ab8e0"];
@@ -68,6 +72,7 @@ function displayToIsoDate(display: string): string | null {
 export function MultiRigsPanel() {
   const planner = usePlannerState();
   const lists = useLists();
+  const imagingPlans = useImagingPlans();
   const datePickerId = useId();
   const datePickerRef = useRef<HTMLInputElement>(null);
   const [dateText, setDateText] = useState(() => isoToDisplayDate(planner.date));
@@ -83,6 +88,17 @@ export function MultiRigsPanel() {
   const listsHost = useRef<HTMLDivElement>(null);
   useMenuDismiss(filterOpen, filterHost, setFilterOpen);
   useMenuDismiss(listsOpen, listsHost, setListsOpen);
+
+  useEffect(() => {
+    if (!imagingPlans.ready) return;
+    const plan = imagingPlans.consumePendingPlan("multi-rigs");
+    if (!plan || plan.module !== "multi-rigs") return;
+    applySavedPlanGear(planner, plan);
+    setSource(plan.pickerSource);
+    setEnabledRigIds(plan.enabledRigIds);
+    setDrafts(plan.rigs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once when plans are ready
+  }, [imagingPlans.ready]);
 
   const todayIso = civilDate(planner.site.timezone);
   const rigs = useMemo(() => planner.rigs.slice(0, MULTI_RIG_MAX), [planner.rigs]);
@@ -226,7 +242,7 @@ export function MultiRigsPanel() {
   const listsChipLabel =
     source.kind === "list"
       ? `${source.listName} (${lists.lists.find((list) => list.id === source.listId)?.items.length ?? 0})`
-      : "Lists";
+      : "Target Lists";
 
   const colorByRigId = useMemo(() => {
     const map = new Map<string, string>();
@@ -402,7 +418,6 @@ export function MultiRigsPanel() {
 
       <div className="hub-card multi-target-date-card">
         <div className="date-nav-row">
-          <strong className="date-nav-label">Night</strong>
           <label className="date-field date-field-inline" htmlFor={`${datePickerId}-text`}>
             <span className="sr-only">Night of (MM-DD-YYYY)</span>
             <span className="date-field-control">
@@ -616,10 +631,10 @@ export function MultiRigsPanel() {
                         </svg>
                       </button>
                       {listsOpen ? (
-                        <div className="sort-panel sort-panel-left" role="listbox" aria-label="Saved lists">
+                        <div className="sort-panel sort-panel-left" role="listbox" aria-label="Saved target lists">
                           {lists.lists.length === 0 ? (
                             <p className="note" style={{ margin: "8px 12px" }}>
-                              No saved lists yet.
+                              No saved target lists yet.
                             </p>
                           ) : (
                             lists.lists.map((list) => (
@@ -780,6 +795,29 @@ export function MultiRigsPanel() {
           ))}
         </div>
       ) : null}
+
+      <SavePlanControl
+        disabled={activeRigs.length === 0 || !planner.setupReady}
+        disabledReason={
+          !planner.setupReady
+            ? "Set location and gear before saving."
+            : "Enable at least one rig with targets to save."
+        }
+        defaultName={`Multi-rigs ${planner.date}`}
+        onSave={(name) => {
+          imagingPlans.savePlan({
+            name,
+            module: "multi-rigs",
+            siteRef: snapshotPlanSite(planner),
+            pickerSource: source,
+            ...planFilterFields(planner, source),
+            gear: snapshotPlanGear(planner),
+            dateIso: planner.date,
+            enabledRigIds,
+            rigs: drafts,
+          });
+        }}
+      />
     </div>
   );
 }

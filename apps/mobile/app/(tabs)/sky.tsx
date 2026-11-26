@@ -32,7 +32,6 @@ export default function SkyScreen() {
         locationReady={planner.locationReady}
         target={planner.selected}
         popularDsos={popularDsos}
-        onThemeToggle={() => planner.setTheme(planner.theme === "dark" ? "night" : "dark")}
       />
     </SafeAreaView>
   );
