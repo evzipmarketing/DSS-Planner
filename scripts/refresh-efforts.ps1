@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
   Refresh measured sections in EFFORTS.md from git + LOC counts.
-  Preserves manual hour/credit tables outside the auto markers.
+  Only rewrites the block between efforts:measured markers.
 #>
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -33,7 +33,7 @@ $spanDays = ([datetime]::ParseExact($latestDate, "yyyy-MM-dd", $null) - [datetim
 $commitDayRows = git log --format="%ad" --date=short |
   Group-Object |
   Sort-Object Name |
-  ForEach-Object { "| $($_.Name) | $($_.Count) | |" }
+  ForEach-Object { "| $($_.Name) | $($_.Count) |" }
 
 $authorRows = git shortlog -sn --all |
   ForEach-Object {
@@ -117,56 +117,37 @@ _Last refreshed: $today (auto)_
 
 ---
 
-## Dates & activity
+## Commit days
 
-### Commit days
-
-| Date | Commits | Notes |
-|------|--------:|-------|
+| Date | Commits |
+|------|--------:|
 $($commitDayRows -join "`n")
 
-_Notes column is manual — keep useful context when editing by hand._
-
-### Authors (commit counts, ``git shortlog -sn --all``)
+### Authors
 
 | Author | Commits |
 |--------|--------:|
 $($authorRows -join "`n")
 
-\*Author totals can exceed tip commit count when history was rewritten or commits exist on other refs.
-
 ---
 
 ## Lines of code (measured $today)
-
-Counted under ``apps/`` and ``packages/``, excluding ``node_modules``, ``.next``, ``dist``, ``build``, ``.expo``, ``coverage``.
 
 | Area | Approx. lines |
 |------|-------------:|
 $($pkgRows -join "`n")
 | **Total** | **~$("{0:N0}" -f $totalLines)** |
 
-### By file type
-
 | Extension | Approx. lines |
 |-----------|-------------:|
 $($extRows -join "`n")
 
-### Tests
-
-| Item | Value |
-|------|------:|
+| Tests | Value |
+|-------|------:|
 | ``packages/core/test`` files | $($testFiles.Count) |
 | Test LOC (approx.) | ~$("{0:N0}" -f $testLines) |
 
-### How to re-measure
-
-``````powershell
-pnpm efforts:refresh
-# or: powershell -File scripts/refresh-efforts.ps1
-``````
-
-**Heuristic estimate (auto):** ~$hoursLow–$hoursHigh hours ($activeDayCount active days × 6–12 h). Replace with your hour log below.
+**Heuristic effort:** ~$hoursLow–$hoursHigh hours ($activeDayCount active days × 6–12 h).
 "@
 
 $existing = Get-Content -LiteralPath $effortsPath -Raw
@@ -179,15 +160,6 @@ if ($existing -notmatch [regex]::Escape($start) -or $existing -notmatch [regex]:
 $pattern = "(?s)$([regex]::Escape($start)).*?$([regex]::Escape($end))"
 $replacement = "$start`n$measured`n$end"
 $updated = [regex]::Replace($existing, $pattern, { param($m) $replacement })
-
-# Append changelog row if today's auto refresh isn't listed yet
-$autoNote = "| $today | Auto-refresh via ``scripts/refresh-efforts.ps1`` |"
-if ($updated -notmatch [regex]::Escape("Auto-refresh via")) {
-  $updated = $updated.TrimEnd() + "`n$autoNote`n"
-} elseif ($updated -notmatch [regex]::Escape("| $today | Auto-refresh")) {
-  # Already has an auto-refresh entry from another day — add today's
-  $updated = $updated.TrimEnd() + "`n$autoNote`n"
-}
 
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($effortsPath, ($updated.TrimEnd() + "`n"), $utf8NoBom)

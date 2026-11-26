@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Refresh EFFORTS.md regularly
 
-`EFFORTS.md` is the project effort log (dates, LOC, commits, hours/credits placeholders).
+`EFFORTS.md` is the auto-measured project effort log (dates, LOC, commits, heuristic hours).
 
 ## When to refresh
 
@@ -21,11 +21,9 @@ Skip for tiny typo-only edits unless the user asks.
 
 1. From the repo root run: `pnpm efforts:refresh` (or `powershell -File scripts/refresh-efforts.ps1`).
 2. That rewrites only the block between `<!-- efforts:measured:start -->` and `<!-- efforts:measured:end -->`.
-3. **Do not invent** Cursor credits, dollar amounts, or personal hours — leave those tables for the user.
-4. Optionally add a one-line note under milestones / commit-day Notes if something important shipped.
-5. Include `EFFORTS.md` in the commit when the user asked to commit/push related work, or when they asked to update efforts.
+3. **Do not invent** Cursor credits, dollar amounts, or personal hours.
+4. Include `EFFORTS.md` in the commit when the user asked to commit/push related work, or when they asked to update efforts.
 
 ## Do not
 
-- Delete or overwrite the manual **Time spent** / **Credits** fill-in tables
 - Commit secrets, `.env`, or billing screenshots into the repo
