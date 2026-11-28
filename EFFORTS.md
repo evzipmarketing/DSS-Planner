@@ -1,23 +1,23 @@
-# DeepSkyMate — development efforts
+# DeepSkyMate â€” development efforts
 
 Auto-measured project stats. Refresh with `pnpm efforts:refresh`.
 
 <!-- efforts:measured:start -->
-_Last refreshed: 2026-11-26 (auto)_
+_Last refreshed: 2026-11-28 (auto)_
 
 ## Snapshot
 
 | Metric | Value | Source |
 |--------|-------|--------|
 | Project start (first commit) | **2026-11-12** | `git log --reverse` |
-| Latest commit (as of refresh) | **2026-11-26** | `07599ca` — Sync DeepSkyMate brand icons for mobile and web PWA install. |
+| Latest commit (as of refresh) | **2026-11-26** | `6f8807c` — Fix gear picker TypeScript fields that broke the Vercel build. |
 | Calendar span | **15 days** (2026-11-12 → 2026-11-26) | First → latest commit date |
 | Days with commits | **8** | Unique `git log` dates |
-| Total commits on `main` | **31** | `git rev-list --count HEAD` |
+| Total commits on `main` | **32** | `git rev-list --count HEAD` |
 | Source files counted | **183** | `apps/` + `packages/` |
 | Current source LOC | **~43,069** | Line count under `apps/` + `packages/` |
-| Git churn (all history) | **+62,131 / -5,517** (net ~**+56,614**) | `git log --numstat` |
-| Cursor agent transcripts (local) | **20** chats under this project | Agent transcript folder |
+| Git churn (all history) | **+62,142 / -5,528** (net ~**+56,614**) | `git log --numstat` |
+| Cursor agent transcripts (local) | **23** chats under this project | Agent transcript folder |
 
 ---
 
@@ -32,19 +32,19 @@ _Last refreshed: 2026-11-26 (auto)_
 | 2026-11-22 | 1 |
 | 2026-11-23 | 1 |
 | 2026-11-24 | 4 |
-| 2026-11-26 | 3 |
+| 2026-11-26 | 4 |
 
 ### Authors
 
 | Author | Commits |
 |--------|--------:|
 | Cursor Agent | 31 |
-| itsardnepu | 14 |
+| itsardnepu | 15 |
 | evzipmarketing | 13 |
 
 ---
 
-## Lines of code (measured 2026-11-26)
+## Lines of code (measured 2026-11-28)
 
 | Area | Approx. lines |
 |------|-------------:|
